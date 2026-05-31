@@ -1,0 +1,33 @@
+# Core dependencies
+pandas>=2.0.0
+polars>=0.20.0
+requests>=2.30.0
+beautifulsoup4>=4.12.0
+lxml>=4.9.0
+nltk>=3.8.0
+
+# HTTP and networking
+urllib3>=2.0.0
+certifi>=2023.0.0
+charset-normalizer>=3.0.0
+
+# HTML parsing and text processing
+html5lib>=1.1
+soupsieve>=2.4
+
+# Utilities
+python-dateutil>=2.8.0
+pytz>=2023.0
+typing-extensions>=4.5.0
+
+# Optional performance improvements
+# Uncomment these for better performance if needed:
+# ujson>=5.7.0  # Faster JSON processing
+# cchardet>=2.1.7  # Faster charset detection
+# orjson>=3.8.0  # Even faster JSON processing
+
+# Development and testing (optional)
+# pytest>=7.0.0
+# black>=23.0.0
+# flake8>=6.0.0
+# mypy>=1.0.0
