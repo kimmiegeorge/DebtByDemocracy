@@ -5,6 +5,7 @@ __pycache__/
 *.py[cod]
 *.log
 *.zip
+R/Rplot*.png
 
 # Local Python environments
 venv/
