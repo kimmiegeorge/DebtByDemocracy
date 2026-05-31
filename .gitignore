@@ -1,0 +1,19 @@
+.DS_Store
+.Rhistory
+.Rproj.user/
+__pycache__/
+*.py[cod]
+*.log
+
+# Local Python environments
+venv/
+env/
+.venv/
+wayback_env/
+
+# Local/editor metadata
+.idea/
+
+# Generated trial pulls and temporary outputs
+Python/**/Trial/
+Python/**/reports/
