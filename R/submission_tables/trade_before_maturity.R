@@ -2,17 +2,13 @@ rm(list = ls())
 library(pacman)
 p_load(data.table, dplyr, stargazer, DescTools, arrow, glue, lfe, ggplot2, gridExtra, sandwich, zoo, fixest)
 source('/Users/kmunevar/Dropbox/Voting on Bonds/Code/R/submission_tables/modify_etable_rounding.R')
-source('/Users/kmunevar/Dropbox/Voting on Bonds/Code/R/submission_tables/dpc_purpose_helpers.R')
 tables_wd <- "~/Dropbox/Apps/Overleaf/Voting on bonds/tables/submission_tables/"
-data_wd <- "~/Dropbox/Voting on Bonds/Data/"
 
 #----------------------------------
 # main df
 #----------------------------------
 
 data <- fread('~/Dropbox/Voting on Bonds/Data/MSRB/Processed/Bond_Level_Any_Trade_Before_Maturity_with_CD_Data.csv')
-dpc_purpose <- load_dpc_purpose(data_wd)
-data <- add_dpc_purpose_by_cusip(data, dpc_purpose)
 data[state == 'MO', city_rev_vote := 1]
 data[state == 'RI', city_go_vote := NA]
 data <- data[city == 1 & !is.na(city_go_vote)  & go_unlim == 1 & !is.na(callable)]
@@ -385,6 +381,7 @@ modified_output <- format_table(modified_output, cluster_level = "Issue")
 modified_output <- add_panel(modified_output, 'Panel B: Regression analyses - Border-City Sample')
 
 writeLines(modified_output, paste0(tables_wd, '/trade_before_maturity_border_sample.tex'))
+
 
 
 
