@@ -4,6 +4,7 @@ rm(list = ls())
 library(pacman)
 p_load(data.table, dplyr, stargazer, DescTools, arrow, glue, lfe, ggplot2, gridExtra, sandwich, zoo, fixest, haven, xtable)
 source('/Users/kmunevar/Dropbox/Voting on Bonds/Code/R/submission_tables/modify_etable_rounding.R')
+source('/Users/kmunevar/Dropbox/Voting on Bonds/Code/R/submission_tables/dpc_purpose_helpers.R')
 tbl_dir <- "~/Dropbox/Apps/Overleaf/Voting on bonds/tables/submission_tables"
 data_wd <- "~/Dropbox/Voting on Bonds/Data/"
 
@@ -56,6 +57,16 @@ city_month <- yms[city_month, on = .(ym)]
 
 full_data <- read_dta('~/Dropbox/Voting on Bonds/Data/Mergent/Clean/250827_city_cusiplevel_statereq_purpose_yieldspread.dta')
 full_data <- as.data.table(full_data)
+dpc_purpose <- load_dpc_purpose(data_wd)
+# Election data does not include CUSIPs, so this adds DPC classifications
+# for bonds issued by the same issuer in the same election year-month.
+election_dpc_purpose <- build_dpc_purpose_lookup(
+  full_data,
+  dpc_purpose,
+  by_cols = c("seed_issuer", "year", "month")
+)
+election <- election_dpc_purpose[election, on = .(seed_issuer, year, month)]
+
 full_data[, ym := paste0(year, month)]
 full_data <- unique(full_data[, .(seed_issuer_id, ym)])
 full_data <- yms[full_data, on = .(ym)]
@@ -410,5 +421,3 @@ writeLines(modified_output, paste0(tbl_dir, '/tx_city_month_reg.tex'))
 # writeLines(modified_output, paste0(tbl_dir, '/tx_failed_and_margin_websites.tex'))
 # 
 # 
-
-

@@ -4,6 +4,7 @@ rm(list = ls())
 library(pacman)
 p_load(data.table, dplyr, stargazer, DescTools, arrow, glue, lfe, ggplot2, gridExtra, sandwich, zoo, fixest, haven, xtable)
 source('/Users/kmunevar/Dropbox/Voting on Bonds/Code/R/submission_tables/modify_etable_rounding.R')
+source('/Users/kmunevar/Dropbox/Voting on Bonds/Code/R/submission_tables/dpc_purpose_helpers.R')
 tbl_dir <- "~/Dropbox/Apps/Overleaf/Voting on bonds/tables/submission_tables"
 data_wd <- "~/Dropbox/Voting on Bonds/Data/"
 
@@ -16,10 +17,19 @@ data_wd <- "~/Dropbox/Voting on Bonds/Data/"
 full_data <- read_dta('~/Dropbox/Voting on Bonds/Data/Mergent/Clean/251119_city_cusiplevel_statereq_purpose_yieldspread.dta')
 full_data <- as.data.table(full_data)
 issuers <- full_data[, list(fips = first(fips), issuer_long_name = first(issuer_long_name)), .(seed_issuer_id)]
+dpc_purpose <- load_dpc_purpose(data_wd)
+# News issuance files are issuer-month level, so collapse CUSIP-level DPC
+# classifications to issuer-year-month indicators before merging.
+issuance_dpc_purpose <- build_dpc_purpose_lookup(
+  full_data,
+  dpc_purpose,
+  by_cols = c("seed_issuer_id", "year", "month")
+)
 # load news coverage 
 #issuance_lvl = fread(paste0(data_wd, 'News/Issuance_Lvl_News_With_Lagged_News_250916.csv'))
 issuance_lvl = fread(paste0(data_wd, 'News/Issuance_Lvl_News_With_Lagged_News_251215.csv'))
 issuance_lvl <- issuers[issuance_lvl, on = .(seed_issuer_id)]
+issuance_lvl <- issuance_dpc_purpose[issuance_lvl, on = .(seed_issuer_id, year, month)]
 issuance_lvl[, city_rev_vote := ifelse(state == 'MO', 1, city_rev_vote)]
 issuance_lvl[, city_go_vote := ifelse(state == 'RI', NA, city_go_vote)]
 
@@ -33,6 +43,7 @@ issuance_lvl <- issuance_lvl[!is.na(city_go_vote)]
 #border_articles <- fread('~/Dropbox/Voting on Bonds/Data/Border States/Border Matches RP Issuance Lvl Expanded Set Buffer 100000 20250916.csv')
 border_articles <- fread('~/Dropbox/Voting on Bonds/Data/Border States/Border Matches RP Issuance Lvl Expanded Set Buffer 100000 20251215.csv')
 border_articles = as.data.table(border_articles)
+border_articles <- issuance_dpc_purpose[border_articles, on = .(seed_issuer_id, year, month)]
 #border_articles <- border_articles[category != 'grey']
 
 
@@ -377,6 +388,4 @@ plot = ggplot() +
   theme_minimal()
 
 ggsave(paste0(tbl_dir, "/article_counts.png"), plot = plot, width = 7, height = 5, dpi = 300)
-
-
 
