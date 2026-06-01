@@ -12,7 +12,7 @@ input_dir_original = os.path.expanduser(
 input_dir_recovered = os.path.expanduser(
     '/Users/kmunevar/Dropbox/Voting on Bonds/Data/Websites/Texas/WBM/Recovered URLs From Bad URLs Investigation/Processed')
 data_dir = '~/Dropbox/Voting on Bonds/Data'
-output_date = '251217'
+output_date = '260601'
 # %%
 #''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
 #load full election data including failed elections
@@ -585,7 +585,7 @@ sample_issuers = pl.read_csv('/Users/kmunevar/Dropbox/Voting on Bonds/Data/Websi
 sample_issuers = sample_issuers.rename({'City Website': 'URL'})
 
 # get one obs per year
-year_list = [2015, 2016, 2017, 2018, 2019, 2020]
+year_list = [i for i in range(2000, 2021)]
 obs = (sample_issuers.rename({'seed_issuer_id': 'GovernmentName'})
        .with_columns(year = year_list)
        .explode('year'))
@@ -625,7 +625,7 @@ mergent = mergent.filter(pl.col("state").eq("TX"))
 
 # GO unlimited bonds
 go_unlim = (mergent
-            .filter(pl.col('seed_issuer').is_in(obs.select('seed_issuer')))
+            .filter(pl.col('seed_issuer').is_in(obs['seed_issuer']))
             .filter(pl.col('go_unlim').eq(1))
             .with_columns(pl.col('offering_date').dt.year().alias('year'))
             .group_by(['seed_issuer', 'year'])
@@ -660,7 +660,7 @@ go_unlim_obs_annual = (obs
 
 # All bonds (not just GO unlimited)
 all_bonds = (mergent
-            .filter(pl.col('seed_issuer').is_in(obs.select('seed_issuer')))
+            .filter(pl.col('seed_issuer').is_in(obs['seed_issuer']))
             .with_columns(pl.col('offering_date').dt.year().alias('year'))
             .group_by(['seed_issuer', 'year'])
             .agg(pl.col('issue_id').n_unique().alias('num_issues_all')))

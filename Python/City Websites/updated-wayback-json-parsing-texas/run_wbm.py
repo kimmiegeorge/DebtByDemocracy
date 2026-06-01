@@ -377,6 +377,24 @@ def process_urls_from_file(
     total_years = end_year - start_year + 1
     
     print(f"📅 Processing years {start_year}-{end_year} ({total_years} years)")
+
+    def get_complete_hosts(year_path: Path) -> set:
+        """Return hosts with CDX metadata and completed res/bow outputs."""
+        complete_hosts = set()
+        if not year_path.exists():
+            return complete_hosts
+
+        for file in year_path.glob("cdx*.csv"):
+            if file.name.startswith('cdx[') and file.name.endswith('].csv'):
+                match = re.search(r'cdx\[(.*?)\]\.csv', file.name)
+                if not match:
+                    continue
+                host = match.group(1)
+                res_file = year_path / f"res[{host}].json"
+                bow_file = year_path / f"bow[{host}].json"
+                if res_file.exists() and bow_file.exists():
+                    complete_hosts.add(host)
+        return complete_hosts
     
     # Track overall progress
     overall_start_time = time.time()
@@ -386,14 +404,7 @@ def process_urls_from_file(
     # Calculate total work
     for year in range(start_year, end_year + 1):
         year_path = Path(config.paths.base_path) / "Annual Files" / f"JSON_{year}"
-        processed_hosts = set()
-        if year_path.exists():
-            for file in year_path.glob("cdx*.csv"):
-                if file.name.startswith('cdx[') and file.name.endswith('].csv'):
-                    match = re.search(r'cdx\[(.*?)\]\.csv', file.name)
-                    if match:
-                        host = match.group(1).replace('_', '.')
-                        processed_hosts.add(host)
+        processed_hosts = get_complete_hosts(year_path)
         urls_to_process = [url for url in url_list if url not in processed_hosts]
         total_year_url_pairs += len(urls_to_process)
     
@@ -407,14 +418,7 @@ def process_urls_from_file(
         year_path = Path(config.paths.base_path) / "Annual Files" / f"JSON_{year}"
         
         # Check which URLs have already been processed
-        processed_hosts = set()
-        if year_path.exists():
-            for file in year_path.glob("cdx*.csv"):
-                if file.name.startswith('cdx[') and file.name.endswith('].csv'):
-                    match = re.search(r'cdx\[(.*?)\]\.csv', file.name)
-                    if match:
-                        host = match.group(1).replace('_', '.')
-                        processed_hosts.add(host)
+        processed_hosts = get_complete_hosts(year_path)
         
         urls_to_process = [url for url in url_list if url not in processed_hosts]
         

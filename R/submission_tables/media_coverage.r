@@ -7,6 +7,8 @@ source('/Users/kmunevar/Dropbox/Voting on Bonds/Code/R/submission_tables/modify_
 tbl_dir <- "~/Dropbox/Apps/Overleaf/Voting on bonds/tables/submission_tables"
 data_wd <- "~/Dropbox/Voting on Bonds/Data/"
 
+super_majority_states <- c('CA', 'ID', 'MO','ND','SD', 'WA')
+
 # ===============================================================================
 # DATA LOADING AND PREPARATION
 # ===============================================================================
@@ -26,6 +28,8 @@ issuance_lvl[, city_go_vote := ifelse(state == 'RI', NA, city_go_vote)]
 # filter to sample 
 #issuance_lvl <- issuance_lvl[!is.na(city_go_vote) & city_rev_vote == 0]
 issuance_lvl <- issuance_lvl[!is.na(city_go_vote)]
+
+issuance_lvl[, super_majority := ifelse(state %in% super_majority_states, 1, 0)]
 
 #_______________Border________________
 
@@ -379,4 +383,85 @@ plot = ggplot() +
 ggsave(paste0(tbl_dir, "/article_counts.png"), plot = plot, width = 7, height = 5, dpi = 300)
 
 
+#===============================
+# super majority 
+#===============================
+r1 <- fixest::fepois(total_articles_12_0_win ~super_majority + bond_prior_12 + log_sources +
+                        ln_amount|issuance_year_month_id + purp_broad , 
+                      data = issuance_lvl[go_unlim_bond_issuance == 1 & rolling_sum_monthly_article_count_12 > 0 & city_go_vote == 1], 
+                      vcov = vcov_cluster(~fips))
+summary(r1)
+r1b <- fixest::fepois(total_articles_12_0_win ~super_majority + bond_prior_12 + log_sources + ln_amount + 
+                       ln_gdp + ln_pop + ln_pers_inc |issuance_year_month_id + purp_broad , 
+                     data = issuance_lvl[go_unlim_bond_issuance == 1 & rolling_sum_monthly_article_count_12 > 0 & city_go_vote == 1 ], 
+                     vcov = vcov_cluster(~fips))
+summary(r1b)
 
+r2 <- fixest::fepois(total_articles_12_0_win ~city_go_vote + bond_prior_12 + log_sources + 
+                        ln_amount|issuance_year_month_id + group + purp_broad , 
+                      data = border_articles[go_unlim_bond_issuance == 1 & rolling_sum_monthly_article_count_12 > 0], 
+                      vcov = vcov_cluster(~fips))
+summary(r2)
+
+r2b <- fixest::fepois(total_articles_12_0_win ~city_go_vote  + bond_prior_12 + log_sources + ln_amount +
+                       ln_gdp + ln_pop + ln_pers_inc    |issuance_year_month_id + group + purp_broad ,
+                     data = border_articles[go_unlim_bond_issuance == 1 & rolling_sum_monthly_article_count_12 > 0], 
+                     vcov = vcov_cluster(~fips))
+summary(r2b)
+
+
+
+  
+table_call <- etable(r1, r1b, r2, r2b,
+       headers = list("Full Sample" = 2, "Border-State Sample" = 2),
+       coefstat = 'tstat',
+       style.tex = style.tex(main = 'aer', fixef.suffix = ' FE', yesNo = c("Yes", "No")),
+       fitstat = c('n', 'pr2'), 
+       se.below = TRUE, 
+       digits = 3, 
+       digits.stats = 3,
+       signif.code = c("***"=0.01, "**"=0.05, "*"=0.10), 
+       tex = TRUE,
+       #fontsize = 'small',
+       #order = c("city_go_vote", "high_articles_12_0", "city_go_vote:high_articles_12_0"),
+       dict = c(total_articles_12_0_win ='Total Articles - 12mo',
+                total_rp_articles_6_0 ='Total Articles - 6mo',
+                city_go_vote = 'Vote',
+                city_rev_vote = "Rev Vote",
+                go = 'GO',
+                rolling_sum = 'City News Coverage',
+                bond_prior_12 = 'Bond Issuance - 12mo',
+                ln_amount = 'Amount',
+                ln_gdp =  'County ln(GDP)', 
+                ln_num_cusip = "Num Bonds",
+                ln_pop = 'County ln(Pop)' , 
+                ln_pers_inc = 'County ln(Pers. Inc)', 
+                ln_employment = 'County ln(Emp)', 
+                log_sources = 'Num Sources',
+                rolling_sum = 'City News Coverage',
+                glm_proactive = 'Proactive State',
+                state_ltgo_allowed = 'State LTGO Allowed',
+                state_go_vote = 'State GO Vote',
+                group = 'State-Border', 
+                purp_broad = 'Purpose',
+                issuance_year_month_id = 'Year-Month'),
+       placement = 'H',
+       #file = paste0(tables_wd, '/media_coverage.tex'), 
+       replace = TRUE)
+
+
+
+
+
+
+
+modified_output <- modify_etable_rounding(
+  table_call,
+  coef_digits = 3,
+  tstat_digits = 2
+)
+
+modified_output <- format_table(modified_output, cluster_level = "County")
+modified_output <- add_panel(modified_output, 'Panel B: Regression analyses')
+
+writeLines(modified_output, paste0(tbl_dir, '/media_coverage.tex'))
