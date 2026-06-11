@@ -118,7 +118,7 @@ modify_etable_tex_rounding <- function(..., coef_digits = 3, tstat_digits = 2, f
   invisible(modified_content)
 }
 # Format table with custom styling
-format_table <- function(tex, cluster_level = "FIPS", fixed_width = TRUE, width = "0.95\\textwidth") {
+format_table <- function(tex, cluster_level = "FIPS", fixed_width = TRUE, width = "\\textwidth") {
   # Collapse to single string if it's a vector
   if (length(tex) > 1) {
     tex <- paste(tex, collapse = "\n")
@@ -133,12 +133,8 @@ format_table <- function(tex, cluster_level = "FIPS", fixed_width = TRUE, width 
       # Extract column specification
       col_spec <- gsub(".*\\\\begin\\{tabular\\}\\{([^}]+)\\}.*", "\\1", lines[i])
       
-      # Replace \begin{tabular}{spec} with \begin{tabular*}{\textwidth}{@{\extracolsep{\fill}}spec}
-      lines[i] <- gsub(
-        "\\\\begin\\{tabular\\}\\{[^}]+\\}",
-        paste0("\\\\begin{tabular*}{\\\\textwidth}{@{\\\\extracolsep{\\\\fill}}", col_spec, "}"),
-        lines[i]
-      )
+      # Replace \begin{tabular}{spec} with a fixed-width tabular*.
+      lines[i] <- paste0("\\begin{tabular*}{", width, "}{@{\\extracolsep{\\fill}}", col_spec, "}")
       break
     }
   }

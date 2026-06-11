@@ -12,6 +12,9 @@ data <- fread('~/Dropbox/Voting on Bonds/Data/MSRB/Processed/Bond_Level_Any_Trad
 data[state == 'MO', city_rev_vote := 1]
 data[state == 'RI', city_go_vote := NA]
 data <- data[city == 1 & !is.na(city_go_vote)  & go_unlim == 1 & !is.na(callable)]
+high_state_tax_privilege_states <- c('CA', 'OR', 'HI', 'VT', 'RI', 'MT', 'ME', 'NJ', 'MN',
+                                     'NC', 'ID', 'NY', 'AR', 'SC', 'NE', 'OH', 'WV', 'NM', 'DE')
+data[, high_state_tax_privilege := ifelse(state %in% high_state_tax_privilege_states, 1, 0)]
 
 #----------------------------------
 # border state
@@ -30,7 +33,7 @@ border_states <- border_states[!is.na(cusip)]
 #----------------------------------
 # DESCRIPTIVES - ELECTION LEVEL 
 desc <- data[year > 2004 & !is.na(ln_gdp), .(city_go_vote, traded_before_maturity, retail_traded_before_maturity, institutional_traded_before_maturity,
-                 disclosed_before_maturity, 
+                 high_state_tax_privilege, disclosed_before_maturity, 
                  ln_amount, ln_maturity_mths, 
                  callable, sinkable, insured, rating_num)]
 
@@ -46,10 +49,10 @@ desc_col <- desc[, lapply(.SD, function(col) {
              N = sum(!is.na(col)))
   return(stats)
 }), .SDcols = colnames(desc)]
-desc_col <- transpose(desc_col, keep.names = "variable")
+desc_col <- data.table::transpose(desc_col, keep.names = "variable")
 colnames(desc_col) <- c("Variable", "Unit", "Mean", "Std", "Min", "P1", "Median", "P99", "Max", "N")
 
-desc_col[, Variable := c('Vote','Trade', 'Retail Trade', 'Inst. Trade',   'Continuing Disclosure', 'Amount',
+desc_col[, Variable := c('Vote','Trade', 'Retail Trade', 'Inst. Trade', 'High Tax Priv.',  'Continuing Disclosure', 'Amount',
                          'Maturity', 'Callable', 'Sinkable', 'Insured', 'Rating')]
 
 # Round numeric columns to 2 decimal places
@@ -121,26 +124,19 @@ writeLines(desc_table_output, paste0(tables_wd, '/secondary_market_descriptives.
 #----------------------------------
 
 
-r2 <- feols(traded_before_maturity ~ city_go_vote + ln_amount +ln_maturity_mths + 
+r1 <- feols(traded_before_maturity ~ city_go_vote + disclosed_before_maturity + ln_amount +ln_maturity_mths + 
               callable + sinkable + insured + rating_num 
             +ln_gdp + ln_pop + ln_pers_inc   |year + purp_broad, 
             ~issue_id, 
             data = data[year > 2004])
-summary(r2)
+summary(r1)
 
-r3 <- feols(traded_before_maturity ~ city_go_vote + disclosed_before_maturity + ln_amount +ln_maturity_mths + 
+r2 <- feols(traded_before_maturity ~ city_go_vote + high_state_tax_privilege + disclosed_before_maturity +  ln_amount +ln_maturity_mths + 
               callable + sinkable + insured + rating_num + 
             + ln_gdp + ln_pop + ln_pers_inc  |year + purp_broad, 
             ~issue_id, 
             data = data[year > 2004])
-summary(r3)
-
-r4 <- feols(traded_before_maturity ~ city_go_vote +  avg_disclosures_per_year_before_maturity + ln_amount +ln_maturity_mths + 
-              callable + sinkable + insured + rating_num + 
-            + ln_gdp + ln_pop + ln_pers_inc  |year + purp_broad , 
-            ~issue_id, 
-            data = data[year > 2004])
-summary(r4)
+summary(r2)
 
 
 
@@ -148,74 +144,57 @@ summary(r4)
 # reg - border state
 #----------------------------------
 
-r2b <- feols(traded_before_maturity ~ city_go_vote + ln_amount +ln_maturity_mths + 
+r1b <- feols(traded_before_maturity ~ city_go_vote + disclosed_before_maturity + ln_amount +ln_maturity_mths + 
               callable + sinkable + insured + rating_num + ln_gdp + ln_pop + ln_pers_inc   |year + purp_broad + group, 
+            ~issue_id, 
+            data = border_states[year > 2004])
+summary(r1b)
+
+
+r2b <- feols(traded_before_maturity ~ city_go_vote + high_state_tax_privilege +  disclosed_before_maturity  + ln_amount +ln_maturity_mths + 
+              callable + sinkable + insured + rating_num + ln_gdp + ln_pop + ln_pers_inc    |year + purp_broad + group , 
             ~issue_id, 
             data = border_states[year > 2004])
 summary(r2b)
 
-r3b <- feols(traded_before_maturity ~ city_go_vote + disclosed_before_maturity +  ln_amount +ln_maturity_mths + 
-              callable + sinkable + insured + rating_num + ln_gdp + ln_pop + ln_pers_inc  |year + purp_broad + group, 
-            ~issue_id, 
-            data = border_states[year > 2004])
-summary(r3b)
-
-r4b <- feols(traded_before_maturity ~ city_go_vote + avg_disclosures_per_year_before_maturity + ln_amount +ln_maturity_mths + 
-              callable + sinkable + insured + rating_num + ln_gdp + ln_pop + ln_pers_inc    |year + purp_broad + group , 
-            ~issue_id, 
-            data = border_states[year > 2004])
-summary(r4b)
-
 
 #----------------------------------
 # reg
 #----------------------------------
 
 
-r2_r <- feols(retail_traded_before_maturity ~ city_go_vote + ln_amount +ln_maturity_mths + 
+r1_r <- feols(retail_traded_before_maturity ~ city_go_vote + disclosed_before_maturity + ln_amount +ln_maturity_mths + 
               callable + sinkable + insured + rating_num 
             +ln_gdp + ln_pop + ln_pers_inc   |year + purp_broad, 
+            ~issue_id, 
+            data = data[year > 2004])
+summary(r1_r)
+
+r2_r <- feols(retail_traded_before_maturity ~ city_go_vote + high_state_tax_privilege +  disclosed_before_maturity  + ln_amount +ln_maturity_mths + 
+              callable + sinkable + insured + rating_num + 
+              + ln_gdp + ln_pop + ln_pers_inc  |year + purp_broad , 
             ~issue_id, 
             data = data[year > 2004])
 summary(r2_r)
 
-r3_r <- feols(retail_traded_before_maturity ~ city_go_vote + disclosed_before_maturity + ln_amount +ln_maturity_mths + 
-              callable + sinkable + insured + rating_num + 
-              + ln_gdp + ln_pop + ln_pers_inc  |year + purp_broad, 
-            ~issue_id, 
-            data = data[year > 2004])
-summary(r3_r)
-
-r4_r <- feols(retail_traded_before_maturity ~ city_go_vote +  avg_disclosures_per_year_before_maturity + ln_amount +ln_maturity_mths + 
-              callable + sinkable + insured + rating_num + 
-              + ln_gdp + ln_pop + ln_pers_inc  |year + purp_broad , 
-            ~issue_id, 
-            data = data[year > 2004])
-summary(r4_r)
-
 
 
 #----------------------------------
 # reg - border state
 #----------------------------------
 
-r2b_r <- feols(retail_traded_before_maturity ~ city_go_vote + ln_amount +ln_maturity_mths + 
+r1b_r <- feols(retail_traded_before_maturity ~ city_go_vote + disclosed_before_maturity + ln_amount +ln_maturity_mths + 
                callable + sinkable + insured + rating_num + ln_gdp + ln_pop + ln_pers_inc   |year + purp_broad + group, 
              ~issue_id, 
              data = border_states[year > 2004])
-summary(r2b_r)
+summary(r1b_r)
 
-r3b_r <- feols(retail_traded_before_maturity ~ city_go_vote + disclosed_before_maturity +  ln_amount +ln_maturity_mths + 
-               callable + sinkable + insured + rating_num + ln_gdp + ln_pop + ln_pers_inc  |year + purp_broad + group, 
-             ~issue_id, 
-             data = border_states[year > 2004])
-summary(r3b_r)
 
-r4b_r <- feols(retail_traded_before_maturity ~ city_go_vote + avg_disclosures_per_year_before_maturity + ln_amount +ln_maturity_mths + 
+r2b_r <- feols(retail_traded_before_maturity ~ city_go_vote + high_state_tax_privilege +  disclosed_before_maturity  + ln_amount +ln_maturity_mths + 
                callable + sinkable + insured + rating_num + ln_gdp + ln_pop + ln_pers_inc    |year + purp_broad + group , 
              ~issue_id, 
              data = border_states[year > 2004])
-summary(r4b_r)
+summary(r2b_r)
 
 
 #----------------------------------
@@ -223,26 +202,20 @@ summary(r4b_r)
 #----------------------------------
 
 
-r2_i <- feols(institutional_traded_before_maturity ~ city_go_vote + ln_amount +ln_maturity_mths + 
+r1_i <- feols(institutional_traded_before_maturity ~ city_go_vote + disclosed_before_maturity + ln_amount +ln_maturity_mths + 
               callable + sinkable + insured + rating_num 
             +ln_gdp + ln_pop + ln_pers_inc   |year + purp_broad, 
             ~issue_id, 
             data = data[year > 2004])
-summary(r2_i)
+summary(r1_i)
 
-r3_i <- feols(institutional_traded_before_maturity ~ city_go_vote + disclosed_before_maturity + ln_amount +ln_maturity_mths + 
-              callable + sinkable + insured + rating_num + 
-              + ln_gdp + ln_pop + ln_pers_inc  |year + purp_broad, 
-            ~issue_id, 
-            data = data[year > 2004])
-summary(r3_i)
 
-r4_i <- feols(institutional_traded_before_maturity ~ city_go_vote +  avg_disclosures_per_year_before_maturity + ln_amount +ln_maturity_mths + 
+r2_i <- feols(institutional_traded_before_maturity ~ city_go_vote +  high_state_tax_privilege +  disclosed_before_maturity  + ln_amount +ln_maturity_mths + 
               callable + sinkable + insured + rating_num + 
               + ln_gdp + ln_pop + ln_pers_inc  |year + purp_broad , 
             ~issue_id, 
             data = data[year > 2004])
-summary(r4_i)
+summary(r2_i)
 
 
 
@@ -250,23 +223,19 @@ summary(r4_i)
 # reg - border state
 #----------------------------------
 
-r2b_i <- feols(institutional_traded_before_maturity ~ city_go_vote + ln_amount +ln_maturity_mths + 
+r1b_i <- feols(institutional_traded_before_maturity ~ city_go_vote + disclosed_before_maturity +  ln_amount +ln_maturity_mths + 
                callable + sinkable + insured + rating_num + ln_gdp + ln_pop + ln_pers_inc   |year + purp_broad + group, 
+             ~issue_id, 
+             data = border_states[year > 2004])
+summary(r1b_i)
+
+
+r2b_i <- feols(institutional_traded_before_maturity ~ city_go_vote + high_state_tax_privilege +  disclosed_before_maturity  + ln_amount +ln_maturity_mths + 
+               callable + sinkable + insured + rating_num + ln_gdp + ln_pop + ln_pers_inc    |year + purp_broad + group , 
              ~issue_id, 
              data = border_states[year > 2004])
 summary(r2b_i)
 
-r3b_i <- feols(institutional_traded_before_maturity ~ city_go_vote + disclosed_before_maturity +  ln_amount +ln_maturity_mths + 
-               callable + sinkable + insured + rating_num + ln_gdp + ln_pop + ln_pers_inc  |year + purp_broad + group, 
-             ~issue_id, 
-             data = border_states[year > 2004])
-summary(r3b_i)
-
-r4b_i <- feols(institutional_traded_before_maturity ~ city_go_vote + avg_disclosures_per_year_before_maturity + ln_amount +ln_maturity_mths + 
-               callable + sinkable + insured + rating_num + ln_gdp + ln_pop + ln_pers_inc    |year + purp_broad + group , 
-             ~issue_id, 
-             data = border_states[year > 2004])
-summary(r4b_i)
 
 
 
@@ -278,7 +247,7 @@ summary(r4b_i)
 #----------------------------------
 
 # full sample
-table_call <- etable(r2, r3, r2_r, r3_r, r2_i, r3_i,
+table_call <- etable(r1, r2, r1_r, r2_r, r1_i, r2_i, 
                      #title = 'Secondary Market Trading and Referendum Requirements',
                      coefstat = 'tstat',
                      style.tex = style.tex(main = 'aer', fixef.suffix = ' FE', yesNo = c("Yes", "No")),
@@ -289,11 +258,14 @@ table_call <- etable(r2, r3, r2_r, r3_r, r2_i, r3_i,
                      digits.stats = 3,
                      signif.code = c("***"=0.01, "**"=0.05, "*"=0.10), 
                      tex = TRUE,
-                     order = c("%city_go_vote", "%disclosed_before_maturity"),
+                     drop_raw = c("ln_gdp", "ln_pop", "ln_pers_inc", "ln_emp"),
+                     order = c("%city_go_vote", "%high_state_tax_privilege", "%disclosed_before_maturity"),
+                     extralines = list("-^County Controls" = rep("Yes", 6)),
                      dict = c(institutional_traded_before_maturity ='Inst. Trade',
                               retail_traded_before_maturity ='Retail Trade',
                               traded_before_maturity = 'Trade',
                               city_go_vote = 'Vote',
+                              high_state_tax_privilege = 'High Tax Priv.',
                               disclosed_before_maturity = 'Continuing Disclosure',
                               avg_disclosures_per_year_before_maturity = 'CD Per Year',
                               ln_amount = 'Amount',
@@ -325,13 +297,13 @@ modified_output <- modify_etable_rounding(
 )
 
 modified_output <- format_table(modified_output, cluster_level = "Issue")
-modified_output <- add_panel(modified_output, 'Panel A: Regression analyses - Full Sample')
+modified_output <- add_panel(modified_output, 'Panel A: Full sample')
 
-writeLines(modified_output, paste0(tables_wd, '/trade_before_maturity_full_sample.tex'))
+writeLines(modified_output, paste0(tables_wd, '/trade_before_maturity_full_sample_tax.tex'))
 
 
 # border sample
-table_call <- etable(r2b, r3b, r2b_r, r3b_r, r2b_i, r3b_i,
+table_call <- etable(r1b, r2b, r1b_r, r2b_r, r1b_i, r2b_i,  
                      #title = 'Secondary Market Trading and Referendum Requirements',
                      coefstat = 'tstat',
                      style.tex = style.tex(main = 'aer', fixef.suffix = ' FE', yesNo = c("Yes", "No")),
@@ -342,12 +314,16 @@ table_call <- etable(r2b, r3b, r2b_r, r3b_r, r2b_i, r3b_i,
                      digits.stats = 3,
                      signif.code = c("***"=0.01, "**"=0.05, "*"=0.10), 
                      tex = TRUE,
-                     order = c("%city_go_vote", "%disclosed_before_maturity"),
+                     keep_raw = c("city_go_vote", "high_state_tax_privilege", "disclosed_before_maturity"),
+                     order = c("%city_go_vote", "%high_state_tax_privilege", "%disclosed_before_maturity"),
+                     extralines = list("-^County Controls" = rep("Yes", 6),
+                                       "-^Bond Controls" = rep("Yes", 6)),
                      dict = c(institutional_traded_before_maturity ='Inst. Trade',
                               retail_traded_before_maturity ='Retail Trade',
                               traded_before_maturity = 'Trade',
                               city_go_vote = 'Vote',
                               disclosed_before_maturity = 'Continuing Disclosure',
+                              high_state_tax_privilege = 'High Tax Priv.',
                               avg_disclosures_per_year_before_maturity = 'CD Per Year',
                               ln_amount = 'Amount',
                               ln_maturity_mths = 'Maturity',
@@ -378,119 +354,6 @@ modified_output <- modify_etable_rounding(
 )
 
 modified_output <- format_table(modified_output, cluster_level = "Issue")
-modified_output <- add_panel(modified_output, 'Panel B: Regression analyses - Border-City Sample')
+modified_output <- add_panel(modified_output, 'Panel B: Border-city sample')
 
-writeLines(modified_output, paste0(tables_wd, '/trade_before_maturity_border_sample.tex'))
-
-
-
-
-
-
-#----------------------------------
-# state income tax XS 
-#----------------------------------
-no_state_income_tax <- c('AK', 'FL', 'NV', 'SD', 'TX', 'WA', 'WY')
-data[, no_state_income_tax := ifelse(state %in% no_state_income_tax, 1, 0)]
-
-r1 <- feols(traded_before_maturity ~ city_go_vote + no_state_income_tax +  ln_amount +ln_maturity_mths + 
-              callable + sinkable + insured + rating_num 
-            +ln_gdp + ln_pop + ln_pers_inc   |year + purp_broad, 
-            ~issue_id, 
-            data = data[year > 2004])
-summary(r1)
-
-r2 <- feols(traded_before_maturity ~ city_go_vote + no_state_income_tax + disclosed_before_maturity + ln_amount +ln_maturity_mths + 
-              callable + sinkable + insured + rating_num + 
-            + ln_gdp + ln_pop + ln_pers_inc  |year + purp_broad, 
-            ~issue_id, 
-            data = data[year > 2004])
-summary(r2)
-
-r3 <- feols(traded_before_maturity ~ city_go_vote + no_state_income_tax +  ln_amount +ln_maturity_mths + 
-              callable + sinkable + insured + rating_num 
-            +ln_gdp + ln_pop + ln_pers_inc   |year + purp_broad, 
-            ~issue_id, 
-            data = data[year > 2004])
-summary(r3)
-
-r4 <- feols(retail_traded_before_maturity ~ city_go_vote + no_state_income_tax + disclosed_before_maturity + ln_amount +ln_maturity_mths + 
-              callable + sinkable + insured + rating_num + 
-            + ln_gdp + ln_pop + ln_pers_inc  |year + purp_broad, 
-            ~issue_id, 
-            data = data[year > 2004])
-summary(r4)
-
-
-r5 <- feols(institutional_traded_before_maturity ~ city_go_vote + no_state_income_tax  + ln_amount +ln_maturity_mths + 
-              callable + sinkable + insured + rating_num + 
-            + ln_gdp + ln_pop + ln_pers_inc  |year + purp_broad, 
-            ~issue_id, 
-            data = data[year > 2004])
-summary(r5)
-
-r6 <- feols(institutional_traded_before_maturity ~ city_go_vote + no_state_income_tax + disclosed_before_maturity + ln_amount +ln_maturity_mths + 
-              callable + sinkable + insured + rating_num + 
-            + ln_gdp + ln_pop + ln_pers_inc  |year + purp_broad, 
-            ~issue_id, 
-            data = data[year > 2004])
-summary(r6)
-
-# output similar to other table 
-
-
-# full sample
-table_call <- etable(r1, r2, r3, r4, r5, r6,
-                     #title = 'Secondary Market Trading and Referendum Requirements',
-                     coefstat = 'tstat',
-                     style.tex = style.tex(main = 'aer', fixef.suffix = ' FE', yesNo = c("Yes", "No")),
-                     fitstat = c('n', 'ar2'), 
-                     se.below = TRUE, 
-                     digits = "r3", 
-                     #headers = list("Full Sample" = 2, "State-Border Sample" = 2),
-                     digits.stats = 3,
-                     signif.code = c("***"=0.01, "**"=0.05, "*"=0.10), 
-                     tex = TRUE,
-                     order = c("%city_go_vote", "%disclosed_before_maturity"),
-                     dict = c(institutional_traded_before_maturity ='Inst. Trade',
-                              retail_traded_before_maturity ='Retail Trade',
-                              traded_before_maturity = 'Trade',
-                              city_go_vote = 'Vote',
-                              disclosed_before_maturity = 'Continuing Disclosure',
-                              no_state_income_tax = 'No State Income Tax',
-                              avg_disclosures_per_year_before_maturity = 'CD Per Year',
-                              ln_amount = 'Amount',
-                              ln_maturity_mths = 'Maturity',
-                              callable = 'Callable',
-                              sinkable = 'Sinkable',
-                              insured = 'Insured', 
-                              rating_num = 'Rating',
-                              ln_gdp =  'County ln(GDP)', 
-                              ln_pop = 'County ln(Pop)' , 
-                              ln_pers_inc = 'County ln(Pers. Inc)', 
-                              ln_emp = 'County ln(Emp)', 
-                              
-                              group = 'Border', 
-                              yrmonth = 'YM',
-                              year = 'Year',
-                              purp_broad = 'Purpose',
-                              ym = 'Year-Month',
-                              issue_id = 'Issue'),
-                     placement = 'H',
-                     #file = paste0(tables_wd, '/bond_yields.tex'), 
-                     replace = TRUE)
-
-
-modified_output <- modify_etable_rounding(
-  table_call,
-  coef_digits = 3,
-  tstat_digits = 2
-)
-
-modified_output <- format_table(modified_output, cluster_level = "Issue")
-#modified_output <- add_panel(modified_output, 'Panel A: Regression analyses - Full Sample')
-
-writeLines(modified_output, paste0(tables_wd, '/trade_before_maturity_full_sample_tax_cut.tex'))
-
-
-
+writeLines(modified_output, paste0(tables_wd, '/trade_before_maturity_border_sample_tax.tex'))
