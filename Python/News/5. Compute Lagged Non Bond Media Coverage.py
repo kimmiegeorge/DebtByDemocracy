@@ -4,7 +4,7 @@ Average monthly count of articles over the prior 12 months
 '''
 
 # SET DATE FOR OUTPUT FILES
-output_date = '251215'
+output_date = '260611'
 
 #%%
 '''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
@@ -14,13 +14,37 @@ import polars as pl
 import pandas as pd
 import matplotlib.pyplot as plt
 import os
-import pyreadr
+from pathlib import Path
 
 wrds_dir = '/Volumes/External/WRDS_202408'
 #wrds_dir = '/Volumes/Elements/WRDS_202408'
 rp_dir = '/Volumes/External/City_RP_Articles'
 #rp_dir = '~/Dropbox/City_RP_Articles'
 data_dir = '~/Dropbox/Voting on Bonds/Data'
+
+rp_article_cols = ['rp_entity_id', 'relevance', 'rpa_date_utc', 'topic', 'group', 'type', 'headline', 'rp_source_id']
+
+
+def load_rp_articles(path, entity_ids, start_date, end_date):
+    frames = []
+    for parquet_file in sorted(Path(path).glob('*')):
+        frame = (
+            pl.read_parquet(parquet_file, columns=rp_article_cols)
+            .with_columns(
+                pl.col('rpa_date_utc')
+                .cast(pl.Utf8)
+                .str.strptime(pl.Date, strict=False)
+                .alias('rpa_date_utc')
+            )
+            .filter(pl.col('rp_entity_id').is_in(entity_ids))
+            .filter(pl.col('rpa_date_utc').lt(end_date))
+            .filter(pl.col('rpa_date_utc').gt(start_date))
+        )
+        if frame.height > 0:
+            frames.append(frame)
+    if not frames:
+        raise FileNotFoundError(f'No RavenPack parquet files found in {path}')
+    return pl.concat(frames, how='diagonal_relaxed')
 
 #%%
 '''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
@@ -33,24 +57,16 @@ fips = (pl.read_csv(f'{data_dir}/News/Ravenpack_Cities_With_FIPS.csv')
         .select(['rp_entity_id', 'fips']))
 rp_map = (rp_map
           .join(fips, on = 'rp_entity_id', how = 'left'))
+rp_entity_ids = rp_map['rp_entity_id'].to_list()
 
 newswires = ['B5569E', 'D19959', '53A5CA', '751371', 'A51917', '4A513E']
 # load rp articles
-rp_articles = (pl
-               .scan_parquet(f'{rp_dir}/*')
-               .select(['rp_entity_id', 'relevance', 'rpa_date_utc', 'topic', 'group', 'type', 'headline', 'rp_source_id'])
-               .filter(pl.col('rp_entity_id').is_in(rp_map.select('rp_entity_id')))
-               #.filter(pl.col('relevance').ge(90))
-#.filter(~pl.col('rp_source_id').is_in(newswires))
-                # drop bond-related articles
-               #.filter(~(pl.col('headline').str.to_lowercase().str.contains('bond') |
-                #       pl.col('headline').str.to_lowercase().str.contains('debt') |
-                 #      pl.col('headline').str.to_lowercase().str.contains('credit') |
-                  #     pl.col('headline').str.to_lowercase().str.contains('tax')))
-               #.filter(pl.col('group').is_in(['housing', 'elections', 'government', 'credit', 'taxes', 'public-finance']))
-               .filter(pl.col('rpa_date_utc').lt(pl.date(2021,1,1)))
-                .filter(pl.col('rpa_date_utc').gt(pl.date(2000,12,31)))
-               .collect(streaming = True))
+rp_articles = load_rp_articles(
+    rp_dir,
+    entity_ids=rp_entity_ids,
+    start_date=pl.date(2000, 12, 31),
+    end_date=pl.date(2021, 1, 1)
+)
 
 
 
@@ -140,7 +156,7 @@ issuance_dta = (issuance_dta
 '''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
 get unique number of sources 
 '''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
-_temp = pl.read_parquet(f'{data_dir}/News/Issuance_Lvl_AbnormalNews_HeadlineFilter_251215.gzip')
+_temp = pl.read_parquet(f'{data_dir}/News/Issuance_Lvl_AbnormalNews_HeadlineFilter_{output_date}.gzip')
 _temp = (_temp
                 .join(ym_id, on = ['year', 'month'], how = 'left'))
 

@@ -21,12 +21,12 @@ poisson_fixef_iter <- 50000
 # ===============================================================================
 
 issuance_lvl <- as.data.table(
-  read_parquet(paste0(data_wd, 'DPC Data/News/Issuance_Lvl_DPC_News_260605.gzip'))
+  read_parquet(paste0(data_wd, 'DPC Data/News/Issuance_Lvl_DPC_News_260611.gzip'))
 )
 
 # Keep the same county identifier convention used in media_coverage.r.
 full_data <- as.data.table(
-  read_dta(paste0(data_wd, 'Mergent/Clean/251119_city_cusiplevel_statereq_purpose_yieldspread.dta'))
+  read_dta(paste0(data_wd, 'Mergent/Clean/260610_city_cusiplevel_statereq_purpose_yieldspread.dta'))
 )
 issuers <- full_data[, .(fips_from_mergent = first(fips)), by = seed_issuer_id]
 issuance_lvl <- issuers[issuance_lvl, on = .(seed_issuer_id)]

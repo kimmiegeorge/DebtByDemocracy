@@ -6,7 +6,7 @@ aggregates article coverage in the months before each issuance.
 '''
 
 # SET DATE FOR OUTPUT FILES
-output_date = '260605'
+output_date = '260611'
 
 #%%
 '''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
@@ -24,8 +24,8 @@ data_dir = project_dir / 'Data'
 dpc_news_dir = data_dir / 'DPC Data' / 'News'
 dpc_linking_dir = dpc_news_dir / 'Linking Files'
 
-issuance_input = data_dir / 'News' / 'Issuance_Lvl_AbnormalNews_HeadlineFilter_251215.gzip'
-mergent_input = data_dir / 'Mergent' / 'Clean' / '251119_city_cusiplevel_statereq_purpose_yieldspread.dta'
+issuance_input = data_dir / 'News' / 'Issuance_Lvl_AbnormalNews_HeadlineFilter_260611.gzip'
+mergent_input = data_dir / 'Mergent' / 'Clean' / '260610_city_cusiplevel_statereq_purpose_yieldspread.dta'
 
 output_dir = data_dir / 'DPC Data' / 'News'
 output_dir.mkdir(parents=True, exist_ok=True)

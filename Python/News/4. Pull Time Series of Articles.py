@@ -4,7 +4,7 @@ Aggregate to monthly level, include filter on headline for bond-related informat
 '''
 
 # SET DATE FOR OUTPUT FILES
-output_date = '251215'  # YYMMDD format - UPDATE THIS FOR EACH RUN
+output_date = '260611'  # YYMMDD format - UPDATE THIS FOR EACH RUN
 
 #%%
 
@@ -15,12 +15,41 @@ import polars as pl
 import pandas as pd
 import matplotlib.pyplot as plt
 import os
+from pathlib import Path
 
 wrds_dir = '/Volumes/External/WRDS_202408'
 #wrds_dir = '/Volumes/Elements/WRDS_202408'
 rp_dir = '/Volumes/External/City_RP_Articles'
 #rp_dir = '~/Dropbox/City_RP_Articles'
 data_dir = '~/Dropbox/Voting on Bonds/Data'
+
+rp_article_cols = ['rp_entity_id', 'relevance', 'rpa_date_utc', 'topic', 'group', 'type', 'headline', 'rp_source_id']
+
+
+def load_rp_articles(path, entity_ids, start_date, end_date, min_relevance=None, headline_pattern=None):
+    frames = []
+    for parquet_file in sorted(Path(path).glob('*')):
+        frame = (
+            pl.read_parquet(parquet_file, columns=rp_article_cols)
+            .with_columns(
+                pl.col('rpa_date_utc')
+                .cast(pl.Utf8)
+                .str.strptime(pl.Date, strict=False)
+                .alias('rpa_date_utc')
+            )
+            .filter(pl.col('rp_entity_id').is_in(entity_ids))
+            .filter(pl.col('rpa_date_utc').lt(end_date))
+            .filter(pl.col('rpa_date_utc').gt(start_date))
+        )
+        if min_relevance is not None:
+            frame = frame.filter(pl.col('relevance').ge(min_relevance))
+        if headline_pattern is not None:
+            frame = frame.filter(pl.col('headline').str.to_lowercase().str.contains(headline_pattern))
+        if frame.height > 0:
+            frames.append(frame)
+    if not frames:
+        raise FileNotFoundError(f'No RavenPack parquet files found in {path}')
+    return pl.concat(frames, how='diagonal_relaxed')
 
 #%%
 '''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
@@ -33,13 +62,13 @@ fips = (pl.read_csv(f'{data_dir}/News/Ravenpack_Cities_With_FIPS.csv')
         .select(['rp_entity_id', 'fips']))
 rp_map = (rp_map
           .join(fips, on = 'rp_entity_id', how = 'left'))
+rp_entity_ids = rp_map['rp_entity_id'].to_list()
+rp_seed_issuers = rp_map['seed_issuer'].to_list()
 
 # load rp articles
 '''
-rp_articles = (pl
-               .scan_parquet(f'{rp_dir}/*')
-               .select(['rp_entity_id', 'relevance', 'rpa_date_utc', 'topic', 'group', 'type', 'headline', 'rp_source_id'])
-               .filter(pl.col('rp_entity_id').is_in(rp_map.select('rp_entity_id')))
+rp_articles = (scan_rp_articles(rp_dir)
+               .filter(pl.col('rp_entity_id').is_in(rp_entity_ids))
                .filter(pl.col('relevance').ge(90))
                .filter(pl.col('headline').str.to_lowercase().str.contains('bond') |
                        pl.col('headline').str.to_lowercase().str.contains('debt') |
@@ -48,7 +77,7 @@ rp_articles = (pl
                #.filter(pl.col('group').is_in(['housing', 'elections', 'government', 'credit', 'taxes', 'public-finance']))
                .filter(pl.col('rpa_date_utc').lt(pl.date(2021,1,1)))
                 .filter(pl.col('rpa_date_utc').gt(pl.date(2000,12,31)))
-               .collect(streaming = True))
+               .collect(predicate_pushdown=False))
 
 
 keywords = [
@@ -144,16 +173,14 @@ pattern = create_flexible_pattern(keywords)  # handles plurals automatically
 
 
 #pattern = "|".join([f"\\b{k}\\b" for k in keywords])  # word boundaries
-rp_articles = (pl
-               .scan_parquet(f'{rp_dir}/*')
-               .select(['rp_entity_id', 'relevance', 'rpa_date_utc', 'topic', 'group', 'type', 'headline', 'rp_source_id'])
-               .filter(pl.col('rp_entity_id').is_in(rp_map.select('rp_entity_id')))
-#.filter(~pl.col('rp_source_id').is_in(newswires))
-               .filter(pl.col('relevance').ge(90))
-               .filter(pl.col("headline").str.to_lowercase().str.contains(pattern))
-               .filter(pl.col('rpa_date_utc').lt(pl.date(2021,1,1)))
-                .filter(pl.col('rpa_date_utc').gt(pl.date(2000,12,31)))
-               .collect(streaming = True))
+rp_articles = load_rp_articles(
+    rp_dir,
+    entity_ids=rp_entity_ids,
+    start_date=pl.date(2000, 12, 31),
+    end_date=pl.date(2021, 1, 1),
+    min_relevance=90,
+    headline_pattern=pattern
+)
 
 ####
 # for media tests, save list of cities that get some bond-related coverage over the sample period
@@ -202,7 +229,7 @@ seed_month = (seed_month
 '''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
 now merge with mergent data 
 '''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
-mergent = pd.read_stata(f'{data_dir}/Mergent/Clean/251119_city_cusiplevel_statereq_purpose_yieldspread.dta')
+mergent = pd.read_stata(f'{data_dir}/Mergent/Clean/260610_city_cusiplevel_statereq_purpose_yieldspread.dta')
 mergent = pl.DataFrame(mergent)
 
 mergent_state = (mergent
@@ -212,8 +239,8 @@ mergent_state = (mergent
 
 # aggregate to issuance level
 mergent = (mergent
-            .filter(~pl.col('seed_issuer_id').is_in(mergent_state.select('seed_issuer_id')))
-            .filter(pl.col('seed_issuer').str.to_lowercase().is_in(rp_map.select('seed_issuer')))
+            .filter(~pl.col('seed_issuer_id').is_in(mergent_state['seed_issuer_id'].to_list()))
+            .filter(pl.col('seed_issuer').str.to_lowercase().is_in(rp_seed_issuers))
             .sort(['issue_id', 'amount'], descending = True)
            .group_by('issue_id', 'state', 'seed_issuer', 'seed_issuer_id')
            .agg(pl.col('offering_date').first(),
@@ -389,7 +416,7 @@ seed_month = (seed_month
 add vote requirement 
 '''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
 
-mergent = pd.read_stata(f'{data_dir}/Mergent/Clean/251119_city_cusiplevel_statereq_purpose_yieldspread.dta')
+mergent = pd.read_stata(f'{data_dir}/Mergent/Clean/260610_city_cusiplevel_statereq_purpose_yieldspread.dta')
 mergent = pl.DataFrame(mergent)
 
 mergent = (mergent
@@ -584,7 +611,7 @@ issuance_months = (issuance_months
                     .join(issuance_months_event_period_30_24, on = ['seed_issuer_id', 'issuance_year_month_id'], how = 'left')
                    .join(issuance_months_event_period_12_6, on = ['seed_issuer_id', 'issuance_year_month_id'], how = 'left'))
 
-mergent = pd.read_stata(f'{data_dir}/Mergent/Clean/251119_city_cusiplevel_statereq_purpose_yieldspread.dta')
+mergent = pd.read_stata(f'{data_dir}/Mergent/Clean/260610_city_cusiplevel_statereq_purpose_yieldspread.dta')
 mergent = pl.DataFrame(mergent)
 
 

@@ -18,7 +18,7 @@ input_dir_original = os.path.expanduser('~/Dropbox/Voting on Bonds/Data/Websites
 input_dir_recovered = os.path.expanduser('~/Dropbox/Voting on Bonds/Data/Websites/Border States Website Data/WBM/Recovered URLs From Bad URLs Investigation/Processed')
 
 data_dir = '~/Dropbox/Voting on Bonds/Data'
-output_date = '251111'  # Updated date
+output_date = '260611'
 
 print("="*70)
 print("Creating Variables from Combined WBM Data")
@@ -395,7 +395,7 @@ sample_issuers2 = pl.read_csv(
 obs_sample = pl.concat([sample_issuers1, sample_issuers2]).unique()
 obs = pl.read_csv('~/Dropbox/Voting on Bonds/Data/Websites/Border States Website Data/Expanded Border Matches Issuers Website Collected 20251008.csv')
 obs = (obs
-       .filter(pl.col('City Website').is_in(obs_sample.select('URL'))))
+       .filter(pl.col('City Website').is_in(obs_sample['URL'].to_list())))
 # get one obs per year
 year_list = [2015, 2016, 2017, 2018, 2019, 2020]
 obs = (obs
@@ -467,7 +467,7 @@ if missing_urls.height > 0:
 print()
 
 # load mergent
-mergent = pd.read_stata('~/Dropbox/Voting on Bonds/Data/Mergent/Clean/250827_city_cusiplevel_statereq_purpose_yieldspread.dta')
+mergent = pd.read_stata('~/Dropbox/Voting on Bonds/Data/Mergent/Clean/260610_city_cusiplevel_statereq_purpose_yieldspread.dta')
 mergent = pl.DataFrame(mergent)
 
 mergent_constant = (mergent
@@ -475,7 +475,7 @@ mergent_constant = (mergent
                     .unique())
 
 go_unlim = (mergent
-            .filter(pl.col('seed_issuer_id').is_in(obs.select('seed_issuer_id')))
+            .filter(pl.col('seed_issuer_id').is_in(obs['seed_issuer_id'].to_list()))
             .filter(pl.col('go_unlim').eq(1))
             .with_columns(pl.col('offering_date').dt.year().alias('year'))
             .group_by(['seed_issuer_id', 'year'])
@@ -509,7 +509,7 @@ go_unlim_obs_annual = (obs
               ))
 
 all_bonds = (mergent
-            .filter(pl.col('seed_issuer_id').is_in(obs.select('seed_issuer_id')))
+            .filter(pl.col('seed_issuer_id').is_in(obs['seed_issuer_id'].to_list()))
             .with_columns(pl.col('offering_date').dt.year().alias('year'))
             .group_by(['seed_issuer_id', 'year'])
             .agg(pl.col('issue_id').n_unique().alias('num_issues_all')))

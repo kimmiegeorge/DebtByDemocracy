@@ -13,6 +13,7 @@ import os
 import pandas as pd
 
 data_dir = '~/Dropbox/Voting on Bonds/Data'
+output_date = '260611'
 
 #%%
 '''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
@@ -21,7 +22,7 @@ Load needed data
 
 issuances = (pl
              .DataFrame(pd
-                        .read_stata(f'{data_dir}/Mergent/Clean/251119_city_cusiplevel_statereq_purpose_yieldspread.dta'))
+                        .read_stata(f'{data_dir}/Mergent/Clean/260610_city_cusiplevel_statereq_purpose_yieldspread.dta'))
              .select(['issue_id', 'cusip',
                       'offering_date', 'maturity_date'])
              .with_columns([
@@ -42,7 +43,7 @@ del liquidity
 
 
 cd = pl.read_csv(f'{data_dir}/Continuing Disclosure/cleaned_daily_disclosure_data.csv',
-                 infer_schema_length=10000, null_values='NA')
+                 infer_schema_length=100000, null_values='NA')
 
 daily_cd = (cd
             .group_by(['cusip_c', 'disclosure_event_date'])
@@ -135,7 +136,7 @@ merge with mergent data
 '''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
 mergent = (pl
              .DataFrame(pd
-                        .read_stata(f'{data_dir}/Mergent/Clean/251119_city_cusiplevel_statereq_purpose_yieldspread.dta'))
+                        .read_stata(f'{data_dir}/Mergent/Clean/260610_city_cusiplevel_statereq_purpose_yieldspread.dta'))
            )
 
 bond_agg = (bond_agg
@@ -145,4 +146,4 @@ bond_agg = (bond_agg
 '''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
 save
 '''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
-bond_agg.write_csv(f'{data_dir}/MSRB/Processed/Bond_Level_Any_Trade_Before_Maturity_with_CD_Data.csv')
+bond_agg.write_csv(f'{data_dir}/MSRB/Processed/Bond_Level_Any_Trade_Before_Maturity_with_CD_Data_{output_date}.csv')

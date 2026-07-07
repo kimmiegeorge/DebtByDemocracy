@@ -12,7 +12,7 @@ input_dir_original = os.path.expanduser(
 input_dir_recovered = os.path.expanduser(
     '/Users/kmunevar/Dropbox/Voting on Bonds/Data/Websites/Texas/WBM/Recovered URLs From Bad URLs Investigation/Processed')
 data_dir = '~/Dropbox/Voting on Bonds/Data'
-output_date = '260601'
+output_date = '260611'
 # %%
 #''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
 #load full election data including failed elections
@@ -619,7 +619,7 @@ obs = (obs
 
 # %%
 # get aggregate number of bond issues for the city prior to the given year
-mergent = pd.read_stata('~/Dropbox/Voting on Bonds/Data/Mergent/Clean/250827_city_cusiplevel_statereq_purpose_yieldspread.dta')
+mergent = pd.read_stata('~/Dropbox/Voting on Bonds/Data/Mergent/Clean/260610_city_cusiplevel_statereq_purpose_yieldspread.dta')
 mergent = pl.DataFrame(mergent)
 mergent = mergent.filter(pl.col("state").eq("TX"))
 

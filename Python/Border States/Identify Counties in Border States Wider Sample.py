@@ -27,19 +27,19 @@ Maine/New Hampshire
 
 # DATE PARAMETER - Change this to update all output file dates
 # Option 1: Manual date
-DATE_SUFFIX = '20251215'  # Format: YYYYMMDD
+DATE_SUFFIX = '20260611'  # Format: YYYYMMDD
 
 # Option 2: Automatic today's date (uncomment to use)
 # from datetime import datetime
 # DATE_SUFFIX = datetime.now().strftime('%Y%m%d')
 
 # INPUT FILE PARAMETERS - Update these file names as needed
-MERGENT_DATA_FILE = '251119_city_cusiplevel_statereq_purpose_yieldspread.dta'
+MERGENT_DATA_FILE = '260610_city_cusiplevel_statereq_purpose_yieldspread.dta'
 COUNTY_LATLNG_FILE = 'us_county_latlng.csv'
-#RP_ISSUANCE_FILE = 'Issuance_Lvl_News_With_Lagged_News_250916.csv'
+#RP_ISSUANCE_FILE = 'Issuance_Lvl_News_With_Lagged_News_260611.csv'
 #RP_ISSUANCE_FILE = 'Issuance_Lvl_News_With_Lagged_News_2501013.csv'
-RP_ISSUANCE_FILE = 'Issuance_Lvl_News_With_Lagged_News_251215.csv'
-RP_CITY_MONTH_FILE = 'Full_City_Month_Data_Headline_Filter_250916.gzip'
+RP_ISSUANCE_FILE = 'Issuance_Lvl_News_With_Lagged_News_260611.csv'
+RP_CITY_MONTH_FILE = 'Full_City_Month_Data_Headline_Filter_260611.gzip'
 SECONDARY_MARKET_FILE = '250507_issue_level_aggregation.csv'
 
 # BUFFER PARAMETER - Change buffer distance for state borders
@@ -150,8 +150,8 @@ for pairing in state_pairs.keys():
     state1 = state_pairs[pairing][0]
     state2 = state_pairs[pairing][1]
     category = state_pairs[pairing][2]
-    state_code1 = state_fips_codes[state1][0]
-    state_code2 = state_fips_codes[state2][0]
+    state_code1 = state_fips_codes[state1][0][0]
+    state_code2 = state_fips_codes[state2][0][0]
 
     first_overlap = (state_merged_fips[state1]
         .filter(pl.col('state_code').cast(pl.Int64).eq(state_code2)))
@@ -184,37 +184,40 @@ mergent_border_matches.write_csv(f'{data_dir}/Border States/Border Matches All M
 #%%
 # also merge with ravenpack data
 rp_issuance = pl.read_csv(f'{data_dir}/News/{RP_ISSUANCE_FILE}')
-rp_city_month = pl.read_parquet(f'{data_dir}/News/{RP_CITY_MONTH_FILE}')
+border_issuer_groups = (mergent_border_matches
+                        .select(['seed_issuer_id', 'group', 'category'])
+                        .unique()
+                        .with_columns(pl.col('seed_issuer_id').cast(pl.Int64)))
+border_issuer_ids = border_issuer_groups['seed_issuer_id'].to_list()
 
 # join
 rp_issuance = (rp_issuance
-               .filter(pl.col('seed_issuer_id').is_in(mergent_border_matches['seed_issuer_id']))
-               .join(mergent_border_matches.select(['seed_issuer_id', 'group', 'category']).unique()
-                     .with_columns(pl.col('seed_issuer_id').cast(pl.Int64)), on = 'seed_issuer_id', how = 'inner'))
-
-rp_city_month = (rp_city_month
-                 .filter(pl.col('seed_issuer_id').is_in(mergent_border_matches['seed_issuer_id']))
-                 .join(mergent_border_matches.select(['seed_issuer_id', 'group', 'category'])
-                       .with_columns(pl.col('seed_issuer_id').cast(pl.Int64)), on = 'seed_issuer_id', how = 'inner')
-                 )
+               .with_columns(pl.col('seed_issuer_id').cast(pl.Int64))
+               .filter(pl.col('seed_issuer_id').is_in(border_issuer_ids))
+               .join(border_issuer_groups, on = 'seed_issuer_id', how = 'inner'))
 
 rp_issuance.write_csv(f'{data_dir}/Border States/Border Matches RP Issuance Lvl Expanded Set Buffer {BUFFER_DISTANCE} {DATE_SUFFIX}.csv')
-rp_city_month.write_csv(f'{data_dir}/Border States/Border Matches RP City Month Lvl Expanded Set Buffer {BUFFER_DISTANCE} {DATE_SUFFIX}.csv')
+
+# The city-month border file is not used by the submission-table regressions
+# and is very large, so do not generate it in the final table refresh.
+# rp_city_month = pl.read_parquet(f'{data_dir}/News/{RP_CITY_MONTH_FILE}')
+# rp_city_month = (rp_city_month
+#                  .with_columns(pl.col('seed_issuer_id').cast(pl.Int64))
+#                  .filter(pl.col('seed_issuer_id').is_in(border_issuer_ids))
+#                  .join(border_issuer_groups, on = 'seed_issuer_id', how = 'inner')
+#                  )
+# rp_city_month.write_csv(f'{data_dir}/Border States/Border Matches RP City Month Lvl Expanded Set Buffer {BUFFER_DISTANCE} {DATE_SUFFIX}.csv')
 
 
 #%%
 # also merge with secondarymarket issuance data
-issuance = pl.read_csv(f'{data_dir}/Mergent/Clean/{SECONDARY_MARKET_FILE}')
-
-
-# join
-issuance = (issuance
-               .filter(pl.col('seed_issuer_id').is_in(mergent_border_matches['seed_issuer_id']))
-               .join(mergent_border_matches.select(['seed_issuer_id', 'group', 'category']).unique()
-                     .with_columns(pl.col('seed_issuer_id').cast(pl.Int64)), on = 'seed_issuer_id', how = 'inner'))
-
-
-issuance.write_csv(f'{data_dir}/Border States/Border Matches Secondary Issuance Lvl Expanded Set Buffer {BUFFER_DISTANCE} {DATE_SUFFIX}.csv')
+# Not used by the submission-table regressions.
+# issuance = pl.read_csv(f'{data_dir}/Mergent/Clean/{SECONDARY_MARKET_FILE}')
+# issuance = (issuance
+#                .with_columns(pl.col('seed_issuer_id').cast(pl.Int64))
+#                .filter(pl.col('seed_issuer_id').is_in(border_issuer_ids))
+#                .join(border_issuer_groups, on = 'seed_issuer_id', how = 'inner'))
+# issuance.write_csv(f'{data_dir}/Border States/Border Matches Secondary Issuance Lvl Expanded Set Buffer {BUFFER_DISTANCE} {DATE_SUFFIX}.csv')
 
 
 #%%
@@ -225,13 +228,12 @@ issuance.write_csv(f'{data_dir}/Border States/Border Matches Secondary Issuance 
 
 #%%
 # output just list of issuers in sample
-# Note: Using the output file from above instead of hardcoded date
-issuers = pl.read_csv(f'{data_dir}/Border States/Border Matches All Mergent Data Expanded Set Buffer {BUFFER_DISTANCE} {DATE_SUFFIX}.csv', infer_schema_length=10000)
-issuers = (issuers
-           .filter(pl.col('category').ne(pl.lit('green')))
-           .filter(pl.col('go_unlim').eq(1))
-            .filter(pl.col('pop').is_not_null())
-           .select(['seed_issuer_id', 'seed_issuer', 'state', 'group', 'category'])
-           .unique()
-           )
-issuers.write_csv(f'{data_dir}/Border States/Border States GO Unlim Blue Only Issuers Expanded Set Buffer {BUFFER_DISTANCE} {DATE_SUFFIX}.csv')
+# Not used by the submission-table regressions.
+# issuers = (mergent_border_matches
+#            .filter(pl.col('category').ne(pl.lit('green')))
+#            .filter(pl.col('go_unlim').eq(1))
+#            .filter(pl.col('pop').is_not_null())
+#            .select(['seed_issuer_id', 'seed_issuer', 'state', 'group', 'category'])
+#            .unique()
+#            )
+# issuers.write_csv(f'{data_dir}/Border States/Border States GO Unlim Blue Only Issuers Expanded Set Buffer {BUFFER_DISTANCE} {DATE_SUFFIX}.csv')

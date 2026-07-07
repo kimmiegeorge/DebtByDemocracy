@@ -8,7 +8,7 @@ FIXED VERSION: Uses correct column names from CSV file
 '''
 
 # SET DATE FOR OUTPUT FILES
-output_date = '251014'  # YYMMDD format - UPDATE THIS FOR EACH RUN
+output_date = '260611'  # YYMMDD format - UPDATE THIS FOR EACH RUN
 
 #%%
 

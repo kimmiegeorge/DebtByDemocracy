@@ -8,7 +8,7 @@ source('/Users/kmunevar/Dropbox/Voting on Bonds/Code/R/submission_tables/modify_
 tbl_dir <- "~/Dropbox/Apps/Overleaf/Voting on bonds/tables/revision_tables"
 
 #---------------------------------------
-data <- fread('~/Dropbox/Voting on Bonds/Data/Websites/border_state_website_data_251111_with_recovered.csv')
+data <- fread('~/Dropbox/Voting on Bonds/Data/Websites/border_state_website_data_260611_with_recovered.csv')
 data <- data[!(group %in% c('Rhode Island/Massachusetts'))]
 
 data <- data[!is.na(total_subs)]
@@ -321,7 +321,7 @@ writeLines(modified_output, paste0(tables_wd, '/websites_regression.tex'))
 website_city_year <- copy(data)
 website_city_year[, year := year_int]
 
-issue_level <- read_stata('~/Dropbox/Voting on Bonds/Data/Mergent/Clean/260324_city_cusiplevel_statereq_purpose_yieldspread.dta')
+issue_level <- read_stata('~/Dropbox/Voting on Bonds/Data/Mergent/Clean/260610_city_cusiplevel_statereq_purpose_yieldspread.dta')
 issue_level <- as.data.table(issue_level)
 issue_level <- unique(issue_level[, .(seed_issuer_id, year, issue_id, go_unlim, go_lim)])
 issue_level <- unique(issue_level[!is.na(seed_issuer_id) & !is.na(year),

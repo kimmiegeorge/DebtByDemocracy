@@ -4,10 +4,36 @@ rm(list = ls())
 library(pacman)
 p_load(data.table, dplyr, stargazer, DescTools, arrow, glue, lfe, ggplot2, gridExtra, sandwich, zoo, fixest, haven, xtable)
 source('/Users/kmunevar/Dropbox/Voting on Bonds/Code/R/submission_tables/modify_etable_rounding.R')
-tbl_dir <- "~/Dropbox/Apps/Overleaf/Voting on bonds/tables/submission_tables"
+tbl_dir <- "~/Dropbox/Apps/Overleaf/Voting on bonds/tables/revision_tables"
 data_wd <- "~/Dropbox/Voting on Bonds/Data/"
 
 super_majority_states <- c('CA', 'ID', 'MO','ND','SD', 'WA')
+
+add_media_sample_headers <- function(tex) {
+  if (length(tex) > 1) {
+    tex <- paste(tex, collapse = "\n")
+  }
+  lines <- strsplit(tex, "\n", fixed = TRUE)[[1]]
+
+  lines <- lines[!grepl("^\\s*Full Sample\\s*&\\s*\\\\multicolumn\\{4\\}\\{c\\}\\{2\\}", lines)]
+  lines <- lines[!grepl("^\\s*Border-State Sample\\s*&\\s*\\\\multicolumn\\{4\\}\\{c\\}\\{2\\}", lines)]
+
+  dep_header_idx <- grep("\\\\multicolumn\\{4\\}\\{c\\}\\{Total Articles - 12mo\\}", lines)
+  if (length(dep_header_idx) == 0) {
+    return(lines)
+  }
+
+  insert_idx <- dep_header_idx[1] + 1
+  if (insert_idx <= length(lines) && grepl("\\\\cmidrule\\(lr\\)\\{2-5\\}", lines[insert_idx])) {
+    new_header <- c(
+      "    & \\multicolumn{2}{c}{Full Sample} & \\multicolumn{2}{c}{Border-State Sample}\\\\",
+      "   \\cmidrule(lr){2-3}\\cmidrule(lr){4-5}"
+    )
+    lines <- append(lines, new_header, after = insert_idx)
+  }
+
+  return(lines)
+}
 
 # ===============================================================================
 # DATA LOADING AND PREPARATION
@@ -15,12 +41,12 @@ super_majority_states <- c('CA', 'ID', 'MO','ND','SD', 'WA')
 
 #_______________Bonds________________
  #load full data to get county
-full_data <- read_dta('~/Dropbox/Voting on Bonds/Data/Mergent/Clean/251119_city_cusiplevel_statereq_purpose_yieldspread.dta')
+full_data <- read_dta('~/Dropbox/Voting on Bonds/Data/Mergent/Clean/260610_city_cusiplevel_statereq_purpose_yieldspread.dta')
 full_data <- as.data.table(full_data)
 issuers <- full_data[, list(fips = first(fips), issuer_long_name = first(issuer_long_name)), .(seed_issuer_id)]
 # load news coverage 
-#issuance_lvl = fread(paste0(data_wd, 'News/Issuance_Lvl_News_With_Lagged_News_250916.csv'))
-issuance_lvl = fread(paste0(data_wd, 'News/Issuance_Lvl_News_With_Lagged_News_251215.csv'))
+#issuance_lvl = fread(paste0(data_wd, 'News/Issuance_Lvl_News_With_Lagged_News_260611.csv'))
+issuance_lvl = fread(paste0(data_wd, 'News/Issuance_Lvl_News_With_Lagged_News_260611.csv'))
 issuance_lvl <- issuers[issuance_lvl, on = .(seed_issuer_id)]
 issuance_lvl[, city_rev_vote := ifelse(state == 'MO', 1, city_rev_vote)]
 issuance_lvl[, city_go_vote := ifelse(state == 'RI', NA, city_go_vote)]
@@ -34,8 +60,8 @@ issuance_lvl[, super_majority := ifelse(state %in% super_majority_states, 1, 0)]
 #_______________Border________________
 
 
-#border_articles <- fread('~/Dropbox/Voting on Bonds/Data/Border States/Border Matches RP Issuance Lvl Expanded Set Buffer 100000 20250916.csv')
-border_articles <- fread('~/Dropbox/Voting on Bonds/Data/Border States/Border Matches RP Issuance Lvl Expanded Set Buffer 100000 20251215.csv')
+#border_articles <- fread('~/Dropbox/Voting on Bonds/Data/Border States/Border Matches RP Issuance Lvl Expanded Set Buffer 100000 20260611.csv')
+border_articles <- fread('~/Dropbox/Voting on Bonds/Data/Border States/Border Matches RP Issuance Lvl Expanded Set Buffer 100000 20260611.csv')
 border_articles = as.data.table(border_articles)
 #border_articles <- border_articles[category != 'grey']
 
@@ -50,12 +76,12 @@ border_articles <- border_articles[!is.na(ln_employment)]
 issuance_lvl <- issuance_lvl[order(seed_issuer_id, issuance_year_month_id)]
 issuance_lvl[, lag_issuance_ym_id := shift(issuance_year_month_id, 1), .(seed_issuer_id)]
 issuance_lvl[, diff := issuance_year_month_id - lag_issuance_ym_id]
-issuance_lvl[, bond_prior_12 := ifelse(!is.na(diff) & diff < 12, 1, 0)]
+issuance_lvl[, bond_prior_12 := ifelse(!is.na(diff) & diff <= 12, 1, 0)]
 
 border_articles <- border_articles[order(seed_issuer_id, issuance_year_month_id)]
 border_articles[, lag_issuance_ym_id := shift(issuance_year_month_id, 1), .(seed_issuer_id)]
 border_articles[, diff := issuance_year_month_id - lag_issuance_ym_id]
-border_articles[, bond_prior_12 := ifelse(!is.na(diff) & diff < 12, 1, 0)]
+border_articles[, bond_prior_12 := ifelse(!is.na(diff) & diff <=  12, 1, 0)]
 
 #border_articles <- border_articles[group %in% all_border_states]
 #border_articles <- border_articles[!(group %in% c('Missouri/Kentucky', 'Missouri/Tennessee', 'Rhode Island/Massachusetts'))]
@@ -299,15 +325,16 @@ summary(r2)
 
 r2b <- fixest::fepois(total_articles_12_0_win ~city_go_vote  + bond_prior_12 + log_sources + ln_amount +
                        ln_gdp + ln_pop + ln_pers_inc    |issuance_year_month_id + group + purp_broad ,
-                     data = border_articles[go_unlim_bond_issuance == 1 & rolling_sum_monthly_article_count_12 > 0], 
+                     data = border_articles[(go_unlim_bond_issuance == 1) & rolling_sum_monthly_article_count_12 > 0], 
                      vcov = vcov_cluster(~fips))
 summary(r2b)
 
 
 
+
+
   
 table_call <- etable(r1, r1b, r2, r2b,
-       headers = list("Full Sample" = 2, "Border-State Sample" = 2),
        coefstat = 'tstat',
        style.tex = style.tex(main = 'aer', fixef.suffix = ' FE', yesNo = c("Yes", "No")),
        fitstat = c('n', 'pr2'), 
@@ -356,6 +383,7 @@ modified_output <- modify_etable_rounding(
 )
 
 modified_output <- format_table(modified_output, cluster_level = "County")
+modified_output <- add_media_sample_headers(modified_output)
 modified_output <- add_panel(modified_output, 'Panel B: Regression analyses')
 
 writeLines(modified_output, paste0(tbl_dir, '/media_coverage.tex'))
@@ -364,7 +392,7 @@ writeLines(modified_output, paste0(tbl_dir, '/media_coverage.tex'))
 
 
 #------------- Plot -----------------
-event_data = fread(paste0(data_wd, 'News/City_Month_DF_For_Event_Plot_GO_Only.csv'))
+event_data = fread(paste0(data_wd, 'News/City_Month_DF_For_Event_Plot_GO_Only_260611.csv'))
 event_data[, quarter := ((event_month + 24) %/% 3) + 1]
 event_data[, quarter := quarter - 9]
 event_data_quarter = event_data[, list(rp_article_count = mean(rp_article_count)), .(city_go_vote, quarter)]
@@ -386,35 +414,24 @@ ggsave(paste0(tbl_dir, "/article_counts.png"), plot = plot, width = 7, height = 
 #===============================
 # super majority 
 #===============================
-r1 <- fixest::fepois(total_articles_12_0_win ~super_majority + bond_prior_12 + log_sources +
+r1 <- fixest::fepois(total_articles_12_0_win ~city_go_vote + super_majority + bond_prior_12 + log_sources +
                         ln_amount|issuance_year_month_id + purp_broad , 
-                      data = issuance_lvl[go_unlim_bond_issuance == 1 & rolling_sum_monthly_article_count_12 > 0 & city_go_vote == 1], 
+                      data = issuance_lvl[go_unlim_bond_issuance == 1 & rolling_sum_monthly_article_count_12 > 0], 
                       vcov = vcov_cluster(~fips))
 summary(r1)
-r1b <- fixest::fepois(total_articles_12_0_win ~super_majority + bond_prior_12 + log_sources + ln_amount + 
+r1b <- fixest::fepois(total_articles_12_0_win ~city_go_vote + super_majority + bond_prior_12 + log_sources + ln_amount + 
                        ln_gdp + ln_pop + ln_pers_inc |issuance_year_month_id + purp_broad , 
-                     data = issuance_lvl[go_unlim_bond_issuance == 1 & rolling_sum_monthly_article_count_12 > 0 & city_go_vote == 1 ], 
+                     data = issuance_lvl[go_unlim_bond_issuance == 1 & rolling_sum_monthly_article_count_12 > 0], 
                      vcov = vcov_cluster(~fips))
 summary(r1b)
 
-r2 <- fixest::fepois(total_articles_12_0_win ~city_go_vote + bond_prior_12 + log_sources + 
-                        ln_amount|issuance_year_month_id + group + purp_broad , 
-                      data = border_articles[go_unlim_bond_issuance == 1 & rolling_sum_monthly_article_count_12 > 0], 
-                      vcov = vcov_cluster(~fips))
-summary(r2)
-
-r2b <- fixest::fepois(total_articles_12_0_win ~city_go_vote  + bond_prior_12 + log_sources + ln_amount +
-                       ln_gdp + ln_pop + ln_pers_inc    |issuance_year_month_id + group + purp_broad ,
-                     data = border_articles[go_unlim_bond_issuance == 1 & rolling_sum_monthly_article_count_12 > 0], 
-                     vcov = vcov_cluster(~fips))
-summary(r2b)
 
 
 
   
-table_call <- etable(r1, r1b, r2, r2b,
-       headers = list("Full Sample" = 2, "Border-State Sample" = 2),
+table_call <- etable(r1, r1b, 
        coefstat = 'tstat',
+       keep_raw = c("^city_go_vote$", "^super_majority$"),
        style.tex = style.tex(main = 'aer', fixef.suffix = ' FE', yesNo = c("Yes", "No")),
        fitstat = c('n', 'pr2'), 
        se.below = TRUE, 
@@ -427,6 +444,7 @@ table_call <- etable(r1, r1b, r2, r2b,
        dict = c(total_articles_12_0_win ='Total Articles - 12mo',
                 total_rp_articles_6_0 ='Total Articles - 6mo',
                 city_go_vote = 'Vote',
+                super_majority = 'Vote * Supermajority State',
                 city_rev_vote = "Rev Vote",
                 go = 'GO',
                 rolling_sum = 'City News Coverage',
@@ -449,12 +467,6 @@ table_call <- etable(r1, r1b, r2, r2b,
        #file = paste0(tables_wd, '/media_coverage.tex'), 
        replace = TRUE)
 
-
-
-
-
-
-
 modified_output <- modify_etable_rounding(
   table_call,
   coef_digits = 3,
@@ -462,6 +474,16 @@ modified_output <- modify_etable_rounding(
 )
 
 modified_output <- format_table(modified_output, cluster_level = "County")
-modified_output <- add_panel(modified_output, 'Panel B: Regression analyses')
+modified_output <- add_media_sample_headers(modified_output)
+pseudo_r2_idx <- grep("^[[:space:]]*Pseudo R\\$\\^2\\$[[:space:]]*&", modified_output)
+if (length(pseudo_r2_idx) > 0) {
+  modified_output <- append(
+    modified_output,
+    c("   City Controls              & Yes           & Yes\\\\",
+      "   County Controls            & No            & Yes\\\\"),
+    after = pseudo_r2_idx[1]
+  )
+}
+modified_output <- add_panel(modified_output, 'Panel C: Supermajority split')
 
-writeLines(modified_output, paste0(tbl_dir, '/media_coverage.tex'))
+writeLines(modified_output, paste0(tbl_dir, '/media_coverage_super_majority.tex'))
