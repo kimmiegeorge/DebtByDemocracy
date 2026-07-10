@@ -321,7 +321,7 @@ writeLines(modified_output, paste0(tables_wd, '/websites_regression.tex'))
 website_city_year <- copy(data)
 website_city_year[, year := year_int]
 
-issue_level <- read_stata('~/Dropbox/Voting on Bonds/Data/Mergent/Clean/260610_city_cusiplevel_statereq_purpose_yieldspread.dta')
+issue_level <- haven::read_dta('~/Dropbox/Voting on Bonds/Data/Mergent/Clean/260610_city_cusiplevel_statereq_purpose_yieldspread.dta')
 issue_level <- as.data.table(issue_level)
 issue_level <- unique(issue_level[, .(seed_issuer_id, year, issue_id, go_unlim, go_lim)])
 issue_level <- unique(issue_level[!is.na(seed_issuer_id) & !is.na(year),
@@ -390,3 +390,65 @@ modified_output <- format_table(modified_output, cluster_level = "County")
 modified_output <- add_panel(modified_output, 'Panel A: Issuance years and website disclosure over time', ncols = 4)
 
 writeLines(modified_output, paste0(tables_wd, '/websites_issuance_time_series_reg.tex'))
+
+
+# ===============================================================================
+# ROBUSTNESS CHECKS
+# ===============================================================================
+
+robustness_dir <- "~/Dropbox/Apps/Overleaf/Voting on bonds/tables/robustness_tables"
+dir.create(robustness_dir, recursive = TRUE, showWarnings = FALSE)
+
+render_website_regression <- function(reg_data, file_stub, cluster_label = "County") {
+  r1 <- fixest::fepois(bond_url ~ city_go_vote + ln_cum_num_issues_all + state_monitor +
+                         ln_gdp + ln_pop + ln_pers_inc | group + year,
+                       data = reg_data, cluster = ~fips)
+  r2 <- fixest::fepois(bond_count ~ city_go_vote + ln_cum_num_issues_all + state_monitor +
+                         ln_gdp + ln_pop + ln_pers_inc | group + year,
+                       data = reg_data, cluster = ~fips)
+  r3 <- fixest::fepois(fiscal_url ~ city_go_vote + ln_cum_num_issues_all + state_monitor +
+                         ln_gdp + ln_pop + ln_pers_inc | group + year,
+                       data = reg_data, cluster = ~fips)
+  r4 <- fixest::fepois(fiscal_count ~ city_go_vote + ln_cum_num_issues_all + state_monitor +
+                         ln_gdp + ln_pop + ln_pers_inc | group + year,
+                       data = reg_data, cluster = ~fips)
+  r5 <- fixest::fepois(financial_pdf_urls ~ city_go_vote + ln_cum_num_issues_all + state_monitor +
+                         ln_gdp + ln_pop + ln_pers_inc | group + year,
+                       data = reg_data, cluster = ~fips)
+
+  table_call <- etable(r1, r2, r3, r4, r5,
+                       coefstat = 'tstat',
+                       style.tex = style.tex(main = 'aer', fixef.suffix = ' FE', yesNo = c("Yes", "No")),
+                       fitstat = c('n', 'pr2'),
+                       se.below = TRUE,
+                       digits = 3,
+                       digits.stats = 3,
+                       signif.code = c("***" = 0.01, "**" = 0.05, "*" = 0.10),
+                       tex = TRUE,
+                       dict = c(bond_url = 'Bond URLs',
+                                bond_count = 'Bond Count',
+                                fiscal_url = 'Fiscal URLs',
+                                fiscal_count = 'Fiscal Count',
+                                financial_pdf_urls = 'Financial Docs',
+                                city_go_vote = 'Vote',
+                                state_monitor = 'State Fiscal Monitor',
+                                ln_cum_num_issues_all = 'Num Issuances',
+                                ln_gdp = 'County ln(GDP)',
+                                ln_pop = 'County ln(Pop)',
+                                ln_pers_inc = 'County ln(Pers. Inc)',
+                                group = 'State-Border',
+                                year = 'Year'),
+                       placement = 'H',
+                       replace = TRUE)
+
+  modified_output <- modify_etable_rounding(table_call, coef_digits = 3, tstat_digits = 2)
+  modified_output <- format_table(modified_output, cluster_level = cluster_label)
+  modified_output <- add_panel(modified_output, 'Panel B: Regression analyses', ncols = 6)
+  writeLines(modified_output, file.path(robustness_dir, paste0(file_stub, ".tex")))
+}
+
+render_website_regression(
+  data[!(state %in% c("ME", "ND"))],
+  "websites_regression_drop_me_nd_county_cluster",
+  "County"
+)

@@ -487,3 +487,169 @@ if (length(pseudo_r2_idx) > 0) {
 modified_output <- add_panel(modified_output, 'Panel C: Supermajority split')
 
 writeLines(modified_output, paste0(tbl_dir, '/media_coverage_super_majority.tex'))
+
+
+# ===============================================================================
+# ROBUSTNESS CHECKS
+# ===============================================================================
+
+robustness_dir <- "~/Dropbox/Apps/Overleaf/Voting on bonds/tables/robustness_tables"
+dir.create(robustness_dir, recursive = TRUE, showWarnings = FALSE)
+
+render_media_coverage_regression <- function(full_data,
+                                             border_data,
+                                             file_stub,
+                                             full_cluster,
+                                             full_cluster_label,
+                                             border_cluster = ~fips,
+                                             border_cluster_label = "County") {
+  r1 <- fixest::fepois(total_articles_12_0_win ~ city_go_vote + bond_prior_12 + log_sources +
+                         ln_amount | issuance_year_month_id + purp_broad,
+                       data = full_data[go_unlim_bond_issuance == 1 & rolling_sum_monthly_article_count_12 > 0],
+                       vcov = vcov_cluster(full_cluster))
+  r1b <- fixest::fepois(total_articles_12_0_win ~ city_go_vote + bond_prior_12 + log_sources +
+                          ln_amount + ln_gdp + ln_pop + ln_pers_inc | issuance_year_month_id + purp_broad,
+                        data = full_data[go_unlim_bond_issuance == 1 & rolling_sum_monthly_article_count_12 > 0],
+                        vcov = vcov_cluster(full_cluster))
+  r2 <- fixest::fepois(total_articles_12_0_win ~ city_go_vote + bond_prior_12 + log_sources +
+                         ln_amount | issuance_year_month_id + group + purp_broad,
+                       data = border_data[go_unlim_bond_issuance == 1 & rolling_sum_monthly_article_count_12 > 0],
+                       vcov = vcov_cluster(border_cluster))
+  r2b <- fixest::fepois(total_articles_12_0_win ~ city_go_vote + bond_prior_12 + log_sources +
+                          ln_amount + ln_gdp + ln_pop + ln_pers_inc | issuance_year_month_id + group + purp_broad,
+                        data = border_data[go_unlim_bond_issuance == 1 & rolling_sum_monthly_article_count_12 > 0],
+                        vcov = vcov_cluster(border_cluster))
+
+  table_call <- etable(r1, r1b, r2, r2b,
+                       coefstat = 'tstat',
+                       style.tex = style.tex(main = 'aer', fixef.suffix = ' FE', yesNo = c("Yes", "No")),
+                       fitstat = c('n', 'pr2'),
+                       se.below = TRUE,
+                       digits = 3,
+                       digits.stats = 3,
+                       signif.code = c("***" = 0.01, "**" = 0.05, "*" = 0.10),
+                       tex = TRUE,
+                       dict = c(total_articles_12_0_win = 'Total Articles - 12mo',
+                                city_go_vote = 'Vote',
+                                city_rev_vote = "Rev Vote",
+                                bond_prior_12 = 'Bond Issuance - 12mo',
+                                ln_amount = 'Amount',
+                                ln_gdp = 'County ln(GDP)',
+                                ln_pop = 'County ln(Pop)',
+                                ln_pers_inc = 'County ln(Pers. Inc)',
+                                log_sources = 'Num Sources',
+                                group = 'State-Border',
+                                purp_broad = 'Purpose',
+                                issuance_year_month_id = 'Year-Month'),
+                       placement = 'H',
+                       replace = TRUE)
+
+  modified_output <- modify_etable_rounding(table_call, coef_digits = 3, tstat_digits = 2)
+  cluster_note <- if (identical(full_cluster_label, border_cluster_label)) {
+    full_cluster_label
+  } else {
+    "Mixed"
+  }
+  modified_output <- format_table(modified_output, cluster_level = cluster_note)
+  modified_output <- add_media_sample_headers(modified_output)
+  modified_output <- add_panel(modified_output, 'Panel B: Regression analyses')
+  writeLines(modified_output, file.path(robustness_dir, paste0(file_stub, ".tex")))
+}
+
+render_media_supermajority_regression <- function(full_data,
+                                                  file_stub,
+                                                  full_cluster,
+                                                  full_cluster_label) {
+  r1 <- fixest::fepois(total_articles_12_0_win ~ city_go_vote + super_majority + bond_prior_12 +
+                         log_sources + ln_amount | issuance_year_month_id + purp_broad,
+                       data = full_data[go_unlim_bond_issuance == 1 & rolling_sum_monthly_article_count_12 > 0],
+                       vcov = vcov_cluster(full_cluster))
+  r1b <- fixest::fepois(total_articles_12_0_win ~ city_go_vote + super_majority + bond_prior_12 +
+                          log_sources + ln_amount + ln_gdp + ln_pop + ln_pers_inc |
+                          issuance_year_month_id + purp_broad,
+                        data = full_data[go_unlim_bond_issuance == 1 & rolling_sum_monthly_article_count_12 > 0],
+                        vcov = vcov_cluster(full_cluster))
+
+  table_call <- etable(r1, r1b,
+                       coefstat = 'tstat',
+                       keep_raw = c("^city_go_vote$", "^super_majority$"),
+                       style.tex = style.tex(main = 'aer', fixef.suffix = ' FE', yesNo = c("Yes", "No")),
+                       fitstat = c('n', 'pr2'),
+                       se.below = TRUE,
+                       digits = 3,
+                       digits.stats = 3,
+                       signif.code = c("***" = 0.01, "**" = 0.05, "*" = 0.10),
+                       tex = TRUE,
+                       dict = c(total_articles_12_0_win = 'Total Articles - 12mo',
+                                city_go_vote = 'Vote',
+                                super_majority = 'Vote * Supermajority State',
+                                bond_prior_12 = 'Bond Issuance - 12mo',
+                                ln_amount = 'Amount',
+                                ln_gdp = 'County ln(GDP)',
+                                ln_pop = 'County ln(Pop)',
+                                ln_pers_inc = 'County ln(Pers. Inc)',
+                                log_sources = 'Num Sources',
+                                purp_broad = 'Purpose',
+                                issuance_year_month_id = 'Year-Month'),
+                       placement = 'H',
+                       replace = TRUE)
+
+  modified_output <- modify_etable_rounding(table_call, coef_digits = 3, tstat_digits = 2)
+  modified_output <- format_table(modified_output, cluster_level = full_cluster_label)
+  modified_output <- add_media_sample_headers(modified_output)
+  pseudo_r2_idx <- grep("^[[:space:]]*Pseudo R\\$\\^2\\$[[:space:]]*&", modified_output)
+  if (length(pseudo_r2_idx) > 0) {
+    modified_output <- append(
+      modified_output,
+      c("   City Controls              & Yes           & Yes\\\\",
+        "   County Controls            & No            & Yes\\\\"),
+      after = pseudo_r2_idx[1]
+    )
+  }
+  modified_output <- add_panel(modified_output, 'Panel C: Supermajority split')
+  writeLines(modified_output, file.path(robustness_dir, paste0(file_stub, ".tex")))
+}
+
+issuance_lvl_drop_me_nd <- issuance_lvl[!(state %in% c("ME", "ND"))]
+border_articles_drop_me_nd <- border_articles[!(state %in% c("ME", "ND"))]
+
+render_media_coverage_regression(
+  issuance_lvl_drop_me_nd,
+  border_articles_drop_me_nd,
+  "media_coverage_drop_me_nd_county_cluster",
+  ~fips,
+  "County"
+)
+render_media_coverage_regression(
+  issuance_lvl,
+  border_articles,
+  "media_coverage_state_cluster",
+  ~state,
+  "State"
+)
+render_media_coverage_regression(
+  issuance_lvl_drop_me_nd,
+  border_articles_drop_me_nd,
+  "media_coverage_state_cluster_drop_me_nd",
+  ~state,
+  "State"
+)
+
+render_media_supermajority_regression(
+  issuance_lvl_drop_me_nd,
+  "media_coverage_super_majority_drop_me_nd_county_cluster",
+  ~fips,
+  "County"
+)
+render_media_supermajority_regression(
+  issuance_lvl,
+  "media_coverage_super_majority_state_cluster",
+  ~state,
+  "State"
+)
+render_media_supermajority_regression(
+  issuance_lvl_drop_me_nd,
+  "media_coverage_super_majority_state_cluster_drop_me_nd",
+  ~state,
+  "State"
+)

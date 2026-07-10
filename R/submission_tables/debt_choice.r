@@ -10,18 +10,17 @@ super_majority_states <- c('CA', 'ID', 'MO','ND','SD', 'WA')
 high_state_tax_privilege_states <- c('CA', 'OR', 'HI', 'VT', 'RI', 'MT', 'ME', 'NJ', 'MN',
                                      'NC', 'ID', 'NY', 'AR', 'SC', 'NE', 'OH', 'WV', 'NM', 'DE')
 
-states_city_issue_education <- c('MA', 'AL', 'CT', 'KY', 'MA')
 #----------------------------
 # Load data 
 #----------------------------
 # first issuer lvl 
 #data <- as.data.table(read_stata('~/Dropbox/Voting on Bonds/Data/Mergent/clean/260610_city_issuerlevel_yieldspread.dta'))
-data <- as.data.table(read_stata('~/Dropbox/Voting on Bonds/Data/Mergent/clean/260611_city_issuerlevel_yieldspread.dta'))
+#data <- as.data.table(read_stata('~/Dropbox/Voting on Bonds/Data/Mergent/clean/260611_city_issuerlevel_yieldspread.dta'))
+data <- as.data.table(read_stata('~/Dropbox/Voting on Bonds/Data/Mergent/clean/260707_city_issuerlevel_yieldspread.dta'))
 data[, city_rev_vote := ifelse(state == 'MO', 1, city_rev_vote)]
 data[, city_go_vote := ifelse(state == 'RI', NA, city_go_vote)]
 data[, super_majority := ifelse(state %in% super_majority_states, 1, 0)]
 data[, high_state_tax_privilege := ifelse(state %in% high_state_tax_privilege_states, 1, 0)]
-data[, cities_issue_education := ifelse(state %in% states_city_issue_education, 1, 0)]
 
 data <- data[!is.na(city_go_vote)]
 data <- data[!is.na(ln_pop) & !is.na(ln_county_debt_other)]
@@ -139,11 +138,11 @@ r1 <- feols(frac_utgo ~ city_go_vote, data = full_sample[insample_allgo ==1], vc
 summary(r1)
 r2 <- feols(frac_utgo ~ city_go_vote + ln_gdp + ln_pop + ln_pers_inc + ln_county_debt_other, data = full_sample[insample_allgo ==1], vcov = vcov_cluster(~fips))
 summary(r2)
-r3 <- feols(frac_utgo ~ city_go_vote + ln_gdp + ln_pop + ln_pers_inc + ln_county_debt_other + glm_proactive + state_ltgo_allowed + state_go_vote + high_state_tax_privilege + cities_issue_education, data = full_sample[insample_allgo ==1], vcov = vcov_cluster(~fips))
+r3 <- feols(frac_utgo ~ city_go_vote + ln_gdp + ln_pop + ln_pers_inc + ln_county_debt_other + glm_proactive + state_ltgo_allowed + state_go_vote + high_state_tax_privilege, data = full_sample[insample_allgo ==1], vcov = vcov_cluster(~fips))
 summary(r3)
-r4 <- feols(frac_ltgo ~ city_go_vote + ln_gdp + ln_pop + ln_pers_inc + ln_county_debt_other + glm_proactive + state_ltgo_allowed + state_go_vote + high_state_tax_privilege + cities_issue_education, data = full_sample[insample_allgo ==1], vcov = vcov_cluster(~fips))
+r4 <- feols(frac_ltgo ~ city_go_vote + ln_gdp + ln_pop + ln_pers_inc + ln_county_debt_other + glm_proactive + state_ltgo_allowed + state_go_vote + high_state_tax_privilege, data = full_sample[insample_allgo ==1], vcov = vcov_cluster(~fips))
 summary(r4)
-  r5 <- feols(frac_rev ~ city_go_vote + ln_gdp + ln_pop + ln_pers_inc + ln_county_debt_other + glm_proactive + state_ltgo_allowed + state_go_vote + high_state_tax_privilege + cities_issue_education, data = full_sample[insample_allgo ==1], vcov = vcov_cluster(~fips))
+  r5 <- feols(frac_rev ~ city_go_vote + ln_gdp + ln_pop + ln_pers_inc + ln_county_debt_other + glm_proactive + state_ltgo_allowed + state_go_vote + high_state_tax_privilege, data = full_sample[insample_allgo ==1], vcov = vcov_cluster(~fips))
   summary(r5)
 
 
@@ -198,11 +197,11 @@ r1 <- feols(frac_utgo ~ city_go_vote, data = full_sample[insample_utgo_only ==1]
 summary(r1)
 r2 <- feols(frac_utgo ~ city_go_vote + ln_gdp + ln_pop + ln_pers_inc + ln_county_debt_other, data = full_sample[insample_utgo_only ==1], vcov = vcov_cluster(~fips))
 summary(r2)
-r3 <- feols(frac_utgo ~ city_go_vote + ln_gdp + ln_pop + ln_pers_inc + ln_county_debt_other + glm_proactive + state_ltgo_allowed + state_go_vote + high_state_tax_privilege + cities_issue_education, data = full_sample[insample_utgo_only ==1], vcov = vcov_cluster(~fips))
+r3 <- feols(frac_utgo ~ city_go_vote + ln_gdp + ln_pop + ln_pers_inc + ln_county_debt_other + glm_proactive + state_ltgo_allowed + state_go_vote + high_state_tax_privilege, data = full_sample[insample_utgo_only ==1], vcov = vcov_cluster(~fips))
 summary(r3)
-r4 <- feols(frac_ltgo ~ city_go_vote + ln_gdp + ln_pop + ln_pers_inc + ln_county_debt_other + glm_proactive + state_ltgo_allowed + state_go_vote + high_state_tax_privilege + cities_issue_education, data = full_sample[insample_utgo_only ==1], vcov = vcov_cluster(~fips))
+r4 <- feols(frac_ltgo ~ city_go_vote + ln_gdp + ln_pop + ln_pers_inc + ln_county_debt_other + glm_proactive + state_ltgo_allowed + state_go_vote + high_state_tax_privilege, data = full_sample[insample_utgo_only ==1], vcov = vcov_cluster(~fips))
 summary(r4)
-r5 <- feols(frac_rev ~ city_go_vote + ln_gdp + ln_pop + ln_pers_inc + ln_county_debt_other + glm_proactive + state_ltgo_allowed + state_go_vote + high_state_tax_privilege + cities_issue_education, data = full_sample[insample_utgo_only ==1], vcov = vcov_cluster(~fips))
+r5 <- feols(frac_rev ~ city_go_vote + ln_gdp + ln_pop + ln_pers_inc + ln_county_debt_other + glm_proactive + state_ltgo_allowed + state_go_vote + high_state_tax_privilege, data = full_sample[insample_utgo_only ==1], vcov = vcov_cluster(~fips))
 summary(r5)
 
 
@@ -263,7 +262,7 @@ r1 <- feols(issuer_yield_spread ~ city_go_vote, data = full_sample[insample_allg
 summary(r1)
 r2 <- feols(issuer_yield_spread ~ city_go_vote + ln_gdp + ln_pop + ln_pers_inc + ln_county_debt_other, data = full_sample[insample_allgo ==1], vcov = vcov_cluster(~fips))
 summary(r2)
-r3 <- feols(issuer_yield_spread ~ city_go_vote + ln_gdp + ln_pop + ln_pers_inc + ln_county_debt_other + glm_proactive + state_ltgo_allowed + state_go_vote + high_state_tax_privilege + cities_issue_education, data = full_sample[insample_allgo ==1], vcov = vcov_cluster(~fips))
+r3 <- feols(issuer_yield_spread ~ city_go_vote + ln_gdp + ln_pop + ln_pers_inc + ln_county_debt_other + glm_proactive + state_ltgo_allowed + state_go_vote + high_state_tax_privilege, data = full_sample[insample_allgo ==1], vcov = vcov_cluster(~fips))
 summary(r3)
 
 
@@ -314,7 +313,7 @@ r1 <- feols(issuer_yield_spread ~ city_go_vote, data = full_sample[insample_utgo
 summary(r1)
 r2 <- feols(issuer_yield_spread ~ city_go_vote + ln_gdp + ln_pop + ln_pers_inc + ln_county_debt_other, data = full_sample[insample_utgo_only ==1], vcov = vcov_cluster(~fips))
 summary(r2)
-r3 <- feols(issuer_yield_spread ~ city_go_vote + ln_gdp + ln_pop + ln_pers_inc + ln_county_debt_other + glm_proactive  + state_go_vote + high_state_tax_privilege + cities_issue_education, data = full_sample[insample_utgo_only ==1], vcov = vcov_cluster(~fips))
+r3 <- feols(issuer_yield_spread ~ city_go_vote + ln_gdp + ln_pop + ln_pers_inc + ln_county_debt_other + glm_proactive  + state_go_vote + high_state_tax_privilege, data = full_sample[insample_utgo_only ==1], vcov = vcov_cluster(~fips))
 summary(r3)
 
 
@@ -427,13 +426,13 @@ fixed_border <- issuer_lvl_all[!(group %in% c('Ohio/Kentucky', 'Michigan/Wiscons
 
 
 
-r1 <- feols(frac_utgo ~ city_go_vote  + ln_gdp + ln_pop + ln_pers_inc  + ln_county_debt_other + state_go_vote + high_state_tax_privilege + cities_issue_education|group, data = fixed_border, vcov = vcov_cluster(~fips))
+r1 <- feols(frac_utgo ~ city_go_vote  + ln_gdp + ln_pop + ln_pers_inc  + ln_county_debt_other + state_go_vote + high_state_tax_privilege|group, data = fixed_border, vcov = vcov_cluster(~fips))
 summary(r1)
-r2 <- feols(frac_ltgo ~ city_go_vote  + ln_gdp + ln_pop + ln_pers_inc  + ln_county_debt_other + state_go_vote + high_state_tax_privilege + cities_issue_education|group, data = fixed_border, vcov = vcov_cluster(~fips))
+r2 <- feols(frac_ltgo ~ city_go_vote  + ln_gdp + ln_pop + ln_pers_inc  + ln_county_debt_other + state_go_vote + high_state_tax_privilege|group, data = fixed_border, vcov = vcov_cluster(~fips))
 summary(r2)
-r3 <- feols(frac_rev ~ city_go_vote  + ln_gdp + ln_pop + ln_pers_inc  + ln_county_debt_other + state_go_vote + high_state_tax_privilege + cities_issue_education|group, data = fixed_border, vcov = vcov_cluster(~fips))
+r3 <- feols(frac_rev ~ city_go_vote  + ln_gdp + ln_pop + ln_pers_inc  + ln_county_debt_other + state_go_vote + high_state_tax_privilege|group, data = fixed_border, vcov = vcov_cluster(~fips))
 summary(r3)
-r4 <- feols(issuer_yield_spread ~ city_go_vote  + ln_gdp + ln_pop + ln_pers_inc  + ln_county_debt_other + state_go_vote + high_state_tax_privilege + cities_issue_education |group, data = fixed_border,  vcov = vcov_cluster(~fips))
+r4 <- feols(issuer_yield_spread ~ city_go_vote  + ln_gdp + ln_pop + ln_pers_inc  + ln_county_debt_other + state_go_vote + high_state_tax_privilege |group, data = fixed_border,  vcov = vcov_cluster(~fips))
 summary(r4)
 
 
@@ -496,11 +495,11 @@ r1 <- feols(frac_utgo ~ only_city_go_vote, data = alt_control[insample_utgo_only
 summary(r1)
 r2 <- feols(frac_utgo ~ only_city_go_vote  + ln_gdp + ln_pop + ln_pers_inc, data = alt_control, vcov = vcov_cluster(~fips))
 summary(r2)
-r3 <- feols(frac_utgo ~ only_city_go_vote  + ln_gdp + ln_pop + ln_pers_inc + glm_proactive + state_ltgo_allowed + state_go_vote + cities_issue_education, data = alt_control, vcov = vcov_cluster(~fips))
+r3 <- feols(frac_utgo ~ only_city_go_vote  + ln_gdp + ln_pop + ln_pers_inc + glm_proactive + state_ltgo_allowed + state_go_vote, data = alt_control, vcov = vcov_cluster(~fips))
 summary(r3)
-r4 <- feols(frac_ltgo ~ only_city_go_vote  + ln_gdp + ln_pop + ln_pers_inc + glm_proactive + state_ltgo_allowed + state_go_vote + cities_issue_education, data = alt_control, vcov = vcov_cluster(~fips))
+r4 <- feols(frac_ltgo ~ only_city_go_vote  + ln_gdp + ln_pop + ln_pers_inc + glm_proactive + state_ltgo_allowed + state_go_vote, data = alt_control, vcov = vcov_cluster(~fips))
 summary(r4)
-r5 <- feols(frac_rev ~ only_city_go_vote  + ln_gdp + ln_pop + ln_pers_inc + glm_proactive + state_ltgo_allowed + state_go_vote + cities_issue_education, data = alt_control, vcov = vcov_cluster(~fips))
+r5 <- feols(frac_rev ~ only_city_go_vote  + ln_gdp + ln_pop + ln_pers_inc + glm_proactive + state_ltgo_allowed + state_go_vote, data = alt_control, vcov = vcov_cluster(~fips))
 summary(r5)
 
 
@@ -684,3 +683,251 @@ modified_output <- add_panel(modified_output, 'Panel B: GO Vote States Only')
 
 
 writeLines(modified_output, paste0(tbl_dir, '/debt_choice_super_majority_treat_only.tex'))
+
+
+# ===============================================================================
+# ROBUSTNESS CHECKS
+# ===============================================================================
+
+robustness_dir <- "~/Dropbox/Apps/Overleaf/Voting on bonds/tables/robustness_tables"
+dir.create(robustness_dir, recursive = TRUE, showWarnings = FALSE)
+
+debt_choice_dict <- c(frac_utgo = 'Pct UTGO',
+                      frac_ltgo = 'Pct LTGO',
+                      frac_rev = 'Pct Revenue',
+                      issuer_yield_spread = 'Wtd. Avg. Yield Spread',
+                      city_go_vote = 'GO Vote',
+                      super_majority = 'Vote * Supermajority State',
+                      high_state_tax_privilege = 'High Tax Priv.',
+                      state_go_vote = 'State GO Vote',
+                      state_ltgo_allowed = 'LTGO Allowed',
+                      glm_proactive = 'Proactive State',
+                      ln_county_debt_other = 'ln(Non-issuer county debt)',
+                      ln_gdp = 'County ln(GDP)',
+                      ln_pop = 'County ln(Pop)',
+                      ln_pers_inc = 'County ln(Pers. Inc)',
+                      ln_emp = 'County ln(Emp)',
+                      group = 'State-Border',
+                      fips = 'County')
+
+render_debt_choice_full_sample <- function(reg_data,
+                                           sample_flag,
+                                           treatment_label,
+                                           panel_label,
+                                           file_stub,
+                                           cluster_formula,
+                                           cluster_label) {
+  r1 <- feols(frac_utgo ~ city_go_vote,
+              data = reg_data[get(sample_flag) == 1],
+              vcov = vcov_cluster(cluster_formula))
+  r3 <- feols(frac_utgo ~ city_go_vote + ln_gdp + ln_pop + ln_pers_inc +
+                ln_county_debt_other + glm_proactive + state_ltgo_allowed +
+                state_go_vote + high_state_tax_privilege,
+              data = reg_data[get(sample_flag) == 1],
+              vcov = vcov_cluster(cluster_formula))
+  r4 <- feols(frac_ltgo ~ city_go_vote + ln_gdp + ln_pop + ln_pers_inc +
+                ln_county_debt_other + glm_proactive + state_ltgo_allowed +
+                state_go_vote + high_state_tax_privilege,
+              data = reg_data[get(sample_flag) == 1],
+              vcov = vcov_cluster(cluster_formula))
+  r5 <- feols(frac_rev ~ city_go_vote + ln_gdp + ln_pop + ln_pers_inc +
+                ln_county_debt_other + glm_proactive + state_ltgo_allowed +
+                state_go_vote + high_state_tax_privilege,
+              data = reg_data[get(sample_flag) == 1],
+              vcov = vcov_cluster(cluster_formula))
+
+  dict <- debt_choice_dict
+  dict["city_go_vote"] <- treatment_label
+  table_call <- etable(r1, r3, r4, r5,
+                       coefstat = 'tstat',
+                       drop = "Constant",
+                       style.tex = style.tex(main = 'aer', fixef.suffix = ' FE', yesNo = c("Yes", "No")),
+                       fitstat = c('n', 'ar2'),
+                       se.below = TRUE,
+                       digits = 3,
+                       digits.stats = 3,
+                       signif.code = c("***" = 0.01, "**" = 0.05, "*" = 0.10),
+                       tex = TRUE,
+                       order = c("%city_go_vote"),
+                       dict = dict,
+                       placement = 'H',
+                       replace = TRUE)
+
+  modified_output <- modify_etable_rounding(table_call, coef_digits = 3, tstat_digits = 2)
+  modified_output <- format_table(modified_output, cluster_level = cluster_label)
+  modified_output <- add_panel(modified_output, panel_label)
+  writeLines(modified_output, file.path(robustness_dir, paste0(file_stub, ".tex")))
+}
+
+render_yield_full_sample <- function(reg_data,
+                                     sample_flag,
+                                     treatment_label,
+                                     panel_label,
+                                     file_stub,
+                                     cluster_formula,
+                                     cluster_label,
+                                     include_ltgo_allowed = TRUE) {
+  controls <- if (include_ltgo_allowed) {
+    issuer_yield_spread ~ city_go_vote + ln_gdp + ln_pop + ln_pers_inc +
+      ln_county_debt_other + glm_proactive + state_ltgo_allowed +
+      state_go_vote + high_state_tax_privilege
+  } else {
+    issuer_yield_spread ~ city_go_vote + ln_gdp + ln_pop + ln_pers_inc +
+      ln_county_debt_other + glm_proactive + state_go_vote +
+      high_state_tax_privilege
+  }
+
+  r1 <- feols(issuer_yield_spread ~ city_go_vote,
+              data = reg_data[get(sample_flag) == 1],
+              vcov = vcov_cluster(cluster_formula))
+  r3 <- feols(controls,
+              data = reg_data[get(sample_flag) == 1],
+              vcov = vcov_cluster(cluster_formula))
+
+  dict <- debt_choice_dict
+  dict["city_go_vote"] <- treatment_label
+  table_call <- etable(r1, r3,
+                       coefstat = 'tstat',
+                       drop = "Constant",
+                       style.tex = style.tex(main = 'aer', fixef.suffix = ' FE', yesNo = c("Yes", "No")),
+                       fitstat = c('n', 'ar2'),
+                       se.below = TRUE,
+                       digits = 3,
+                       digits.stats = 3,
+                       signif.code = c("***" = 0.01, "**" = 0.05, "*" = 0.10),
+                       tex = TRUE,
+                       order = c("%city_go_vote"),
+                       dict = dict,
+                       placement = 'H',
+                       replace = TRUE)
+
+  modified_output <- modify_etable_rounding(table_call, coef_digits = 3, tstat_digits = 2)
+  modified_output <- format_table(modified_output, cluster_level = cluster_label)
+  modified_output <- add_panel(modified_output, panel_label)
+  writeLines(modified_output, file.path(robustness_dir, paste0(file_stub, ".tex")))
+}
+
+render_debt_choice_supermajority <- function(reg_data, file_stub, cluster_formula, cluster_label) {
+  r1 <- feols(frac_utgo ~ city_go_vote * super_majority,
+              data = reg_data,
+              vcov = vcov_cluster(cluster_formula))
+  r3 <- feols(frac_utgo ~ city_go_vote * super_majority + ln_gdp + ln_pop +
+                ln_pers_inc + ln_county_debt_other + glm_proactive +
+                state_ltgo_allowed + state_go_vote + high_state_tax_privilege,
+              data = reg_data,
+              vcov = vcov_cluster(cluster_formula))
+
+  table_call <- etable(r1, r3,
+                       coefstat = 'tstat',
+                       keep_raw = c("^city_go_vote$", "^super_majority$"),
+                       style.tex = style.tex(main = 'aer', fixef.suffix = ' FE', yesNo = c("Yes", "No")),
+                       fitstat = c('n', 'ar2'),
+                       se.below = TRUE,
+                       digits = 3,
+                       digits.stats = 3,
+                       signif.code = c("***" = 0.01, "**" = 0.05, "*" = 0.10),
+                       tex = TRUE,
+                       dict = debt_choice_dict,
+                       placement = 'H',
+                       replace = TRUE)
+
+  modified_output <- modify_etable_rounding(table_call, coef_digits = 3, tstat_digits = 2)
+  modified_output <- format_table(modified_output, cluster_level = cluster_label)
+  adj_r2_idx <- grep("^[[:space:]]*Adj\\. R\\$\\^2\\$[[:space:]]*&", modified_output)
+  if (length(adj_r2_idx) > 0) {
+    modified_output <- append(modified_output, "   Controls                   & Yes            & Yes\\\\", after = adj_r2_idx[1])
+  }
+  modified_output <- add_panel(modified_output, 'Panel C: Full sample - supermajority split')
+  writeLines(modified_output, file.path(robustness_dir, paste0(file_stub, ".tex")))
+}
+
+render_debt_choice_border_sample <- function(reg_data, file_stub) {
+  r1 <- feols(frac_utgo ~ city_go_vote + ln_gdp + ln_pop + ln_pers_inc +
+                ln_county_debt_other + state_go_vote + high_state_tax_privilege | group,
+              data = reg_data,
+              vcov = vcov_cluster(~fips))
+  r4 <- feols(issuer_yield_spread ~ city_go_vote + ln_gdp + ln_pop + ln_pers_inc +
+                ln_county_debt_other + state_go_vote + high_state_tax_privilege | group,
+              data = reg_data,
+              vcov = vcov_cluster(~fips))
+
+  dict <- debt_choice_dict
+  dict["city_go_vote"] <- "Vote"
+  table_call <- etable(r1, r4,
+                       coefstat = 'tstat',
+                       style.tex = style.tex(main = 'aer', fixef.suffix = ' FE', yesNo = c("Yes", "No")),
+                       fitstat = c('n', 'ar2'),
+                       se.below = TRUE,
+                       digits = 3,
+                       digits.stats = 3,
+                       signif.code = c("***" = 0.01, "**" = 0.05, "*" = 0.10),
+                       tex = TRUE,
+                       dict = dict,
+                       placement = 'H',
+                       replace = TRUE)
+
+  modified_output <- modify_etable_rounding(table_call, coef_digits = 3, tstat_digits = 2)
+  modified_output <- format_table(modified_output, cluster_level = "County")
+  writeLines(modified_output, file.path(robustness_dir, paste0(file_stub, ".tex")))
+}
+
+full_sample_drop_me_nd <- full_sample[!(state %in% c("ME", "ND"))]
+fixed_border_drop_me_nd <- fixed_border[!(state %in% c("ME", "ND"))]
+
+full_sample_variants <- list(
+  list(data = full_sample_drop_me_nd, suffix = "drop_me_nd_county_cluster", cluster = ~fips, label = "County"),
+  list(data = full_sample, suffix = "state_cluster", cluster = ~state, label = "State"),
+  list(data = full_sample_drop_me_nd, suffix = "state_cluster_drop_me_nd", cluster = ~state, label = "State")
+)
+
+for (variant in full_sample_variants) {
+  render_debt_choice_full_sample(
+    variant$data,
+    "insample_allgo",
+    "GO Vote",
+    "Panel A: GO vote required",
+    paste0("debt_choice_allgo_", variant$suffix),
+    variant$cluster,
+    variant$label
+  )
+  render_debt_choice_full_sample(
+    variant$data,
+    "insample_utgo_only",
+    "Only UTGO Vote",
+    "Panel B: Only UTGO vote required",
+    paste0("debt_choice_utgo_only_", variant$suffix),
+    variant$cluster,
+    variant$label
+  )
+  render_yield_full_sample(
+    variant$data,
+    "insample_allgo",
+    "GO Vote",
+    "Panel A: GO vote required",
+    paste0("yield_spread_allgo_", variant$suffix),
+    variant$cluster,
+    variant$label,
+    include_ltgo_allowed = TRUE
+  )
+  render_yield_full_sample(
+    variant$data,
+    "insample_utgo_only",
+    "Only UTGO Vote",
+    "Panel B: Only UTGO vote required",
+    paste0("yield_spread_utgo_only_", variant$suffix),
+    variant$cluster,
+    variant$label,
+    include_ltgo_allowed = FALSE
+  )
+  render_debt_choice_supermajority(
+    variant$data,
+    paste0("debt_choice_super_majority_", variant$suffix),
+    variant$cluster,
+    variant$label
+  )
+}
+
+render_debt_choice_border_sample(
+  fixed_border_drop_me_nd,
+  "debt_choice_border_state_all_go_only_drop_me_nd_county_cluster"
+)
