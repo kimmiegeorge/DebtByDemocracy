@@ -1,0 +1,336 @@
+#!/usr/bin/env python3
+r"""
+260625_select_chapters.py  --  Debt by Democracy: state statute AI task
+
+Phase 2, step 2b for the FINAL 14 states. The count pass (260625_count_sections.py ->
+260625_final15_count.csv) found 14 mega-divisions (>=800 sections). Per the user's
+decision (2026-06-26): NARROW only the ELECTIONS and UTILITIES megas to their
+bond/finance/debt/election chapters; KEEP the muni/local-government megas (and
+everything else) WHOLE.
+
+So this walks ONLY the 6 target megas:
+  Elections : IN title-3, IA title-ii, KS chapter-25
+  Utilities : IN title-8, SC title-58, RI title-39
+groups each one's sections by CHAPTER, flags chapters whose NAME or section HEADINGS
+carry bond/finance/election language, and writes:
+  documentation\260625_megachapter_selection.csv   (chapter-level review)
+  documentation\260625_megachapter_sections.csv     (per-section allowlist)
+Then 260625_finalize_chapters.py applies category-tight rules -> selected_final, and
+the user prunes (Checkpoint 2) before download.
+
+Cookie-aware: reuses fetch/segs/abs_url/SECTION_RE from 260625_count_sections.py
+(which fetches via the Firefox cookie path in 260625_justia_fetch.py). A Blocked
+(challenge) propagates; a DeadLink index page is skipped.
+
+RESUMABLE (skips megas already in the output). Self-logs via Tee. CSVs UTF-8+BOM.
+
+Run (project venv):
+  Code\Python\venv\Scripts\python.exe Code\Python\Statutes\260625_select_chapters.py
+  ...\260625_select_chapters.py --states IN,SC     (subset)
+"""
+from __future__ import annotations
+
+import argparse
+import importlib.util
+import re
+import sys
+import time
+from datetime import datetime
+from pathlib import Path
+
+import polars as pl
+from bs4 import BeautifulSoup
+
+try:
+    sys.stdout.reconfigure(encoding="utf-8")
+except Exception:
+    pass
+
+HERE = Path(__file__).resolve().parent
+HOME = Path(r"C:\Users\juneh\Dropbox (Personal)\Voting on Bonds")
+DOCS = HOME / "Data" / "Statutes" / "documentation"
+COUNT_CSV = DOCS / "260625_final15_count.csv"
+SEED_CSV = DOCS / "260625_final15_seed_manifest.csv"
+REVIEW_OUT = DOCS / "260625_megachapter_selection.csv"
+ALLOW_OUT = DOCS / "260625_megachapter_sections.csv"
+LOG = DOCS / "260625_select_chapters_log.txt"
+
+MEGA_THRESHOLD = 800
+MAX_PAGES = 1500     # capped megas (IN title-3/title-8 floored) -> partial walk OK (we drop most)
+
+# Reuse the count crawler's cookie-aware fetch + helpers.
+_spec = importlib.util.spec_from_file_location("cnt", HERE / "260625_count_sections.py")
+cnt = importlib.util.module_from_spec(_spec)
+_spec.loader.exec_module(cnt)
+fetch, segs, abs_url = cnt.fetch, cnt.segs, cnt.abs_url
+SECTION_RE = cnt.SECTION_RE
+DeadLink = cnt.DeadLink
+jf = cnt.jf
+cnt.DELAY = 1.5
+
+# Chapter NAME -> include whole (generic first pass; finalize tightens per category).
+NAME_CORE = ["bond", "debt", "borrow", "indebted", "obligation", "warrant",
+             "financ", "fiscal", "sinking fund", "referend", "election", "ballot",
+             "improvement", "municipal", "cities", "town", "village",
+             "local government", "public works", "revenue"]
+NAME_DENY = ["officer", "surety", "bail", "bondsm", "contractor", "court", "oath",
+             "collection agenc", "consumer finance", "probate", "campaign",
+             "agricultur", "criminal", "penal", "motor vehicle", "insurance", "repeal"]
+HEAD_KW = ["bond", "debt", "borrow", "indebted", "referend", "ballot",
+           "election", "sinking fund", "bonded", "obligation"]
+
+
+class _Tee:
+    def __init__(self, *st): self.st = st
+    def write(self, s):
+        for x in self.st:
+            try:
+                x.write(s); x.flush()
+            except Exception:
+                pass
+    def flush(self):
+        for x in self.st:
+            try:
+                x.flush()
+            except Exception:
+                pass
+
+
+def _start_logging() -> None:
+    DOCS.mkdir(parents=True, exist_ok=True)
+    fh = open(LOG, "a", encoding="utf-8")
+    sys.stdout = _Tee(sys.stdout, fh)
+    sys.stderr = sys.stdout
+
+
+def write_bom(df: pl.DataFrame, path: Path) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(df.write_csv(), encoding="utf-8-sig")
+
+
+def hits(text: str, kws) -> str:
+    low = (text or "").lower()
+    return ";".join(k for k in kws if k in low)
+
+
+# --- Category (only Elections + Utilities are narrowed in this batch) -----------
+_CAT_ELEC = re.compile(r"election|ballot|referend|voting", re.I)
+_CAT_UTIL = re.compile(r"utilit|carriers", re.I)
+
+
+def cat_of(name: str) -> str:
+    if _CAT_ELEC.search(name or ""):
+        return "Elections"
+    if _CAT_UTIL.search(name or ""):
+        return "Utilities"
+    return "other"
+
+
+# --- Chapter grouping (URL-chaptered; these 14-state megas are all title/chapter) --
+def chapter_key_for(url: str, mega_depth: int) -> str | None:
+    ss = segs(url)
+    for i in range(mega_depth, len(ss)):
+        if ss[i].startswith("chapter-"):
+            return "/".join(ss[mega_depth:i + 1])
+    if len(ss) > mega_depth and not SECTION_RE.match(ss[mega_depth]):
+        return ss[mega_depth]
+    return None
+
+
+def walk(div_url: str, state: str):
+    mega_depth = len(segs(div_url))
+    visited, stack = set(), [div_url]
+    sections: list[tuple[str, str, str]] = []
+    chap_names: dict[str, str] = {}
+    n_pages = 0
+    while stack:
+        u = stack.pop()
+        if u in visited:
+            continue
+        visited.add(u)
+        n_pages += 1
+        if n_pages > MAX_PAGES:
+            print(f"   !! MAX_PAGES {MAX_PAGES} hit walking {div_url} (partial)")
+            break
+        if n_pages % 200 == 0:
+            print(f"     ... {n_pages} index pages, {len(sections)} sections so far")
+        try:
+            html = fetch(u)                       # Blocked propagates; DeadLink skipped
+        except DeadLink as e:
+            print(f"   !! dead index page: {e}")
+            continue
+        time.sleep(cnt.DELAY)
+        base = segs(u); bl = len(base)
+        soup = BeautifulSoup(html, "lxml")
+        for a in soup.find_all("a", href=True):
+            h = abs_url(a["href"]); s = segs(h)
+            if len(s) != bl + 1 or s[:bl] != base:
+                continue
+            seg, text = s[-1], a.get_text(strip=True)
+            if SECTION_RE.match(seg):
+                ck = chapter_key_for(h, mega_depth) or "(flat)"
+                sections.append((h, text, ck))
+            elif cnt.SKIP_SEG_RE.search(seg):
+                continue
+            else:
+                chap_names.setdefault("/".join(s[mega_depth:]), text)
+                if h not in visited:
+                    stack.append(h)
+    return sections, chap_names
+
+
+# --- Inputs --------------------------------------------------------------------
+def mega_divisions(states: set[str] | None) -> pl.DataFrame:
+    """The 6 ELECTIONS/UTILITIES megas to walk (>= MEGA_THRESHOLD AND that category).
+    Muni/local-government megas are NOT walked (kept whole per the user's choice)."""
+    df = pl.read_csv(COUNT_CSV).filter(pl.col("kind") == "statute")
+    df = df.with_columns(pl.col("name").map_elements(cat_of, return_dtype=pl.Utf8).alias("category"))
+    df = df.filter((pl.col("n_sections") >= MEGA_THRESHOLD)
+                   & (pl.col("category").is_in(["Elections", "Utilities"])))
+    if states:
+        df = df.filter(pl.col("state_abbr").is_in(list(states)))
+    return df.sort(["state_abbr", "div_slug"])
+
+
+def seed_urls() -> set[str]:
+    if not SEED_CSV.exists():
+        return set()
+    try:
+        return {u.rstrip("/") for u in pl.read_csv(SEED_CSV)["url"].to_list() if u}
+    except Exception:
+        return set()
+
+
+def done_megas() -> set[str]:
+    if not REVIEW_OUT.exists():
+        return set()
+    try:
+        return set(pl.read_csv(REVIEW_OUT)["div_url"].to_list())
+    except Exception:
+        return set()
+
+
+def classify_chapter(cname: str, n_head: int) -> tuple[str, str]:
+    if hits(cname, NAME_DENY):
+        return "deny", "N"
+    if hits(cname, NAME_CORE):
+        return "core", "Y"
+    if n_head > 0:
+        return "section", "Y"
+    return "none", "N"
+
+
+def process_mega(r: dict, seeds: set[str]) -> tuple[list[dict], list[dict]]:
+    st, slug, url, dname = r["state_abbr"], r["div_slug"], r["url"], r["name"]
+    print(f"\n== {st} {slug}  {dname[:55]}")
+    t0 = time.time()
+    sections, chap_names = walk(url, st)
+    print(f"   {len(sections)} sections, {len(chap_names)} chapters ({time.time()-t0:.0f}s)")
+
+    groups: dict[str, list[tuple[str, str]]] = {}
+    for surl, heading, ckey in sections:
+        groups.setdefault(ckey, []).append((surl, heading))
+
+    category = cat_of(dname)
+    single_flat = len(groups) == 1 and "(flat)" in groups
+    review, allow = [], []
+    for ckey, items in sorted(groups.items()):
+        cname = chap_names.get(ckey, "")
+        if not cname and ckey == "(flat)":
+            cname = dname if single_flat else "(individual sections)"
+        n_head = sum(1 for _, h in items if hits(h, HEAD_KW))
+        tier, include = classify_chapter(cname, n_head)
+        has_seed = any(u.rstrip("/") in seeds for u, _ in items)
+        if has_seed:
+            tier, include = ("seed" if tier in ("none", "deny") else tier), "Y"
+        trig = hits(cname, NAME_CORE) or "; ".join(
+            h[:34] for u, h in items if hits(h, HEAD_KW))[:140]
+        review.append({
+            "state_abbr": st, "div_slug": slug, "div_url": url, "div_name": dname,
+            "category": category, "chapter_key": ckey, "chapter_name": cname[:80],
+            "n_sections": len(items), "n_head_hits": n_head,
+            "name_core": hits(cname, NAME_CORE), "name_deny": hits(cname, NAME_DENY),
+            "has_seed": has_seed, "tier": tier, "include": include, "triggers": trig,
+        })
+        for surl, heading in items:
+            sec_sel = "Y" if (tier in ("core", "seed")) else (
+                "Y" if (tier == "section" and hits(heading, HEAD_KW)) else "N")
+            allow.append({
+                "state_abbr": st, "div_slug": slug, "chapter_key": ckey,
+                "chapter_name": cname[:80], "section_url": surl, "heading": heading,
+                "tier": tier, "prelim_selected": sec_sel,
+            })
+    return review, allow
+
+
+def append(rows_r: list[dict], rows_a: list[dict]) -> None:
+    if rows_r:
+        dr = pl.DataFrame(rows_r)
+        if REVIEW_OUT.exists():
+            dr = pl.concat([pl.read_csv(REVIEW_OUT), dr], how="vertical_relaxed")
+        write_bom(dr, REVIEW_OUT)
+    if rows_a:
+        da = pl.DataFrame(rows_a)
+        if ALLOW_OUT.exists():
+            da = pl.concat([pl.read_csv(ALLOW_OUT), da], how="vertical_relaxed")
+        write_bom(da, ALLOW_OUT)
+
+
+def print_summary() -> None:
+    if not REVIEW_OUT.exists():
+        print("No review output.")
+        return
+    rev = pl.read_csv(REVIEW_OUT)
+    alw = pl.read_csv(ALLOW_OUT)
+    by = (rev.group_by("state_abbr", "div_slug").agg(
+        chapters=pl.len(),
+        chapters_incl=(pl.col("include") == "Y").sum(),
+        sections=pl.col("n_sections").sum()).sort(["state_abbr", "div_slug"]))
+    with pl.Config(tbl_rows=40, fmt_str_lengths=30):
+        print("\nPer-mega chapter review:\n", by)
+    tot = alw.height
+    sel = int((alw["prelim_selected"] == "Y").sum())
+    print(f"\nMEGA sections walked: {tot}  | PRELIM selected: {sel}  "
+          f"({100*sel/tot:.0f}% kept)" if tot else "no sections")
+    print("Review   :", REVIEW_OUT)
+    print("Allowlist:", ALLOW_OUT)
+
+
+def run(states: set[str] | None) -> None:
+    jf.start_cookie_mode()
+    megas = mega_divisions(states)
+    seeds = seed_urls()
+    done = done_megas()
+    todo = megas.filter(~pl.col("url").is_in(list(done))) if done else megas
+    print(f"Target megas: {megas.height}  done: {len(done & set(megas['url'].to_list()))}  "
+          f"to do: {todo.height}")
+    print(megas.select("state_abbr", "div_slug", "name", "n_sections", "category"))
+    t0 = time.time()
+    for i, r in enumerate(todo.iter_rows(named=True), 1):
+        rows_r, rows_a = process_mega(r, seeds)
+        append(rows_r, rows_a)
+        el = time.time() - t0
+        eta = el / i * (todo.height - i)
+        print(f"   [{i}/{todo.height}] done  elapsed {el:.0f}s  eta ~{eta:.0f}s")
+    print(f"\nAll target megas walked in {(time.time()-t0)/60:.1f} min.")
+    print_summary()
+    print("DONE_SELECT_CHAPTERS")
+
+
+def main() -> None:
+    ap = argparse.ArgumentParser()
+    ap.add_argument("--states", default="")
+    ap.add_argument("--summary-only", action="store_true")
+    args = ap.parse_args()
+    if args.summary_only:
+        print_summary()
+        return
+    states = {s.strip().upper() for s in args.states.split(",") if s.strip()} or None
+    run(states)
+
+
+if __name__ == "__main__":
+    _start_logging()
+    print(f"\n===== 260625_select_chapters start @ "
+          f"{datetime.now().isoformat(timespec='seconds')} =====")
+    main()

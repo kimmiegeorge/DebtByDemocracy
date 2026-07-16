@@ -132,11 +132,11 @@ count if go_unlim == 1 & city_go_vote == 0 & city_rev_vote == 0
 
 *Revenue bond count
 count if rev == 1 & city_rev_vote == 0
-*72,441 rev
+*31,742 rev
 count if rev == 1 & city_go_vote == 1 & city_rev_vote == 0
-*37,970 rev bonds when vote required
+*19,212 rev bonds when vote required
 count if rev == 1 & city_go_vote == 0 & city_rev_vote == 0
-*10,701 
+*5,556 
 
 *All bonds: what # and what amount come from vote, no vote; only in states without revenue bond vote
 *Count

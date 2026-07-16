@@ -5,6 +5,7 @@ library(pacman)
 p_load(data.table, dplyr, stargazer, DescTools, arrow, glue, lfe, ggplot2, gridExtra, sandwich, zoo, fixest, xtable)
 tables_wd <- "~/Dropbox/Apps/Overleaf/Voting on bonds/tables/revision_tables"
 source('/Users/kmunevar/Dropbox/Voting on Bonds/Code/R/submission_tables/modify_etable_rounding.R')
+source('/Users/kmunevar/Dropbox/Voting on Bonds/Code/R/submission_tables/robustness_helpers.R')
 tbl_dir <- "~/Dropbox/Apps/Overleaf/Voting on bonds/tables/revision_tables"
 
 #---------------------------------------
@@ -31,13 +32,6 @@ setnames(state_policy, 'Abbreviation', 'state')
 data <- state_policy[data, on = .(state)]
 data[, state_monitor := ifelse(!is.na(AdoptionYear) & year_int >= AdoptionYear, 1, 0)]
 
-
-# create indicator variables 
-data[, has_bond_url := ifelse(bond_url > 0, 1, 0)]
-data[, has_fiscal_url := ifelse(fiscal_url > 0, 1, 0)]
-
-data[, log_total_content_length := log(total_content_length)]
-data[, log_numeric_tokens := log(1 + total_numeric_tokens)]
 
 # issue with bond counts
 data <- data[seed_issuer != 'BONDUEL WIS']
@@ -399,56 +393,26 @@ writeLines(modified_output, paste0(tables_wd, '/websites_issuance_time_series_re
 robustness_dir <- "~/Dropbox/Apps/Overleaf/Voting on bonds/tables/robustness_tables"
 dir.create(robustness_dir, recursive = TRUE, showWarnings = FALSE)
 
-render_website_regression <- function(reg_data, file_stub, cluster_label = "County") {
-  r1 <- fixest::fepois(bond_url ~ city_go_vote + ln_cum_num_issues_all + state_monitor +
-                         ln_gdp + ln_pop + ln_pers_inc | group + year,
-                       data = reg_data, cluster = ~fips)
-  r2 <- fixest::fepois(bond_count ~ city_go_vote + ln_cum_num_issues_all + state_monitor +
-                         ln_gdp + ln_pop + ln_pers_inc | group + year,
-                       data = reg_data, cluster = ~fips)
-  r3 <- fixest::fepois(fiscal_url ~ city_go_vote + ln_cum_num_issues_all + state_monitor +
-                         ln_gdp + ln_pop + ln_pers_inc | group + year,
-                       data = reg_data, cluster = ~fips)
-  r4 <- fixest::fepois(fiscal_count ~ city_go_vote + ln_cum_num_issues_all + state_monitor +
-                         ln_gdp + ln_pop + ln_pers_inc | group + year,
-                       data = reg_data, cluster = ~fips)
-  r5 <- fixest::fepois(financial_pdf_urls ~ city_go_vote + ln_cum_num_issues_all + state_monitor +
-                         ln_gdp + ln_pop + ln_pers_inc | group + year,
-                       data = reg_data, cluster = ~fips)
+website_drop_me_nd <- data[!(state %in% c("ME", "ND"))]
 
-  table_call <- etable(r1, r2, r3, r4, r5,
-                       coefstat = 'tstat',
-                       style.tex = style.tex(main = 'aer', fixef.suffix = ' FE', yesNo = c("Yes", "No")),
-                       fitstat = c('n', 'pr2'),
-                       se.below = TRUE,
-                       digits = 3,
-                       digits.stats = 3,
-                       signif.code = c("***" = 0.01, "**" = 0.05, "*" = 0.10),
-                       tex = TRUE,
-                       dict = c(bond_url = 'Bond URLs',
-                                bond_count = 'Bond Count',
-                                fiscal_url = 'Fiscal URLs',
-                                fiscal_count = 'Fiscal Count',
-                                financial_pdf_urls = 'Financial Docs',
-                                city_go_vote = 'Vote',
-                                state_monitor = 'State Fiscal Monitor',
-                                ln_cum_num_issues_all = 'Num Issuances',
-                                ln_gdp = 'County ln(GDP)',
-                                ln_pop = 'County ln(Pop)',
-                                ln_pers_inc = 'County ln(Pers. Inc)',
-                                group = 'State-Border',
-                                year = 'Year'),
-                       placement = 'H',
-                       replace = TRUE)
+w_drop_me_nd_r1 <- fixest::fepois(bond_url ~ city_go_vote + ln_cum_num_issues_all + state_monitor +
+                                    ln_gdp + ln_pop + ln_pers_inc | group + year,
+                                  data = website_drop_me_nd, cluster = ~fips)
+w_drop_me_nd_r2 <- fixest::fepois(bond_count ~ city_go_vote + ln_cum_num_issues_all + state_monitor +
+                                    ln_gdp + ln_pop + ln_pers_inc | group + year,
+                                  data = website_drop_me_nd, cluster = ~fips)
+w_drop_me_nd_r3 <- fixest::fepois(fiscal_url ~ city_go_vote + ln_cum_num_issues_all + state_monitor +
+                                    ln_gdp + ln_pop + ln_pers_inc | group + year,
+                                  data = website_drop_me_nd, cluster = ~fips)
+w_drop_me_nd_r4 <- fixest::fepois(fiscal_count ~ city_go_vote + ln_cum_num_issues_all + state_monitor +
+                                    ln_gdp + ln_pop + ln_pers_inc | group + year,
+                                  data = website_drop_me_nd, cluster = ~fips)
+w_drop_me_nd_r5 <- fixest::fepois(financial_pdf_urls ~ city_go_vote + ln_cum_num_issues_all + state_monitor +
+                                    ln_gdp + ln_pop + ln_pers_inc | group + year,
+                                  data = website_drop_me_nd, cluster = ~fips)
 
-  modified_output <- modify_etable_rounding(table_call, coef_digits = 3, tstat_digits = 2)
-  modified_output <- format_table(modified_output, cluster_level = cluster_label)
-  modified_output <- add_panel(modified_output, 'Panel B: Regression analyses', ncols = 6)
-  writeLines(modified_output, file.path(robustness_dir, paste0(file_stub, ".tex")))
-}
-
-render_website_regression(
-  data[!(state %in% c("ME", "ND"))],
-  "websites_regression_drop_me_nd_county_cluster",
-  "County"
+write_website_robustness_table(
+  list(w_drop_me_nd_r1, w_drop_me_nd_r2, w_drop_me_nd_r3, w_drop_me_nd_r4, w_drop_me_nd_r5),
+  file.path(robustness_dir, "websites_regression_drop_me_nd_county_cluster.tex"),
+  cluster_label = "County"
 )

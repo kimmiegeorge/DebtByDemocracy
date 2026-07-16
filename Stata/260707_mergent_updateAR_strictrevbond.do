@@ -89,10 +89,12 @@ order rev, after(go_lim)
 *save bond-level file
 save "$MERGENT\Clean\260707_city_cusiplevel_statereq_purpose_yieldspread.dta", replace
 
+**# Bookmark #2
 
 **Make new issuer-level yield spread **
 
 *Remove the sales tax revenue bonds from this calculation
+drop if rev == .
 
 *Multiply yield spreads times amounts; sum
 gen amt_x_ys = amount * offering_yield_spread
@@ -135,7 +137,7 @@ count if dup > 0
 drop dup
 
 *save file
-save "$MERGENT\Clean\260610_issuers_yieldspread.dta", replace
+save "$MERGENT\Clean\260707_issuers_yieldspread.dta", replace
 
 **# Bookmark #1
 
@@ -144,13 +146,13 @@ save "$MERGENT\Clean\260610_issuers_yieldspread.dta", replace
 use "$MERGENT\Clean\250605_citycountyschool_cusiplevel_statereq_purpose.dta", clear
 drop if state == "HI"
 
-*Make 250827 and 251027 state law fixes to this. Fix AR using the 260611 election requirements file
+*Make 250827 and 251027 state law fixes to this. Fix AR using the 260707 election requirements file
 
 *Rename old city_go_vote and city_rev_vote
 rename (city_go_vote city_rev_vote) (city_go_vote_old city_rev_vote_old)
 
 *Merge in updated classification
-mmerge state using "$DATA\Bond Elections\260611_election_requirements_by_state.dta", ///
+mmerge state using "$DATA\Bond Elections\260707_election_requirements_by_state.dta", ///
 	type(n:1) missing(nomatch)
 *all matched except Hawaii
 drop if _merge == 2
@@ -435,6 +437,22 @@ replace fips = "53021" if seed_issuer == "PASCO WASH"
 replace fips = "53033" if seed_issuer == "SEATTLE WASH"
 replace fips = "55047" if seed_issuer == "BERLIN WIS"
 
+*Only classify rev bonds if security code and source of repayment are both "G"
+gen bond_type_new = "rev" if security_code == "G" & source_of_repayment == "G"
+replace bond_type_new = "go" if bond_type == "go" & bond_type_new == ""
+tab bond_type_new
+*Around 50,000 bonds are no longer classified. These will mostly be the sales tax revenue bonds
+gen rev_new = 1 if security_code == "G" & source_of_repayment == "G"
+replace rev_new = 0 if bond_type_new == "go"
+
+drop bond_type rev
+rename (bond_type_new rev_new) (bond_type rev)
+order bond_type, after(issue_id)
+order rev, after(go_lim)
+
+*Now drop sales tax rev bonds
+drop if rev == .
+
 *gen var for total debt raised within a county 2000-2020
 tab year
 gegen county_debt = sum(amount), by(fips)
@@ -506,13 +524,13 @@ replace insample = 0 if insample == .
 tab state if insample == 1
 
 tab control
-*17.5% control; 1,032 issuers
+*18.6% control; 1,000 issuers
 tab utgo_only
-*11.6% UTGO only; 693 issuers
+*12.5% UTGO only; 671 issuers
 tab allgo_only
-*17.51 all GO only; 1,017 issuers
+*17.2% all GO only; 928 issuers
 tab insample
-*46.17% in sample; 2,742 issuers
+*48.29% in sample; 2,599 issuers
 
 *make vars for other debt raised in the same county, but not by the issuer
 gen county_debt_other = county_debt - city_debt
@@ -554,7 +572,6 @@ foreach x of local temp{
 
 gen ln_pop = ln(pop)
 
-
 *Bring in Gao et al indicator
 mmerge state using "$DATA\Gao et al\250624_GLM_table1.dta", ///
 	type(n:1) missing(nomatch)
@@ -562,7 +579,6 @@ mmerge state using "$DATA\Gao et al\250624_GLM_table1.dta", ///
 drop if _merge == 2
 *rest of them matched
 drop _merge
-
 
 *Make sample indicators:
 *Look at comparison between benchmark and UTGO+LTGO states (excluding UTGO only)
@@ -588,14 +604,14 @@ label var ln_city_debt "ln(Issuer debt)"
 label var ln_county_debt_other "ln(Non-issuer debt in county)"
 
 *save file
-save "$MERGENT\Clean\260611_city_issuerlevel.dta", replace
+save "$MERGENT\Clean\260707_city_issuerlevel.dta", replace
 
 **# Bookmark #1
 **Now merge in issuer-level yield spreads merge into main issuer-level data**
 
 *Go to latest issuer-level file, drop old issuer yield spread, bring in new one
-use "$MERGENT\Clean\260611_city_issuerlevel.dta", clear
-mmerge seed_issuer using "$MERGENT\Clean\260610_issuers_yieldspread.dta", ///
+use "$MERGENT\Clean\260707_city_issuerlevel.dta", clear
+mmerge seed_issuer using "$MERGENT\Clean\260707_issuers_yieldspread.dta", ///
 	type(n:1) missing(nomatch)
 *all matched, hooray
 drop _merge
@@ -639,4 +655,97 @@ label var ln_pop "County ln(Pop)"
 label var issuer_yield_spread "WAvg Yield Spread"
 
 *save
-save "$MERGENT\Clean\260611_city_issuerlevel_yieldspread.dta", replace
+save "$MERGENT\Clean\260707_city_issuerlevel_yieldspread.dta", replace
+
+**# Bookmark #1
+**At bond-level, make pie charts**
+
+use "$MERGENT\Clean\260707_city_cusiplevel_statereq_purpose_yieldspread.dta", clear
+
+***In 3 regimes, proportion of each type of bond***
+*Make indicators for regimes
+
+*make indicators for categories of states in the map
+*only want to compare control (no vote) with UTGO vote only OR all GO vote only
+gen control = 1 if city_go_vote == 0 & city_rev_vote == 0
+gen utgo_only = 1 if inlist(state, "WA", "MI", "OH") 
+gen allgo_only = 1 if city_go_vote == 1 & city_rev_vote == 0
+replace allgo_only = 0 if utgo_only == 1
+tab state if allgo_only == 1
+
+local temp control utgo_only allgo_only
+foreach x of local temp{
+	replace `x' = 0 if `x' == .
+}
+
+gen insample = 1 if control == 1 | utgo_only == 1 | allgo_only == 1
+replace insample = 0 if insample == .
+
+*Proportions of bonds
+*No vote states:
+count if go_lim == 1 & control == 1
+*11,561
+count if go_unlim == 1 & control == 1
+*42,324
+count if rev == 1 & control == 1
+*5,556
+
+*UTGO only states:
+count if go_lim == 1 & utgo_only == 1
+*16,337
+count if go_unlim == 1 & utgo_only == 1
+*7,103
+count if rev == 1 & utgo_only == 1
+*3,625
+
+*GO vote states (excl. UTGO only):
+count if go_lim == 1 & allgo_only == 1
+*10,383
+count if go_unlim == 1 & allgo_only == 1
+*18,627
+count if rev == 1 & allgo_only == 1
+*15,587
+
+
+*Within UTGO bonds, how many come from vote-requiring:
+*Don't filter based on revenue bond requirement
+count if go_unlim == 1
+*195,804 UTGO
+count if go_unlim == 1 & city_go_vote == 1
+*36,395 UTGO bonds when vote required
+count if go_unlim == 1 & city_go_vote == 0
+*42,324 UTGO bonds when vote not required
+*Where GO vote does NOT depend, 79,675 UTGO bonds
+
+*Within Revenue bonds, how many come from GO vote-requiring:
+count if rev == 1
+*37,115
+count if rev == 1 & city_go_vote == 1
+*23,130
+count if rev == 1 & city_go_vote == 0
+*5,556
+*Where GO vote does NOT depend, ~28,000 revenue bonds
+
+*Filtering on revenue bond requirement
+*UTGO count
+count if go_unlim == 1 & city_rev_vote == 0
+*125,622 UTGO
+count if go_unlim == 1 & city_go_vote == 1 & city_rev_vote == 0
+*25,730 UTGO bonds when vote required
+count if go_unlim == 1 & city_go_vote == 0 & city_rev_vote == 0
+*42,324
+
+*Revenue bond count
+count if rev == 1 & city_rev_vote == 0
+*31,742 rev
+count if rev == 1 & city_go_vote == 1 & city_rev_vote == 0
+*19,212 rev bonds when vote required
+count if rev == 1 & city_go_vote == 0 & city_rev_vote == 0
+*5,556 
+
+*All bonds: what # and what amount come from vote, no vote; only in states without revenue bond vote
+*Count
+count if city_go_vote == 1 & city_rev_vote == 0 & rev != .
+*71,662 bonds
+count if city_go_vote == 0 & city_rev_vote == 0 & rev != .
+*59,441 bonds

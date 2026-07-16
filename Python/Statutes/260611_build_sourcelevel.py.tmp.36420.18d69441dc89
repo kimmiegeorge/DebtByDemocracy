@@ -1,0 +1,286 @@
+#!/usr/bin/env python3
+r"""
+260611_build_sourcelevel.py  --  Debt by Democracy: state statute AI task
+
+Phase 4 (proof-of-concept). Build 260611_sourcelevel.csv for the pilot, starting
+with 2 states (AK non-control, KY control) to iterate on format/quality. Columns
+mirror 260611_dummystructure_sourcelevel.xlsx exactly. Classifications are grounded
+in the downloaded corpus (AK = HTML text; KY = PDF-repaired text), located via the
+curated seed pointers.
+
+Notes on the schema (per the prompt):
+- control flags copied from the dummy; NEVER changed here.
+- The four former "control-only" note columns are filled for ALL pilot states.
+- source_filename points at the readable consolidated file under \raw.
+
+Output: Data\Statutes\260611_sourcelevel.csv
+"""
+from __future__ import annotations
+
+from pathlib import Path
+import polars as pl
+
+OUT = Path(r"C:\Users\juneh\Dropbox (Personal)\Voting on Bonds"
+          r"\Data\Statutes\260611_sourcelevel.csv")
+
+COLS = ["stab", "state", "pilot", "control", "source", "source_url", "source_type",
+        "source_filename", "bond_type", "note_vote", "note_textreq", "note_timing",
+        "note_pubnotice", "note_exception", "note_nichevote", "note_optin",
+        "note_petition", "note_votereqbyothergovtlevels"]
+
+J = "https://law.justia.com/codes"
+
+# Conventions (per user, 2026-06-12):
+# - ASCII-only text (no section sign, em dash, or curly quotes) + UTF-8 BOM on
+#   write, so the CSV opens clean in Excel (avoids the "A-hat"/"a-euro" mojibake).
+# - Standard phrase for an absent requirement: "None indicated".
+# - note_vote omits which voters may vote (not useful).
+# - The 4 formerly control-only columns (nichevote/optin/petition/
+#   votereqbyothergovtlevels) are filled for EVERY pilot state regardless of
+#   control status; e.g. a city's ability to add a vote by ordinance goes in
+#   note_optin (not note_exception).
+# - No standalone "definition of municipality" rows unless the definition is
+#   critical to interpretation (e.g. NH cities vs towns).
+NONE = "None indicated"
+
+ROWS = [
+    # ---------------- ALASKA (non-control) ----------------
+    dict(stab="AK", state="alaska", pilot=1, control=0,
+         source="AK Stat Sec. 29.47.190 (2025)",
+         source_url=f"{J}/alaska/title-29/chapter-47/article-3/section-29-47-190/",
+         source_type="primary", source_filename="AK/alaska_title-29.txt",
+         bond_type="go",
+         note_vote="General obligation bonds must be authorized by a majority vote at an election",
+         note_textreq=NONE, note_timing=NONE,
+         note_pubnotice="Notice of existing indebtedness must be published weekly for 3 consecutive weeks, the first at least 20 days before the election, stating the current GO indebtedness (including authorized-but-unsold bonds), the debt-service cost, and the total assessed property value",
+         note_exception=NONE, note_nichevote=NONE, note_optin=NONE, note_petition=NONE,
+         note_votereqbyothergovtlevels="Boroughs are municipalities (AS 01.10.060) and subject to the same Title 29 GO-bond vote requirement"),
+    dict(stab="AK", state="alaska", pilot=1, control=0,
+         source="AK Stat Sec. 29.47.250 (2025)",
+         source_url=f"{J}/alaska/title-29/chapter-47/article-4/section-29-47-250/",
+         source_type="primary", source_filename="AK/alaska_title-29.txt",
+         bond_type="rev",
+         note_vote="No election is required to authorize revenue bonds",
+         note_textreq=NONE, note_timing=NONE, note_pubnotice=NONE,
+         note_exception=NONE, note_nichevote=NONE,
+         note_optin="A city may, by its own ordinance, choose to require a vote for revenue bonds",
+         note_petition=NONE,
+         note_votereqbyothergovtlevels="Same revenue-bond rule applies to boroughs (municipalities, AS 01.10.060)"),
+
+    # ---------------- KENTUCKY (control) ----------------
+    dict(stab="KY", state="kentucky", pilot=1, control=1,
+         source="KY Rev Stat Ch. 66, esp. Sec. 66.101 (2025)",
+         source_url=f"{J}/kentucky/chapter-66/section-66-101/",
+         source_type="primary", source_filename="KY/kentucky_chapter-66.txt",
+         bond_type="both",
+         note_vote="No voter referendum required for cities; a city authorizes bonds by ordinance (KRS 66.101)",
+         note_textreq=NONE, note_timing=NONE, note_pubnotice=NONE,
+         note_exception="None within Ch. 66 (see KRS 96.640 utility exception)",
+         note_nichevote="A vote is required only in the niche utility case (electric plant) under KRS 96.640; rarely used",
+         note_optin=NONE, note_petition=NONE,
+         note_votereqbyothergovtlevels="Counties also issue bonds under Ch. 66 (e.g., county bond approval, KRS 66.310) without a referendum"),
+    dict(stab="KY", state="kentucky", pilot=1, control=1,
+         source="KY Rev Stat Sec. 96.640 (2025) - utility (electric plant) exception",
+         source_url=f"{J}/kentucky/chapter-96/section-96-640/",
+         source_type="primary", source_filename="KY/kentucky_chapter-96.txt",
+         bond_type="both",
+         note_vote="A majority of qualified voters voting must approve before a city may construct, purchase, or condemn an electric plant or issue bonds (including revenue bonds) for it; rarely used in practice",
+         note_textreq="Ballot must state the project and the maximum amount of revenue bonds (e.g., 'Are you in favor of the city constructing and operating a municipal electric plant ... and the issuance of revenue bonds in the maximum amount of $___')",
+         note_timing="Held at the next regular November election, provided the ordinance is certified to the county clerk by the second Tuesday in August preceding that election",
+         note_pubnotice="The mayor advertises the election by newspaper publication (KRS Chapter 424) and by printed handbills posted in at least four conspicuous places in each voting precinct and at the courthouse door",
+         note_exception="This is the rare situation where KY cities do need a vote (electric/utility plant bonds)",
+         note_nichevote="Yes - utility (electric plant) bonds require voter approval (KRS 96.640)",
+         note_optin=NONE, note_petition=NONE,
+         note_votereqbyothergovtlevels="Applies to municipalities acquiring or financing electric plants"),
+    dict(stab="KY", state="kentucky", pilot=1, control=1,
+         source="Kentucky League of Cities - Municipal Bonds 101 (2019)",
+         source_url="https://www.klc.org/userfiles/files/MunicipalBonds101Summer2019.pdf",
+         source_type="secondary", source_filename="KY/_secondary/klc_MunicipalBonds101_2019.pdf",
+         bond_type="both",
+         note_vote="No voter approval required today. Historically (pre-1994) KY cities needed a two-thirds vote of the public for GO debt not repayable within one year; a 1994 amendment to the KY Constitution (Sec. 157) removed this. Cities may now issue GO debt so long as the annual budget is balanced (expenditures do not exceed revenues).",
+         note_textreq=NONE, note_timing=NONE, note_pubnotice=NONE,
+         note_exception="GO debt is subject to a balanced-budget condition (KY Const. Sec. 157/157b) and population-based debt limits (Sec. 158), but no referendum",
+         note_nichevote="Confirms the only niche vote case is the utility/electric-plant exception (KRS 96.640)",
+         note_optin=NONE, note_petition=NONE,
+         note_votereqbyothergovtlevels="Notes that bonds are issued by states, cities, counties, and other governmental entities; no referendum described for any"),
+
+    # ---------------- ALABAMA (non-control) ----------------
+    dict(stab="AL", state="alabama", pilot=1, control=0,
+         source="Ala. Const. Sec. 222 (2022)",
+         source_url="https://law.justia.com/constitution/alabama/CA-245767.html",
+         source_type="primary", source_filename="AL/alabama_constitution.txt",
+         bond_type="go",
+         note_vote="General obligation bonds must first be authorized by a majority vote (by ballot) of the qualified voters voting on the proposition",
+         note_textreq="Ballot must contain 'For ... bond issue' and 'Against ... bond issue', with the character of the bond stated in the blank",
+         note_timing=NONE, note_pubnotice=NONE,
+         note_exception="Does not apply to renewal/refunding of lawfully issued bonds, or to bonds for street/sidewalk improvements or sanitary/storm sewers whose cost is assessed against the abutting/benefited property (special assessment)",
+         note_nichevote=NONE, note_optin=NONE, note_petition=NONE,
+         note_votereqbyothergovtlevels="The same majority-vote requirement applies to counties, towns, villages, districts, and other political subdivisions of counties (Sec. 222)"),
+    dict(stab="AL", state="alabama", pilot=1, control=0,
+         source="Ala. Const. Sec. 222.01 - revenue bond utility exception (2022)",
+         source_url="https://alison.legislature.state.al.us/files/pdf/lsa/proposed-constitution/2022-constitution-statewide.pdf",
+         source_type="primary", source_filename="[to fetch from alison.legislature.state.al.us]",
+         bond_type="rev",
+         note_vote="Revenue bonds payable solely from the revenues of a municipal water, sewer, gas, or electric system do not require a voter election",
+         note_textreq=NONE, note_timing=NONE, note_pubnotice=NONE,
+         note_exception="Revenue (non-GO) financing for water/sewer/gas/electric utilities is exempt from the Sec. 222 GO vote requirement",
+         note_nichevote=NONE, note_optin=NONE, note_petition=NONE,
+         note_votereqbyothergovtlevels=NONE),
+
+    # ---------------- ARIZONA (non-control; no dummy benchmark) ----------------
+    dict(stab="AZ", state="arizona", pilot=1, control=0,
+         source="Ariz. Rev. Stat. Sec. 35-452 (2025)",
+         source_url="https://law.justia.com/codes/arizona/title-35/section-35-452/",
+         source_type="primary", source_filename="AZ/arizona_title-35.txt",
+         bond_type="go",
+         note_vote="General obligation indebtedness must be approved by a majority of the qualified electors voting at an election",
+         note_textreq=NONE,
+         note_timing="The bond election is held on the first Tuesday after the first Monday in November",
+         note_pubnotice=NONE, note_exception=NONE, note_nichevote=NONE, note_optin=NONE,
+         note_petition="The governing body must order a bond election upon a petition signed by 15 percent of the qualified electors",
+         note_votereqbyothergovtlevels="Applies to cities, towns, counties, school districts and other political subdivisions (Sec. 35-451); counties must submit street/highway bonds to a majority vote (Sec. 11-372)"),
+    dict(stab="AZ", state="arizona", pilot=1, control=0,
+         source="Ariz. Rev. Stat. Sec. 9-523 - utility revenue bonds (2025)",
+         source_url="https://law.justia.com/codes/arizona/title-9/section-9-523/",
+         source_type="primary", source_filename="AZ/arizona_title-9.txt",
+         bond_type="rev",
+         note_vote="Utility revenue bonds require the assent of a majority of the qualified electors voting at an election held for that purpose",
+         note_textreq=NONE, note_timing=NONE, note_pubnotice=NONE, note_exception=NONE,
+         note_nichevote=NONE, note_optin=NONE, note_petition=NONE,
+         note_votereqbyothergovtlevels="Applies to municipal utility undertakings under this article"),
+    dict(stab="AZ", state="arizona", pilot=1, control=0,
+         source="Ariz. Rev. Stat. Sec. 9-441.03 - housing development bonds (2025)",
+         source_url="https://law.justia.com/codes/arizona/title-9/section-9-441-03/",
+         source_type="primary", source_filename="AZ/arizona_title-9.txt",
+         bond_type="rev",
+         note_vote="No voter approval required; housing development bonds are payable solely from project revenues and are not a general obligation of the municipality",
+         note_textreq=NONE, note_timing=NONE, note_pubnotice=NONE,
+         note_exception="These bonds do not pledge the city's full faith and credit, so the GO election requirement does not apply",
+         note_nichevote=NONE, note_optin=NONE, note_petition=NONE,
+         note_votereqbyothergovtlevels=NONE),
+
+    # ---------------- MASSACHUSETTS (control) ----------------
+    dict(stab="MA", state="massachusetts", pilot=1, control=1,
+         source="Mass. Gen. Laws ch. 44, Sec. 7 and 8 (2025)",
+         source_url="https://law.justia.com/codes/massachusetts/part-i/title-vii/chapter-44/section-7/",
+         source_type="primary", source_filename="MA/massachusetts_title-vii.txt",
+         bond_type="both",
+         note_vote="No resident referendum; a city incurs bond debt by a two-thirds vote of the city council (the legislative body), for purposes within the debt limit (Sec. 7) or outside it (Sec. 8)",
+         note_textreq=NONE, note_timing=NONE, note_pubnotice=NONE,
+         note_exception="Sec. 8 lists purposes (e.g., water and sewer systems) for which debt may be incurred outside the statutory debt limit",
+         note_nichevote=NONE, note_optin=NONE, note_petition=NONE,
+         note_votereqbyothergovtlevels="In towns, the two-thirds authorization is given by the town meeting (a vote of town residents)"),
+
+    # ---------------- MISSISSIPPI (control) ----------------
+    dict(stab="MS", state="mississippi", pilot=1, control=1,
+         source="Miss. Code Sec. 21-33-301 and 21-33-307 (2024)",
+         source_url="https://law.justia.com/codes/mississippi/title-21/chapter-33/article-5/section-21-33-307/",
+         source_type="primary", source_filename="MS/mississippi_title-21.txt",
+         bond_type="go",
+         note_vote="No automatic voter approval; the governing authority issues GO bonds by resolution. An election is held only if a protest petition is filed (or for certain purposes such as mass transit).",
+         note_textreq=NONE,
+         note_timing="A protest-triggered election is called and held under Sec. 21-33-309",
+         note_pubnotice="The resolution of intent must be published once a week for 3 consecutive weeks (first publication at least 21 days, and last not more than 7 days, before the date fixed for issuance); if no local newspaper, the resolution is posted at 3 public places for at least 21 days",
+         note_exception="Bonds to acquire/improve an existing mass transit system always require a majority-vote election (Sec. 21-33-301(o))",
+         note_nichevote=NONE,
+         note_optin="The governing authority may, in its discretion, call an election even if no protest is filed",
+         note_petition="If 10 percent of the qualified electors (or 1,500, whichever is less) file a written protest by the date set in the resolution, a bond election is required (majority of those voting decides)",
+         note_votereqbyothergovtlevels=NONE),
+
+    # ---------------- NEW HAMPSHIRE (control) ----------------
+    dict(stab="NH", state="new hampshire", pilot=1, control=1,
+         source="N.H. Rev. Stat. Sec. 33:9 - City Bonds (2025)",
+         source_url="https://law.justia.com/codes/new-hampshire/title-iii/chapter-33/section-33-9/",
+         source_type="primary", source_filename="NH/new-hampshire_title-iii.txt",
+         bond_type="both",
+         note_vote="No resident referendum for cities; city bonds are authorized by a resolution of the city council passed by at least two-thirds of all members of each branch",
+         note_textreq=NONE, note_timing=NONE, note_pubnotice=NONE, note_exception=NONE,
+         note_nichevote=NONE,
+         note_optin="A town that has adopted a council charter without a budgetary town meeting may choose in its charter to use the city (council) bond procedure (Sec. 33:8-e)",
+         note_petition=NONE,
+         note_votereqbyothergovtlevels="Towns and village districts instead authorize bonds by a 3/5 ballot vote of voters at town meeting (Sec. 33:8) - i.e., towns require a resident vote, cities do not"),
+    dict(stab="NH", state="new hampshire", pilot=1, control=1,
+         source="N.H. Rev. Stat. Sec. 33:8 - Town or District Bonds (2025)",
+         source_url="https://law.justia.com/codes/new-hampshire/title-iii/chapter-33/section-33-8/",
+         source_type="primary", source_filename="NH/new-hampshire_title-iii.txt",
+         bond_type="both",
+         note_vote="Towns and village districts authorize bonds by a 3/5 ballot vote of the voters present and voting at town meeting (tax anticipation notes by a majority); a municipality with an optional charter legislative body uses a 2/3 or 3/5 vote per its charter, defaulting to 3/5",
+         note_textreq=NONE,
+         note_timing="Vote taken at an annual or special town meeting; a special meeting is valid only if a majority of all legal voters are present and vote (unless the superior court permits an emergency meeting)",
+         note_pubnotice="The warrant for a special meeting is published once in a newspaper of general circulation within one week after posting; the warrant must be served/posted at least 14 days before the meeting",
+         note_exception=NONE, note_nichevote=NONE, note_optin=NONE, note_petition=NONE,
+         note_votereqbyothergovtlevels="This row is the TOWN requirement; cities instead use a 2/3 city-council vote (Sec. 33:9)"),
+
+    # ---------------- NEW JERSEY (control) ----------------
+    dict(stab="NJ", state="new jersey", pilot=1, control=1,
+         source="N.J. Rev. Stat. Sec. 40A:2-17 (2025)",
+         source_url="https://law.justia.com/codes/new-jersey/title-40a/section-40a-2-17/",
+         source_type="primary", source_filename="NJ/new-jersey_title-40a.txt",
+         bond_type="both",
+         note_vote="No voter referendum; a municipality authorizes bonds by adopting a bond ordinance (governing body) under the Local Bond Law",
+         note_textreq=NONE,
+         note_timing="A bond ordinance takes effect 20 days after the first publication following final adoption (Sec. 40A:2-18)",
+         note_pubnotice="The bond ordinance (or a summary) is published after first reading with notice of a hearing at least 10 days later; a copy is posted on the municipal bulletin board and made available to the public at least one week before final consideration, and a public hearing is held before adoption",
+         note_exception="A bond ordinance to fund, refund, renew, or retire existing obligations is not subject to referendum (Sec. 40A:2-18)",
+         note_nichevote=NONE, note_optin=NONE, note_petition=NONE,
+         note_votereqbyothergovtlevels=NONE),
+
+    # ---------------- TENNESSEE (control) ----------------
+    dict(stab="TN", state="tennessee", pilot=1, control=1,
+         source="Tenn. Code Sec. 9-21-205 and 9-21-206 (2024)",
+         source_url="https://law.justia.com/codes/tennessee/title-9/chapter-21/part-2/section-9-21-206/",
+         source_type="primary", source_filename="TN/tennessee_title-9.txt",
+         bond_type="go",
+         note_vote="No automatic voter approval; GO bonds are authorized by resolution of the governing body (majority vote of the body). A referendum occurs only if triggered by a protest petition.",
+         note_textreq=NONE,
+         note_timing="The protest period runs 20 days from publication of the initial resolution",
+         note_pubnotice="The initial resolution, together with a statutory notice, must be published in full once in a newspaper of general circulation; the notice states the 20-day protest right",
+         note_exception="No initial resolution is required for a mandated project, or for a county school project (Sec. 9-21-205(b))",
+         note_nichevote=NONE, note_optin=NONE,
+         note_petition="If within 20 days a petition signed by at least 10 percent of the registered voters protests the issuance, a referendum is required (majority)",
+         note_votereqbyothergovtlevels="Counties follow the same resolution/petition procedure; a county need not adopt an initial resolution for a school project"),
+
+    # ---------------- WISCONSIN (control) ----------------
+    dict(stab="WI", state="wisconsin", pilot=1, control=1,
+         source="Wis. Stat. Sec. 67.05 (2025)",
+         source_url="https://law.justia.com/codes/wisconsin/chapter-67/section-67-05/",
+         source_type="primary", source_filename="WI/wisconsin_chapter-67.txt",
+         bond_type="both",
+         note_vote="A majority referendum is technically required for city/village bonds, but only for purposes NOT on a long enumerated list (water, sewer, streets, bridges, parks, schools, hospitals, libraries, etc.); because most municipal purposes are on the list, referendums are rare. Listed-purpose bonds are issued by the governing body's initial resolution without a vote.",
+         note_textreq=NONE,
+         note_timing="If a referendum is held, notices are published under Sec. 10.01 (e.g., a type A notice on the 4th Tuesday before the referendum)",
+         note_pubnotice="Where a permissive referendum applies, within 15 days after the initial resolution the governing body publishes a class 1 notice stating the purpose and maximum amount and describing the petition/referendum procedure",
+         note_exception="Long enumerated list of exempt purposes in Sec. 67.05(5)(b) (water systems, lighting, gas, bridges, street improvements, sewerage, garbage disposal, parks, swimming pools, hospitals, airports, libraries, school purposes, etc.) for which no referendum is required",
+         note_nichevote=NONE, note_optin=NONE,
+         note_petition="For certain bonds (e.g., low-interest mortgage loans under s. 62.237), a petition signed by at least 15 percent of the votes cast for governor at the last general election forces a special election",
+         note_votereqbyothergovtlevels="Towns must submit bond resolutions to the electors at a special election (towns vote); counties have a permissive referendum (10 percent petition) for highway/bridge bonds (Sec. 67.05(4)-(5))"),
+]
+
+
+def main() -> None:
+    import sys
+    sys.stdout.reconfigure(encoding="utf-8")
+    df = pl.DataFrame(ROWS).select(COLS)
+
+    # Guard: flag any non-ASCII character that would mojibake in Excel.
+    bad = []
+    for r in df.iter_rows(named=True):
+        for c, v in r.items():
+            if isinstance(v, str):
+                for ch in v:
+                    if ord(ch) > 127:
+                        bad.append((r["stab"], c, ch, hex(ord(ch))))
+    if bad:
+        print("!! non-ASCII characters found (fix these):")
+        for s, c, ch, h in bad[:20]:
+            print(f"   {s} {c}: {ch!r} {h}")
+    else:
+        print("ASCII check: clean.")
+
+    # Write UTF-8 with BOM so Excel decodes it correctly.
+    OUT.write_text(df.write_csv(), encoding="utf-8-sig")
+    print("Wrote", OUT, "rows:", df.height)
+
+
+if __name__ == "__main__":
+    main()

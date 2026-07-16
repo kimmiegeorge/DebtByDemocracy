@@ -8,6 +8,7 @@ library(pacman)
 p_load(data.table, DescTools, arrow, fixest, haven, xtable)
 
 source('/Users/kmunevar/Dropbox/Voting on Bonds/Code/R/submission_tables/modify_etable_rounding.R')
+source('/Users/kmunevar/Dropbox/Voting on Bonds/Code/R/submission_tables/robustness_helpers.R')
 
 tbl_dir <- "~/Dropbox/Apps/Overleaf/Voting on bonds/tables/revision_tables"
 data_wd <- "~/Dropbox/Voting on Bonds/Data/"
@@ -332,80 +333,70 @@ cat('Wrote ', output_file, '\n', sep = '')
 robustness_dir <- "~/Dropbox/Apps/Overleaf/Voting on bonds/tables/robustness_tables"
 dir.create(robustness_dir, recursive = TRUE, showWarnings = FALSE)
 
-render_dpc_media_regression <- function(reg_data, file_stub, cluster_formula, cluster_label) {
-  reg_data <- copy(reg_data)
-  reg_data[, row_id := .I]
+dpc_drop_me_nd <- regression_sample[!(state %in% c("ME", "ND"))]
 
-  r1 <- fixest::fepois(
-    dpc_total_articles_12_0_win ~ city_go_vote + bond_prior_12 + dpc_log_lifetime_articles +
-      ln_amount | issuance_year_month_id + purp_broad,
-    data = reg_data,
-    vcov = vcov_cluster(cluster_formula),
-    glm.iter = poisson_glm_iter,
-    fixef.iter = poisson_fixef_iter
-  )
-
-  r2 <- fixest::fepois(
-    dpc_total_articles_12_0_win ~ city_go_vote + bond_prior_12 + dpc_log_lifetime_articles +
-      ln_amount + ln_gdp + ln_pop + ln_pers_inc | issuance_year_month_id + purp_broad,
-    data = reg_data,
-    vcov = vcov_cluster(cluster_formula),
-    glm.iter = poisson_glm_iter,
-    fixef.iter = poisson_fixef_iter
-  )
-
-  table_call <- etable(
-    r1, r2,
-    headers = list("Total Articles (DPC) - 12mo" = 2),
-    coefstat = 'tstat',
-    style.tex = style.tex(main = 'aer', fixef.suffix = ' FE', yesNo = c("Yes", "No")),
-    fitstat = c('n', 'pr2'),
-    se.below = TRUE,
-    digits = 3,
-    digits.stats = 3,
-    signif.code = c("***" = 0.01, "**" = 0.05, "*" = 0.10),
-    tex = TRUE,
-    dict = c(
-      dpc_total_articles_12_0_win = 'Total Articles (DPC) - 12mo',
-      city_go_vote = 'Vote',
-      dpc_log_lifetime_articles = 'Total DPC Coverage',
-      bond_prior_12 = 'Bond Issuance - 12mo',
-      ln_amount = 'Amount',
-      ln_gdp = 'County ln(GDP)',
-      ln_pop = 'County ln(Pop)',
-      ln_pers_inc = 'County ln(Pers. Inc)',
-      purp_broad = 'Purpose',
-      issuance_year_month_id = 'Year-Month'
-    ),
-    placement = 'H',
-    replace = TRUE
-  )
-
-  panel_c <- modify_etable_rounding(table_call, coef_digits = 3, tstat_digits = 2)
-  panel_c <- format_table(panel_c, cluster_level = cluster_label)
-  panel_c <- panel_c[!grepl(
-    "^[[:space:]]*Total Articles \\(DPC\\) - 12mo[[:space:]]*&[[:space:]]*\\\\multicolumn\\{2\\}\\{c\\}\\{2\\}",
-    panel_c
-  )]
-  panel_c <- add_panel(panel_c, 'Panel C: Regression analyses', ncols = 3)
-  writeLines(panel_c, file.path(robustness_dir, paste0(file_stub, ".tex")))
-}
-
-render_dpc_media_regression(
-  regression_sample[!(state %in% c("ME", "ND"))],
-  "media_coverage_dpc_drop_me_nd_county_cluster",
-  ~fips,
-  "County"
+dpc_drop_me_nd_r1 <- fixest::fepois(
+  dpc_total_articles_12_0_win ~ city_go_vote + bond_prior_12 + dpc_log_lifetime_articles +
+    ln_amount | issuance_year_month_id + purp_broad,
+  data = dpc_drop_me_nd,
+  vcov = vcov_cluster(~fips),
+  glm.iter = poisson_glm_iter,
+  fixef.iter = poisson_fixef_iter
 )
-render_dpc_media_regression(
-  regression_sample,
-  "media_coverage_dpc_state_cluster",
-  ~state,
-  "State"
+dpc_drop_me_nd_r2 <- fixest::fepois(
+  dpc_total_articles_12_0_win ~ city_go_vote + bond_prior_12 + dpc_log_lifetime_articles +
+    ln_amount + ln_gdp + ln_pop + ln_pers_inc | issuance_year_month_id + purp_broad,
+  data = dpc_drop_me_nd,
+  vcov = vcov_cluster(~fips),
+  glm.iter = poisson_glm_iter,
+  fixef.iter = poisson_fixef_iter
 )
-render_dpc_media_regression(
-  regression_sample[!(state %in% c("ME", "ND"))],
-  "media_coverage_dpc_state_cluster_drop_me_nd",
-  ~state,
-  "State"
+write_dpc_media_robustness_table(
+  list(dpc_drop_me_nd_r1, dpc_drop_me_nd_r2),
+  file.path(robustness_dir, "media_coverage_dpc_drop_me_nd_county_cluster.tex"),
+  cluster_label = "County"
+)
+
+dpc_state_r1 <- fixest::fepois(
+  dpc_total_articles_12_0_win ~ city_go_vote + bond_prior_12 + dpc_log_lifetime_articles +
+    ln_amount | issuance_year_month_id + purp_broad,
+  data = regression_sample,
+  vcov = vcov_cluster(~state),
+  glm.iter = poisson_glm_iter,
+  fixef.iter = poisson_fixef_iter
+)
+dpc_state_r2 <- fixest::fepois(
+  dpc_total_articles_12_0_win ~ city_go_vote + bond_prior_12 + dpc_log_lifetime_articles +
+    ln_amount + ln_gdp + ln_pop + ln_pers_inc | issuance_year_month_id + purp_broad,
+  data = regression_sample,
+  vcov = vcov_cluster(~state),
+  glm.iter = poisson_glm_iter,
+  fixef.iter = poisson_fixef_iter
+)
+write_dpc_media_robustness_table(
+  list(dpc_state_r1, dpc_state_r2),
+  file.path(robustness_dir, "media_coverage_dpc_state_cluster.tex"),
+  cluster_label = "State"
+)
+
+dpc_state_drop_me_nd_r1 <- fixest::fepois(
+  dpc_total_articles_12_0_win ~ city_go_vote + bond_prior_12 + dpc_log_lifetime_articles +
+    ln_amount | issuance_year_month_id + purp_broad,
+  data = dpc_drop_me_nd,
+  vcov = vcov_cluster(~state),
+  glm.iter = poisson_glm_iter,
+  fixef.iter = poisson_fixef_iter
+)
+dpc_state_drop_me_nd_r2 <- fixest::fepois(
+  dpc_total_articles_12_0_win ~ city_go_vote + bond_prior_12 + dpc_log_lifetime_articles +
+    ln_amount + ln_gdp + ln_pop + ln_pers_inc | issuance_year_month_id + purp_broad,
+  data = dpc_drop_me_nd,
+  vcov = vcov_cluster(~state),
+  glm.iter = poisson_glm_iter,
+  fixef.iter = poisson_fixef_iter
+)
+write_dpc_media_robustness_table(
+  list(dpc_state_drop_me_nd_r1, dpc_state_drop_me_nd_r2),
+  file.path(robustness_dir, "media_coverage_dpc_state_cluster_drop_me_nd.tex"),
+  cluster_label = "State"
 )
