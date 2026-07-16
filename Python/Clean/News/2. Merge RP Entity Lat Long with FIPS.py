@@ -10,7 +10,7 @@ setup
 import polars as pl
 import requests
 import urllib
-wrds_dir = '~/WRDS_202408'
+wrds_dir = '/Volumes/External/WRDS_202408'
 data_dir = '~/Dropbox/Voting on Bonds/Data'
 clean_data_dir = '/Users/kmunevar/Dropbox/Voting on Bonds/Data/Clean_Intermediate'
 import os
@@ -25,7 +25,10 @@ entity_map2 = pl.read_parquet(f'{wrds_dir}/ravenpack_common_rpa_entity_mappings_
 entity_map2 = entity_map2.filter(pl.col('entity_type').eq('PLCE'))
 cities = entity_map2.filter(pl.col('data_type').eq('PLACE_TYPE') & pl.col('data_value').eq('CITY')).select('rp_entity_id')
 us_all = entity_map2.filter(pl.col('data_type').eq('COUNTRY_ID') & pl.col('data_value').eq('3D4567')).select('rp_entity_id')
-cities_all = entity_map2.filter(pl.col('rp_entity_id').is_in(cities) & pl.col('rp_entity_id').is_in(us_all))
+cities_all = entity_map2.filter(
+    pl.col('rp_entity_id').is_in(cities['rp_entity_id']) &
+    pl.col('rp_entity_id').is_in(us_all['rp_entity_id'])
+)
 
 cities_all = (cities_all
               .filter(pl.col('data_type').eq('ENTITY_NAME'))

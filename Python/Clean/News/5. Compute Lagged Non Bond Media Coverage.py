@@ -51,7 +51,10 @@ load data and aggregate rp articles
 '''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
 
 # load rp map and add fips
-rp_map = pl.read_csv(f'{clean_data_dir}/News/RP_Mergent_Mapping.csv')
+rp_map = (
+    pl.read_csv(f'{clean_data_dir}/News/RP_Mergent_Mapping.csv')
+    .with_columns(pl.col('seed_issuer_id').cast(pl.Int64))
+)
 fips = (pl.read_csv(f'{clean_data_dir}/News/Ravenpack_Cities_With_FIPS.csv')
         .select(['rp_entity_id', 'fips']))
 rp_map = (rp_map

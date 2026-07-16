@@ -23,7 +23,10 @@ os.makedirs(os.path.expanduser(f'{clean_data_dir}/News'), exist_ok=True)
 '''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
 load data
 '''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
-rp_entities = pl.read_csv(f'{clean_data_dir}/News/Ravenpack_Cities_With_FIPS.csv')
+rp_entities = (
+    pl.read_csv(f'{clean_data_dir}/News/Ravenpack_Cities_With_FIPS.csv')
+    .with_columns(pl.col('fips').cast(pl.Int64))
+)
 mergent = pd.read_stata(f'{data_dir}/Mergent/Clean/260716_city_cusiplevel_statereq_purpose_yieldspread.dta')
 mergent = pl.DataFrame(mergent)
 

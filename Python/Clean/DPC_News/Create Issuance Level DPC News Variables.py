@@ -10,6 +10,7 @@ aggregates article coverage in the months before each issuance.
 setup
 '''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
 from pathlib import Path
+from typing import Optional
 
 import pandas as pd
 import polars as pl
@@ -51,7 +52,7 @@ def aggregate_event_window(
         start_lag: int,
         end_lag: int,
         output_col: str,
-        filter_col: str | None = None
+        filter_col: Optional[str] = None
 ) -> pl.DataFrame:
     '''
     Count unique DPC stories in a relative month window around an issuance.

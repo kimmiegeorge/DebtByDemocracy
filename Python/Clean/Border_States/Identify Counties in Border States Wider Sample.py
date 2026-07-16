@@ -45,6 +45,8 @@ BUFFER_DISTANCE = 100000  # Default: 42000 meters (~26 miles)
 # ========================================================
 
 
+import os
+
 import geopandas as gp
 import pandas as pd
 import polars as pl
