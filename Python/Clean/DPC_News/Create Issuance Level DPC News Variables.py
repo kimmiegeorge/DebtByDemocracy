@@ -146,7 +146,7 @@ load issuance-level sample
 issuance_dta = (
     pl.read_parquet(issuance_input)
     .with_columns(
-        pl.col('seed_issuer_id').cast(pl.Int64),
+        pl.col('seed_issuer_id').cast(pl.Float64).round(1),
         pl.col('year').cast(pl.Int64),
         pl.col('month').cast(pl.Int64)
     )
@@ -174,7 +174,7 @@ mergent = (
     mergent
     .select(mergent_cols)
     .with_columns(
-        pl.col('seed_issuer_id').cast(pl.Int64),
+        pl.col('seed_issuer_id').cast(pl.Float64).round(1),
         pl.col('year').cast(pl.Int64),
         pl.col('month').cast(pl.Int64),
         pl.col('cusip6').cast(pl.Utf8).str.strip_chars().str.slice(0, 6).alias('cusip6'),

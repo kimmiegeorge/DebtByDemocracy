@@ -73,7 +73,7 @@ def normalize_id_columns(df):
     return (
         df
         .with_columns([
-            pl.col('seed_issuer_id').cast(pl.Float64).cast(pl.Int64),
+            pl.col('seed_issuer_id').cast(pl.Float64).round(1),
             pl.col('state').cast(pl.Utf8).str.to_uppercase(),
             pl.col('fips').cast(pl.Utf8).str.replace(r'\.0$', '').str.zfill(5),
         ])
@@ -156,7 +156,7 @@ print('Loading Census-Mergent exact match file...')
 matches = (
     pl.read_csv(census_mergent_match_file, infer_schema_length=10000)
     .with_columns([
-        pl.col('seed_issuer_id').cast(pl.Float64).cast(pl.Int64),
+        pl.col('seed_issuer_id').cast(pl.Float64).round(1),
         pl.col('city_go_vote').cast(pl.Float64).cast(pl.Int64, strict=False),
         pl.col('insample').cast(pl.Int64, strict=False),
         pl.col('insample_allgo').cast(pl.Int64, strict=False),
@@ -390,7 +390,7 @@ issuers = (
     .select(issuer_control_cols)
     .filter(pl.col('seed_issuer_id').is_not_null())
     .with_columns([
-        pl.col('seed_issuer_id').cast(pl.Float64).cast(pl.Int64),
+        pl.col('seed_issuer_id').cast(pl.Float64).round(1),
         pl.col('state').cast(pl.Utf8).str.to_uppercase(),
         pl.col('fips').cast(pl.Utf8).str.replace(r'\.0$', '').str.zfill(5),
     ])
@@ -434,7 +434,7 @@ issuers = (
 bonds = (
     raw_bonds
     .with_columns([
-        pl.col('seed_issuer_id').cast(pl.Float64).cast(pl.Int64),
+        pl.col('seed_issuer_id').cast(pl.Float64).round(1),
         pl.col('issue_id').cast(pl.Int64, strict=False),
         pl.col('state').cast(pl.Utf8).str.to_uppercase(),
         pl.col('amount').cast(pl.Float64),
@@ -596,7 +596,7 @@ for col in mergent_amount_cols:
 
 border_memberships = (
     pl.read_csv(border_file, infer_schema_length=10000)
-    .with_columns(pl.col('seed_issuer_id').cast(pl.Float64).cast(pl.Int64))
+    .with_columns(pl.col('seed_issuer_id').cast(pl.Float64).round(1))
     .select([
         'seed_issuer_id',
         pl.col('group').alias('border_group'),

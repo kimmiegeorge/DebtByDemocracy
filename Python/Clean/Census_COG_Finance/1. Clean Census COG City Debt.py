@@ -590,7 +590,7 @@ def read_mergent_issuer_file():
         pl.from_pandas(bond_pd)
         .filter(pl.col('seed_issuer_id').is_not_null())
         .with_columns([
-            pl.col('seed_issuer_id').cast(pl.Float64).cast(pl.Int64),
+            pl.col('seed_issuer_id').cast(pl.Float64).round(1),
             pl.col('state').cast(pl.Utf8).str.to_uppercase(),
             pl.col('fips').cast(pl.Utf8).str.replace(r'\.0$', '').str.zfill(5).alias('county_fips'),
         ])
@@ -821,7 +821,7 @@ def build_merge_diagnostic(census_panel, issuers):
     else:
         pl.DataFrame(
             schema={
-                'seed_issuer_id': pl.Int64,
+                'seed_issuer_id': pl.Float64,
                 'seed_issuer': pl.Utf8,
                 'state': pl.Utf8,
                 'county_fips': pl.Utf8,

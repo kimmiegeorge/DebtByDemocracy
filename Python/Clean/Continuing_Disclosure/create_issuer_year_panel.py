@@ -167,7 +167,7 @@ print(f"Created issuer-year disclosure panel with {len(cd_issuer_year):,} observ
 print("\nMerging disclosure data with issuer-year panel...")
 
 final_panel = (issuer_year_panel
-    .join(cd_issuer_year.with_columns(pl.col('seed_issuer_id').cast(pl.Int64),
+    .join(cd_issuer_year.with_columns(pl.col('seed_issuer_id').cast(pl.Float64).round(1),
                                       pl.col('year').cast(pl.Int64)), on=['seed_issuer_id', 'year'], how='left')
 )
 
@@ -305,7 +305,7 @@ mergent = (mergent
            .unique())
 
 final_panel = (final_panel
-               .join(mergent.with_columns(pl.col('seed_issuer_id').cast(pl.Int64)),
+               .join(mergent.with_columns(pl.col('seed_issuer_id').cast(pl.Float64).round(1)),
                      on = 'seed_issuer_id', how = 'left'))
 
 
@@ -367,7 +367,7 @@ border_state = (border_state
                 .select(['seed_issuer_id', 'group'])
                 .filter(pl.col('group').ne(pl.lit('Rhode Island/Massachusetts')))
                 .unique())
-border_panel = (border_state.with_columns(pl.col('seed_issuer_id').cast(pl.Int64))
+border_panel = (border_state.with_columns(pl.col('seed_issuer_id').cast(pl.Float64).round(1))
                 .join(final_panel,
                       on = 'seed_issuer_id', how = 'left'))
 
@@ -378,7 +378,7 @@ websites = (pl.read_csv(f'{clean_data_dir}Websites/border_state_website_data_wit
                      'fiscal_url', 'fiscal_count', 'financial_pdf_urls']))
 
 border_panel = (border_panel
-                .join(websites.with_columns(pl.col('seed_issuer_id').cast(pl.Int64),
+                .join(websites.with_columns(pl.col('seed_issuer_id').cast(pl.Float64).round(1),
                                             pl.col('year').cast(pl.Int64)),
                       on = ['seed_issuer_id', 'year'], how = 'left'))
 

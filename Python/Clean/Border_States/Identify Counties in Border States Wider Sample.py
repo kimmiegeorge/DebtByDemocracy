@@ -181,12 +181,12 @@ rp_issuance = pl.read_csv(f'{clean_data_dir}/News/{RP_ISSUANCE_FILE}')
 border_issuer_groups = (mergent_border_matches
                         .select(['seed_issuer_id', 'group', 'category'])
                         .unique()
-                        .with_columns(pl.col('seed_issuer_id').cast(pl.Int64)))
+                        .with_columns(pl.col('seed_issuer_id').cast(pl.Float64).round(1)))
 border_issuer_ids = border_issuer_groups['seed_issuer_id'].to_list()
 
 # join
 rp_issuance = (rp_issuance
-               .with_columns(pl.col('seed_issuer_id').cast(pl.Int64))
+               .with_columns(pl.col('seed_issuer_id').cast(pl.Float64).round(1))
                .filter(pl.col('seed_issuer_id').is_in(border_issuer_ids))
                .join(border_issuer_groups, on = 'seed_issuer_id', how = 'inner'))
 

@@ -37,6 +37,7 @@ get mergent to issuer level
 mergent = (mergent
            .filter(pl.col('issuer_type').eq(pl.lit('city')))
            .select(['state','seed_issuer', 'seed_issuer_id', 'city_go_vote', 'city_rev_vote', 'fips'])
+           .with_columns(pl.col('seed_issuer_id').cast(pl.Float64).round(1))
            .unique())
 
 #%%
@@ -105,4 +106,5 @@ save mapping file
 
 rp_mapping_file = (matched_on_name
                    .select(['rp_entity_id', 'seed_issuer', 'seed_issuer_id'])
+                   .with_columns(pl.col('seed_issuer_id').cast(pl.Float64).round(1))
                    .write_csv(f'{clean_data_dir}/News/RP_Mergent_Mapping.csv'))

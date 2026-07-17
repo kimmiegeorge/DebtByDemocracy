@@ -112,7 +112,7 @@ def add_bond_election_flag(df: pl.DataFrame) -> pl.DataFrame:
 load control-state issuances
 '''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
 issuance_dpc = pl.read_parquet(dpc_issuance_input).with_columns(
-    pl.col('seed_issuer_id').cast(pl.Int64),
+    pl.col('seed_issuer_id').cast(pl.Float64).round(1),
     pl.col('year').cast(pl.Int64),
     pl.col('month').cast(pl.Int64),
     pl.col('issuance_year_month_id').cast(pl.Int64),
@@ -152,7 +152,7 @@ mergent = (
     mergent
     .select(mergent_cols)
     .with_columns(
-        pl.col('seed_issuer_id').cast(pl.Int64),
+        pl.col('seed_issuer_id').cast(pl.Float64).round(1),
         pl.col('year').cast(pl.Int64),
         pl.col('month').cast(pl.Int64),
         pl.col('cusip6').cast(pl.Utf8).str.strip_chars().str.slice(0, 6).alias('cusip6'),

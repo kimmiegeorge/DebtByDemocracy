@@ -397,10 +397,61 @@ obs_sample = pl.concat([sample_issuers1, sample_issuers2]).unique()
 obs = pl.read_csv('~/Dropbox/Voting on Bonds/Data/Websites/Border States Website Data/Expanded Border Matches Issuers Website Collected 20251008.csv')
 obs = (obs
        .filter(pl.col('City Website').is_in(obs_sample['URL'].to_list())))
+
+# Refresh website seed IDs from the current clean border sample. The website
+# collection file predates the decimal seed_issuer_id corrections, so old integer
+# IDs can point to the wrong issuer for substring-split names.
+border_seed_lookup = (
+    pl.read_csv(f'{clean_data_dir}/Border States/Border Matches All Mergent Data Expanded Set Buffer 100000.csv',
+                infer_schema_length=10000)
+    .select(['seed_issuer', 'seed_issuer_id'])
+    .with_columns([
+        pl.col('seed_issuer').cast(pl.Utf8).str.strip_chars().str.to_uppercase().alias('seed_issuer_key'),
+        pl.col('seed_issuer_id').cast(pl.Float64).round(1).alias('updated_seed_issuer_id'),
+    ])
+    .select(['seed_issuer_key', 'updated_seed_issuer_id'])
+    .unique()
+)
+
+website_seed_id_diagnostics = (
+    obs
+    .with_columns([
+        pl.col('seed_issuer_id').cast(pl.Float64).round(1).alias('original_seed_issuer_id'),
+        pl.col('seed_issuer').cast(pl.Utf8).str.strip_chars().str.to_uppercase().alias('seed_issuer_key'),
+    ])
+    .join(border_seed_lookup, on='seed_issuer_key', how='left')
+    .with_columns([
+        pl.when(pl.col('updated_seed_issuer_id').is_null())
+        .then(pl.lit('unmatched_seed_issuer'))
+        .when(pl.col('updated_seed_issuer_id').ne(pl.col('original_seed_issuer_id')))
+        .then(pl.lit('updated_seed_issuer_id'))
+        .otherwise(pl.lit('unchanged'))
+        .alias('seed_issuer_id_update_status')
+    ])
+)
+website_seed_id_diagnostics.select([
+    'seed_issuer',
+    'City Website',
+    'group',
+    'original_seed_issuer_id',
+    'updated_seed_issuer_id',
+    'seed_issuer_id_update_status',
+]).write_csv(f'{clean_data_dir}/Websites/border_state_website_seed_id_update_diagnostics.csv')
+
+obs = (
+    website_seed_id_diagnostics
+    .with_columns(
+        pl.coalesce(['updated_seed_issuer_id', 'original_seed_issuer_id']).alias('seed_issuer_id')
+    )
+    .drop(['original_seed_issuer_id', 'updated_seed_issuer_id', 'seed_issuer_key'])
+)
 # get one obs per year
 year_list = [2015, 2016, 2017, 2018, 2019, 2020]
 obs = (obs
-       .with_columns(year = year_list)
+       .with_columns(
+           year = year_list,
+           seed_issuer_id = pl.col('seed_issuer_id').cast(pl.Float64).round(1)
+       )
        .explode('year'))
 
 # merge with res data
@@ -484,7 +535,7 @@ go_unlim = (mergent
 
 # Calculate cumulative issuances over ALL years in mergent data
 go_unlim_cumulative = (go_unlim
-              .with_columns(pl.col('seed_issuer_id').cast(pl.Int64),
+              .with_columns(pl.col('seed_issuer_id').cast(pl.Float64).round(1),
                             pl.col('year').cast(pl.Int64))
               .sort(['seed_issuer_id', 'year'])
               .with_columns(
@@ -517,7 +568,7 @@ all_bonds = (mergent
 
 # Calculate cumulative issuances over ALL years in mergent data
 all_bonds_cumulative = (all_bonds
-              .with_columns(pl.col('seed_issuer_id').cast(pl.Int64),
+              .with_columns(pl.col('seed_issuer_id').cast(pl.Float64).round(1),
                             pl.col('year').cast(pl.Int64))
               .sort(['seed_issuer_id', 'year'])
               .with_columns(
@@ -551,7 +602,7 @@ gdp = pl.DataFrame(pd.read_stata(f'{data_dir}/BEA/gdp_2001_2022.dta'))
 # merge
 obs = (obs
        .join(mergent_constant
-             .with_columns(pl.col('seed_issuer_id').cast(pl.Int64)), on = ['seed_issuer_id'], how = 'left')
+             .with_columns(pl.col('seed_issuer_id').cast(pl.Float64).round(1)), on = ['seed_issuer_id'], how = 'left')
        .join(go_unlim_obs_annual, on = ['seed_issuer_id', 'year'], how = 'left')
         .join(all_bonds_obs_annual, on = ['seed_issuer_id', 'year'], how = 'left')
        .join(employment

@@ -58,7 +58,7 @@ load data and aggregate rp articles
 # load rp map and add fips
 rp_map = (
     pl.read_csv(f'{clean_data_dir}/News/RP_Mergent_Mapping.csv')
-    .with_columns(pl.col('seed_issuer_id').cast(pl.Int64))
+    .with_columns(pl.col('seed_issuer_id').cast(pl.Float64).round(1))
 )
 fips = (pl.read_csv(f'{clean_data_dir}/News/Ravenpack_Cities_With_FIPS.csv')
         .select(['rp_entity_id', 'fips']))
@@ -264,7 +264,7 @@ mergent_month = (mergent
                  .with_columns(pl.col('offering_date').cast(pl.Date))
                  .with_columns(pl.col('offering_date').dt.year().alias('year'),
                                pl.col('offering_date').dt.month().alias('month'))
-                 .with_columns(pl.col('seed_issuer_id').cast(pl.Int64),
+                 .with_columns(pl.col('seed_issuer_id').cast(pl.Float64).round(1),
                                pl.col('year').cast(pl.Int64),
                                pl.col('month').cast(pl.Int64)))
 
@@ -427,7 +427,7 @@ mergent = (mergent
 
 seed_month = (seed_month
               .join(mergent
-                    .with_columns(pl.col('seed_issuer_id').cast(pl.Int64)), on = ['seed_issuer_id'], how = 'left'))
+                    .with_columns(pl.col('seed_issuer_id').cast(pl.Float64).round(1)), on = ['seed_issuer_id'], how = 'left'))
 
 #%%
 '''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
@@ -641,7 +641,7 @@ mergent_month = (mergent
                      pl.col('glm_proactive').first(),
                      pl.col('state_go_vote').first(),
                      pl.col('state').first())
-                 .with_columns(pl.col('seed_issuer_id').cast(pl.Int64),
+                 .with_columns(pl.col('seed_issuer_id').cast(pl.Float64).round(1),
                                pl.col('year').cast(pl.Int64),
                                pl.col('month').cast(pl.Int64)))
 
