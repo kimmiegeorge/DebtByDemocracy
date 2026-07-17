@@ -1,0 +1,39 @@
+\begingroup
+\centering
+\begin{tabular*}{\textwidth}{@{\extracolsep{\fill}}lcccc}
+\multicolumn{5}{l}{\textbf{Panel B: Regression analyses}}\\
+
+\addlinespace
+   \toprule
+    & \multicolumn{4}{c}{Total Articles - 12mo}\\
+   \cmidrule(lr){2-5}
+    & \multicolumn{2}{c}{Full Sample} & \multicolumn{2}{c}{Border-State Sample}\\
+   \cmidrule(lr){2-3}\cmidrule(lr){4-5}
+                        & (1)           & (2)           & (3)           & (4)\\  
+   \midrule 
+   Vote                 & 0.256$^{**}$  & 0.227$^{**}$  & 0.664$^{**}$  & 0.706$^{**}$\\   
+                        & (2.32)        & (1.99)        & (2.50)        & (2.33)\\   
+   Bond Issuance - 12mo & 0.196$^{**}$  & 0.190$^{**}$  & 0.108         & 0.107\\   
+                        & (2.21)        & (1.98)        & (0.70)       & (0.73)\\   
+   Num Sources          & 0.972$^{***}$ & 0.857$^{***}$ & 0.993$^{***}$ & 0.931$^{***}$\\   
+                        & (16.10)        & (19.10)        & (5.48)        & (5.27)\\   
+   Amount               & 0.190$^{***}$ & 0.152$^{***}$ & 0.036         & -0.033\\   
+                        & (3.30)        & (3.20)        & (0.25)       & (-0.23)\\   
+   County ln(GDP)       &               & 0.594$^{*}$   &               & -0.083\\   
+                        &               & (1.88)        &               & (-0.12)\\   
+   County ln(Pop)       &               & -0.135        &               & 1.13\\   
+                        &               & (-0.68)      &               & (0.81)\\   
+   County ln(Pers. Inc) &               & -0.328        &               & -0.605\\   
+                        &               & (-0.80)      &               & (-0.38)\\   
+    \\
+   Co-variance & \multicolumn{2}{c}{state} & \multicolumn{2}{c}{fips} \\ 
+   \hline
+   N         & 2,831         & 2,831         & 478           & 478\\  
+   Pseudo R$^2$         & 0.679         & 0.686         & 0.544         & 0.552\\  
+   Year-Month FE        & Yes           & Yes           & Yes           & Yes\\  
+   Purpose FE           & Yes           & Yes           & Yes           & Yes\\  
+   State-Border FE      & No            & No            & Yes           & Yes\\  
+   Cluster              & Mixed & Mixed & Mixed & Mixed\\  
+   \bottomrule
+\end{tabular*}
+\par\endgroup

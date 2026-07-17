@@ -16,6 +16,9 @@ high_state_tax_privilege_states <- c('CA', 'OR', 'HI', 'VT', 'RI', 'MT', 'ME', '
 #----------------------------
 # first issuer lvl 
 data <- as.data.table(read_stata('~/Dropbox/Voting on Bonds/Data/Mergent/clean/260716_city_issuerlevel_yieldspread.dta'))
+if (!'issuer_yield_spread' %in% names(data) && 'issuer_spread' %in% names(data)) {
+  data[, issuer_yield_spread := issuer_spread]
+}
 data[, city_rev_vote := ifelse(state == 'MO', 1, city_rev_vote)]
 data[, city_go_vote := ifelse(state == 'RI', NA, city_go_vote)]
 data[, super_majority := ifelse(state %in% super_majority_states, 1, 0)]

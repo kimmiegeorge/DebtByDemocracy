@@ -1,0 +1,68 @@
+% latex table generated in R 4.6.0 by xtable 1.8-8 package
+% Thu Jul 16 19:17:17 2026
+\begin{table}[H]
+\centering
+\begin{tabular*}{\textwidth}{@{\extracolsep{\fill}}lllllllll}
+\multicolumn{9}{l}{\textbf{Panel A: Descriptive statistics}}\\
+
+\addlinespace
+  \toprule
+Variable & Mean & Std & Min & P1 & Median & P99 & Max & N \\ 
+  \hline
+Total Articles (DPC) - 12mo & 3.13 & 6.25 & 0.00 & 0.00 & 0.00 & 26.29 & 26.29 & 788 \\ 
+   \hline
+\end{tabular*}
+\end{table}
+
+\vspace{0.5em}
+% latex table generated in R 4.6.0 by xtable 1.8-8 package
+% Thu Jul 16 19:17:17 2026
+\begin{table}[H]
+\centering
+\begin{tabular*}{\textwidth}{@{\extracolsep{\fill}}lccc}
+\multicolumn{4}{l}{\textbf{Panel B: Mean values by vote requirement}}\\
+
+\addlinespace
+  \toprule
+Variable & Mean (Vote = 0) & Mean (Vote = 1) & Difference \\ 
+  \hline
+Total Articles (DPC) - 12mo & 2.19 & 4.72 & 2.53*** (4.98) \\ 
+   \hline
+\end{tabular*}
+\end{table}
+
+\vspace{0.5em}
+\begingroup
+\centering
+\begin{tabular*}{\textwidth}{@{\extracolsep{\fill}}lcc}
+\multicolumn{3}{l}{\textbf{Panel C: Regression analyses}}\\
+
+\addlinespace
+   \toprule
+    & \multicolumn{2}{c}{Total Articles (DPC) - 12mo}\\
+   \cmidrule(lr){2-3}
+                        & (1)           & (2)\\  
+   \midrule 
+   Vote                 & 0.163$^{*}$   & 0.212$^{**}$\\   
+                        & (1.79)        & (2.04)\\   
+   Bond Issuance - 12mo & 0.083         & 0.138\\   
+                        & (0.99)       & (1.37)\\   
+   Total DPC Coverage   & 0.954$^{***}$ & 0.952$^{***}$\\   
+                        & (29.30)        & (28.60)\\   
+   Amount               & -0.021        & 0.039\\   
+                        & (-0.57)      & (0.91)\\   
+   County ln(GDP)       &               & -0.504$^{***}$\\   
+                        &               & (-2.65)\\   
+   County ln(Pop)       &               & -0.564$^{*}$\\   
+                        &               & (-1.85)\\   
+   County ln(Pers. Inc) &               & 0.971$^{***}$\\   
+                        &               & (3.09)\\   
+   \hline
+   N         & 788           & 788\\  
+   Pseudo R$^2$         & 0.695         & 0.699\\  
+   Year-Month FE        & Yes           & Yes\\  
+   Purpose FE           & Yes           & Yes\\  
+   Cluster              & County & County\\  
+   \bottomrule
+\end{tabular*}
+\par\endgroup
