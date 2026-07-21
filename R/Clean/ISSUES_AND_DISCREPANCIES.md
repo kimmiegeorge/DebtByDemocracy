@@ -14,8 +14,8 @@
 
 ## Output naming
 
-- `debt_choice.r` writes `yield_spread_utgo_only.tex` twice from two separate model blocks. The second write overwrites the first in the original workflow.
-- Robustness tables were written to an Overleaf robustness folder in the original scripts. The clean copies redirect those to `Code/R/Clean/output/revision_tables/robustness`.
+- In the original workflow, `debt_choice.r` wrote `yield_spread_utgo_only.tex` twice from two separate model blocks. The clean copy now writes the bond-type version to `yield_spread_utgo_only_bond_type_spreads.tex` and leaves the two-column paper table at `yield_spread_utgo_only.tex`.
+- Robustness tables were written to an Overleaf robustness folder in the original scripts. The official clean R scripts now omit those alternative clustering/sample outputs.
 
 ## Sample and filtering discrepancies
 
@@ -25,13 +25,16 @@
 - `websites.R` restricts the website sample to `total_subs == 50`, but some Texas election outcome code only applies that restriction in the website-election branch and not in the media-election branch. The restriction may be intended, but it is not common across all information-related analyses.
 - `election_outcomes.R` filters the election media sample to `unique_sources_12m_prior > 0`, excluding elections in places without prior media-source coverage. This should be disclosed clearly because it changes the estimand from all Texas elections to covered-source elections.
 - `trade_before_maturity.R` merges media disclosure by `seed_issuer_id`, `year`, and `month` after calling `unique()` on the disclosure file. If there are multiple issuances for the same issuer-month with different media context, this collapses to a shared issuer-month disclosure measure.
-- `debt_choice.r` joins issuer-level outcomes to `unique(seed_issuer_id, group, category)` from a bond-level border file. Diagnostics show 58 non-RI issuers still appear multiple times after this deduplication, so issuer-level border regressions may weight multi-border issuers more heavily.
+- `debt_choice.r` now joins the issuer-level outcomes to border groups by state and issuer name, avoiding reused `seed_issuer_id` values. After this correction, 55 of 430 non-RI border issuers enter more than one border-pair group, creating 60 extra issuer-group rows. This may be intended for a border-pair design, but it means the issuer-level border regression weights multi-border issuers more heavily.
+- The current issuer-level file has one reused whole-number ID and two reused decimal IDs: three `seed_issuer_id` values each identify two different issuer names. Joins for the new border and purpose tables therefore use state and issuer name rather than ID alone.
+- The aggregate issuer file records `year = 2001` for every observation. Consequently, state-year clustering in the issuer-level border cross section is numerically identical to state clustering; the printable wrapper discloses this.
 - The Texas election-outcome paper wrapper text says the table uses 872 city bond elections, but diagnostics find 1,134 raw media-election rows, 700 media-election rows after current restrictions, 1,492 raw website-election rows, and 499 website-election rows after `total_subs > 10`.
 
 ## Coding issues that can change reported results
 
-- `debt_choice.r` writes `yield_spread_utgo_only.tex` at least twice. The final paper table will reflect only the last block that writes that filename.
 - Several scripts recode `city_rev_vote` and `city_go_vote` state-by-state in-line (`MO`, `RI`) rather than relying only on upstream law variables. These recodes should be documented and checked against the state-law source file.
+- The clean R scripts previously classified `ND` as a municipal GO-bond supermajority state while omitting `OK` and `WV`; older archived scripts also contained competing lists. The corrected shared definition is `CA`, `ID`, `MO`, `OK`, `SD`, `WA`, and `WV` in `state_policy_definitions.R`.
+- Earlier clean R scripts used an upper-two-quintile high tax privilege indicator. An intermediate clean revision intended to use the bottom two quintiles but included several third-quintile states and omitted several fourth/bottom-quintile states. The current clean scripts source the exact fourth-plus-bottom Babina et al. (2021, Table 2) state list from `tax_privilege_definitions.R`.
 - See `DEEPER_AUDIT_FINDINGS.md` for quantified diagnostics and recommended fixes.
 
 ## Stata dependency

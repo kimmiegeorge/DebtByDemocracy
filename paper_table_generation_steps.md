@@ -69,10 +69,10 @@ Run these after the Python intermediate data files exist.
 | `Code/R/Clean/websites.R` | `Data/Clean_Intermediate/Websites/border_state_website_data_with_recovered.csv`; `Data/State Monitoring Policy/state_enforcement_adoption_years.csv`; Mergent clean `.dta` | `website_descriptives.tex`, `website_diff_means_table.tex`, `websites_regression.tex`, `websites_issuance_time_series_reg.tex` |
 | `Code/R/Clean/media_coverage.r` | Mergent clean `.dta`; `Data/Clean_Intermediate/News/Issuance_Lvl_News_With_Lagged_News.csv`; clean border RP file | `media_descriptives.tex`, `media_diff_means_table.tex`, `media_coverage.tex`, `media_coverage_super_majority.tex`, `article_counts.png` |
 | `Code/R/Clean/election_outcomes.R` | Clean TX election media files; clean TX website files; Mergent clean `.dta`; BEA controls | `election_descriptives.tex`, `tx_failed_and_margin.tex`, `tx_city_month_reg.tex`, `tx_website_time_series_reg.tex`, `tx_failed_and_margin_websites.tex` |
-| `Code/R/Clean/trade_before_maturity.R` | `Data/Clean_Intermediate/MSRB/Processed/Bond_Level_Any_Trade_Before_Maturity_with_CD_Data.csv`; clean border sample; clean website and media disclosure files | `secondary_market_descriptives.tex`, `trade_before_maturity_full_sample_tax.tex`, `trade_before_maturity_border_sample_tax.tex`, disclosure heterogeneity tables |
-| `Code/R/Clean/debt_choice.r` | `Data/Mergent/clean/260716_city_issuerlevel_yieldspread.dta`; clean border sample | `issuer_level_desc.tex`, `debt_choice_allgo.tex`, `debt_choice_utgo_only.tex`, `yield_spread_allgo.tex`, `yield_spread_utgo_only.tex`, `debt_choice_border_state_all_go_only.tex`, `debt_choice_super_majority.tex` |
+| `Code/R/Clean/trade_before_maturity.R` | `Data/Clean_Intermediate/MSRB/Processed/Bond_Level_Any_Trade_Before_Maturity_with_CD_Data.csv`; clean border sample; clean website and media disclosure files; `Code/R/Clean/tax_privilege_definitions.R` | `secondary_market_descriptives.tex`, `trade_before_maturity_full_sample_tax.tex`, `trade_before_maturity_border_sample_tax.tex`, disclosure heterogeneity tables |
+| `Code/R/Clean/debt_choice.r` | `Data/Mergent/clean/260716_city_issuerlevel_yieldspread.dta`; clean border sample; `Code/R/Clean/tax_privilege_definitions.R` | `issuer_level_desc.tex`, `debt_choice_allgo.tex`, `debt_choice_utgo_only.tex`, `yield_spread_allgo.tex`, `yield_spread_utgo_only.tex`, `debt_choice_border_state_all_go_only.tex`, `debt_choice_super_majority.tex` |
 | `Code/R/Clean/media_coverage_dpc.R` | Clean DPC issuance-level parquet; Mergent clean `.dta` | `media_coverage_dpc.tex` |
-| `Code/R/Clean/census_mergent_point_in_time_debt_choice.R` | Clean Census-Mergent cross-section CSVs | Point-in-time debt, yield, and census debt tables |
+| `Code/R/Clean/census_mergent_point_in_time_debt_choice.R` | Clean Census-Mergent cross-section CSVs; `Code/R/Clean/tax_privilege_definitions.R`; `Code/R/Clean/state_policy_definitions.R` | Point-in-time debt, yield, census debt, and two-panel border-state/supermajority robustness tables |
 
 ## Wrapper-to-Component Mapping
 
@@ -91,10 +91,12 @@ The included `processed/*.tex` files are wrappers that `\input{}` component tabl
 | `processed/debt_choice_border_state.tex` | `debt_choice_border_state_all_go_only` |
 | `processed/media_coverage_dpc.tex` | `media_coverage_dpc` |
 | `processed/media_supermajority.tex` | `media_coverage_super_majority` |
+| `output/processed/point_in_time_robustness.tex` | `point_in_time_robustness_border_state`, `point_in_time_robustness_super_majority` |
 
 ## Audit Notes
 
-- I did not find a script that generates the `tables/revision_tables/processed/*.tex` wrapper files. They appear to be hand-written or copied wrappers around generated component tables.
+- Most `tables/revision_tables/processed/*.tex` wrapper files appear to be hand-written or copied around generated component tables. The new clean `output/processed/point_in_time_robustness.tex` wrapper is generated directly by the point-in-time R script.
 - `summary_stats.tex` still inputs two components from `tables/submission_tables` while most other wrappers input from `tables/revision_tables`.
 - Several scripts use hard-coded dated input files. The date suffixes should be treated as part of the reproducibility contract.
+- The 2017 point-in-time border-state regressions apply the same `insample == 1` eligibility rule as the full-sample tables and, after the common control screen, retain only state-border groups containing both `city_go_vote` values. The identifying pairs are Georgia/Tennessee, Louisiana/Mississippi, Michigan/Wisconsin, North Carolina/Tennessee, Ohio/Kentucky, and West Virginia/Kentucky.
 - The clean R copies redirect table outputs away from Overleaf. The clean Python copies are isolated, but many original Python scripts use one `data_dir` variable for both inputs and outputs; output redirection should be finished before running them end-to-end.

@@ -588,17 +588,27 @@ def read_mergent_issuer_file():
 
     issuer = (
         pl.from_pandas(bond_pd)
-        .filter(pl.col('seed_issuer_id').is_not_null())
+        .filter(
+            pl.col('seed_issuer_id').is_not_null()
+            & pl.col('seed_issuer').is_not_null()
+            & pl.col('state').is_not_null()
+        )
         .with_columns([
             pl.col('seed_issuer_id').cast(pl.Float64).round(1),
+            pl.col('seed_issuer').cast(pl.Utf8).str.strip_chars(),
             pl.col('state').cast(pl.Utf8).str.to_uppercase(),
             pl.col('fips').cast(pl.Utf8).str.replace(r'\.0$', '').str.zfill(5).alias('county_fips'),
         ])
-        .group_by('seed_issuer_id')
+        .with_columns(
+            pl.concat_str([
+                (pl.col('seed_issuer_id') * 10).round(0).cast(pl.Int64).cast(pl.Utf8),
+                pl.col('state'),
+                pl.col('seed_issuer').str.to_uppercase().str.replace_all(r'\s+', ' '),
+            ], separator='|').alias('issuer_key')
+        )
+        .group_by(['issuer_key', 'seed_issuer_id', 'seed_issuer', 'state'])
         .agg([
-            pl.col('seed_issuer').drop_nulls().first().alias('seed_issuer'),
             pl.col('county_fips').drop_nulls().first().alias('county_fips'),
-            pl.col('state').drop_nulls().first().alias('state'),
             pl.col('state_name').drop_nulls().first().alias('state_name'),
             pl.col('city_go_vote').drop_nulls().first().alias('city_go_vote'),
             pl.col('city_rev_vote').drop_nulls().first().alias('city_rev_vote'),
@@ -770,9 +780,10 @@ def build_merge_diagnostic(census_panel, issuers):
             'census_government_priority',
             'issuer_name_priority',
             'seed_issuer_id',
+            'issuer_key',
         ])
         .unique(subset=['gov_id'], keep='first')
-        .unique(subset=['seed_issuer_id'], keep='first')
+        .unique(subset=['issuer_key'], keep='first')
         .drop(['match_type_priority', 'law_missing_priority', 'census_government_priority', 'issuer_name_priority'])
     )
 
@@ -783,7 +794,7 @@ def build_merge_diagnostic(census_panel, issuers):
 
     print('Exact merge diagnostic:')
     print(f'  Mergent issuers: {issuers.height:,}')
-    print(f'  exact matches: {matched_exact.select("seed_issuer_id").n_unique():,}')
+    print(f'  exact matches: {matched_exact.select("issuer_key").n_unique():,}')
     print(f'  matched Census governments: {matched_exact.select("gov_id").n_unique():,}')
     print(f'  unmatched: {still_unmatched.height:,}')
 

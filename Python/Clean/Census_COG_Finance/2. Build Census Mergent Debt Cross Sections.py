@@ -11,6 +11,12 @@ Mergent debt outstanding treats a bond as outstanding when:
 
 Weighted-average yield spreads use amount outstanding as weights and exclude
 bonds with missing offering_yield_spread from the denominator.
+
+Weighted-average ratings use amount outstanding as weights after replacing a
+missing issuance-level rating with zero. The issuance-level measure is the
+maximum bond-level rating_num within an issuance, constructed upstream as
+rating_issue_max. Unrated issuances therefore remain in both the numerator
+(with a zero contribution) and denominator.
 '''
 
 #%% -----------------------------------------------------------------------
@@ -49,6 +55,7 @@ census_mergent_match_file = diag_dir / 'census_cog_2022_mergent_exact_matches.cs
 border_file = border_dir / 'Border Matches All Mergent Data Expanded Set Buffer 100000.csv'
 
 bond_file = mergent_dir / '260716_city_cusiplevel_statereq_purpose_yieldspread.dta'
+yield_spread_file = clean_data_dir / 'Mergent' / 'Clean' / 'bond_level_off_yield_spread.csv'
 
 high_state_tax_privilege_states = {
     'CA', 'OR', 'HI', 'VT', 'RI', 'MT', 'ME', 'NJ', 'MN', 'NC', 'ID', 'NY',
@@ -74,17 +81,25 @@ def normalize_id_columns(df):
         df
         .with_columns([
             pl.col('seed_issuer_id').cast(pl.Float64).round(1),
+            pl.col('seed_issuer').cast(pl.Utf8).str.strip_chars(),
             pl.col('state').cast(pl.Utf8).str.to_uppercase(),
             pl.col('fips').cast(pl.Utf8).str.replace(r'\.0$', '').str.zfill(5),
         ])
+        .with_columns(
+            pl.concat_str([
+                (pl.col('seed_issuer_id') * 10).round(0).cast(pl.Int64).cast(pl.Utf8),
+                pl.col('state'),
+                pl.col('seed_issuer').str.to_uppercase().str.replace_all(r'\s+', ' '),
+            ], separator='|').alias('issuer_key')
+        )
     )
 
 
-def weighted_spread_expr(mask, name):
-    valid = mask & pl.col('offering_yield_spread').is_not_null()
+def weighted_spread_expr(mask, name, value_col='offering_yield_spread'):
+    valid = mask & pl.col(value_col).is_not_null()
     numerator = (
         pl.when(valid)
-        .then(pl.col('amount') * pl.col('offering_yield_spread'))
+        .then(pl.col('amount') * pl.col(value_col))
         .otherwise(0)
         .sum()
     )
@@ -145,6 +160,28 @@ def weighted_average_expr(mask, value_col, name):
     )
 
 
+def weighted_average_zero_missing_expr(mask, value_col, name):
+    numerator = (
+        pl.when(mask)
+        .then(pl.col('amount') * pl.col(value_col).fill_null(0))
+        .otherwise(0)
+        .sum()
+    )
+    denominator = (
+        pl.when(mask)
+        .then(pl.col('amount'))
+        .otherwise(0)
+        .sum()
+    )
+
+    return (
+        pl.when(denominator > 0)
+        .then(numerator / denominator)
+        .otherwise(None)
+        .alias(name)
+    )
+
+
 def first_non_null_expr(col):
     return pl.col(col).drop_nulls().first().alias(col)
 
@@ -164,14 +201,16 @@ matches = (
         pl.col('county_fips').cast(pl.Utf8).str.zfill(5),
     ])
     .filter(pl.col('city_go_vote').is_not_null())
-    .unique(subset=['seed_issuer_id'], keep='first')
+    .unique(subset=['issuer_key'], keep='first')
 )
 
 county_matches = (
     matches
     .filter(pl.col('match_type').eq('state_county_name'))
     .select([
+        'issuer_key',
         'seed_issuer_id',
+        'seed_issuer',
         'state',
         'county_fips',
         pl.col('issuer_city_clean').alias('census_city_clean'),
@@ -183,7 +222,9 @@ state_matches = (
     matches
     .filter(pl.col('match_type').eq('state_name'))
     .select([
+        'issuer_key',
         'seed_issuer_id',
+        'seed_issuer',
         'state',
         pl.col('issuer_city_clean').alias('census_city_clean'),
         'match_type',
@@ -284,10 +325,12 @@ census_state = (
 
 census_cross_section = (
     pl.concat([census_county, census_state], how='diagonal')
-    .unique(subset=['year', 'seed_issuer_id'], keep='first')
+    .unique(subset=['year', 'issuer_key'], keep='first')
     .select([
         'year',
+        'issuer_key',
         'seed_issuer_id',
+        'seed_issuer',
         'gov_id',
         'census_name',
         'government_type',
@@ -351,6 +394,9 @@ bond_cols = [
     'go_unlim',
     'go_lim',
     'rev',
+    'insured',
+    'callable',
+    'sinkable',
     'rating_issue_max',
     'offering_yield_spread',
     'city_go_vote',
@@ -366,6 +412,31 @@ bond_cols = [
 ]
 
 raw_bonds = read_stata_columns(bond_file, bond_cols)
+
+# Retain the original Gao et al. spread and use the pasted-formula NC spread
+# for the backward-compatible outcome consumed by the regression tables.
+nc_spreads = (
+    pl.read_csv(yield_spread_file, infer_schema_length=10000)
+    .select([
+        pl.col('issue_id').cast(pl.Int64),
+        pl.col('cusip').cast(pl.Utf8),
+        pl.col('offering_yield_spread_nc').cast(pl.Float64),
+    ])
+    .unique(subset=['issue_id', 'cusip'])
+)
+
+raw_bonds = (
+    raw_bonds
+    .rename({'offering_yield_spread': 'offering_yield_spread_gao'})
+    .with_columns([
+        pl.col('issue_id').cast(pl.Int64),
+        pl.col('cusip').cast(pl.Utf8),
+    ])
+    .join(nc_spreads, on=['issue_id', 'cusip'], how='left')
+    .with_columns(
+        pl.col('offering_yield_spread_nc').alias('offering_yield_spread')
+    )
+)
 
 issuer_control_cols = [
     'seed_issuer_id',
@@ -389,13 +460,13 @@ issuers = (
     raw_bonds
     .select(issuer_control_cols)
     .filter(pl.col('seed_issuer_id').is_not_null())
-    .with_columns([
-        pl.col('seed_issuer_id').cast(pl.Float64).round(1),
-        pl.col('state').cast(pl.Utf8).str.to_uppercase(),
-        pl.col('fips').cast(pl.Utf8).str.replace(r'\.0$', '').str.zfill(5),
+    .pipe(normalize_id_columns)
+    .group_by(['issuer_key', 'seed_issuer_id', 'seed_issuer', 'state'])
+    .agg([
+        first_non_null_expr(col)
+        for col in issuer_control_cols
+        if col not in {'seed_issuer_id', 'seed_issuer', 'state'}
     ])
-    .group_by('seed_issuer_id')
-    .agg([first_non_null_expr(col) for col in issuer_control_cols if col != 'seed_issuer_id'])
     .with_columns([
         pl.col('state')
         .is_in(high_state_tax_privilege_states)
@@ -433,16 +504,20 @@ issuers = (
 
 bonds = (
     raw_bonds
+    .pipe(normalize_id_columns)
     .with_columns([
-        pl.col('seed_issuer_id').cast(pl.Float64).round(1),
         pl.col('issue_id').cast(pl.Int64, strict=False),
-        pl.col('state').cast(pl.Utf8).str.to_uppercase(),
         pl.col('amount').cast(pl.Float64),
-        pl.col('rating_issue_max').cast(pl.Float64),
+        pl.col('rating_issue_max').cast(pl.Float64).fill_null(0),
         pl.col('offering_yield_spread').cast(pl.Float64),
+        pl.col('offering_yield_spread_nc').cast(pl.Float64),
+        pl.col('offering_yield_spread_gao').cast(pl.Float64),
         pl.col('go_unlim').fill_null(0).cast(pl.Int8, strict=False),
         pl.col('go_lim').fill_null(0).cast(pl.Int8, strict=False),
         pl.col('rev').cast(pl.Int8, strict=False),
+        pl.col('insured').fill_null(0).cast(pl.Int8, strict=False),
+        pl.col('callable').fill_null(0).cast(pl.Int8, strict=False),
+        pl.col('sinkable').fill_null(0).cast(pl.Int8, strict=False),
         pl.col('offering_date').cast(pl.Date),
         pl.col('maturity_date').cast(pl.Date),
     ])
@@ -491,7 +566,7 @@ for year in target_years:
 
     agg = (
         outstanding
-        .group_by('seed_issuer_id')
+        .group_by('issuer_key')
         .agg([
             amount_expr(any_go_or_revenue, 'mergent_go_revenue_outstanding_debt'),
             amount_expr(all_go, 'mergent_all_go_outstanding_debt'),
@@ -508,6 +583,56 @@ for year in target_years:
             weighted_spread_expr(all_go, 'mergent_wavg_yield_spread_all_go'),
             weighted_spread_expr(utgo, 'mergent_wavg_yield_spread_utgo'),
             weighted_spread_expr(ltgo, 'mergent_wavg_yield_spread_ltgo'),
+            weighted_spread_expr(
+                any_go_or_revenue,
+                'mergent_wavg_yield_spread_go_revenue_nc',
+                'offering_yield_spread_nc',
+            ),
+            weighted_spread_expr(
+                revenue,
+                'mergent_wavg_yield_spread_revenue_nc',
+                'offering_yield_spread_nc',
+            ),
+            weighted_spread_expr(
+                all_go,
+                'mergent_wavg_yield_spread_all_go_nc',
+                'offering_yield_spread_nc',
+            ),
+            weighted_spread_expr(
+                utgo,
+                'mergent_wavg_yield_spread_utgo_nc',
+                'offering_yield_spread_nc',
+            ),
+            weighted_spread_expr(
+                ltgo,
+                'mergent_wavg_yield_spread_ltgo_nc',
+                'offering_yield_spread_nc',
+            ),
+            weighted_spread_expr(
+                any_go_or_revenue,
+                'mergent_wavg_yield_spread_go_revenue_gao',
+                'offering_yield_spread_gao',
+            ),
+            weighted_spread_expr(
+                revenue,
+                'mergent_wavg_yield_spread_revenue_gao',
+                'offering_yield_spread_gao',
+            ),
+            weighted_spread_expr(
+                all_go,
+                'mergent_wavg_yield_spread_all_go_gao',
+                'offering_yield_spread_gao',
+            ),
+            weighted_spread_expr(
+                utgo,
+                'mergent_wavg_yield_spread_utgo_gao',
+                'offering_yield_spread_gao',
+            ),
+            weighted_spread_expr(
+                ltgo,
+                'mergent_wavg_yield_spread_ltgo_gao',
+                'offering_yield_spread_gao',
+            ),
             weighted_average_expr(
                 any_go_or_revenue,
                 'original_maturity_years',
@@ -533,31 +658,65 @@ for year in target_years:
                 'original_maturity_years',
                 'mergent_wavg_original_maturity_years_revenue',
             ),
-            weighted_average_expr(
+            weighted_average_zero_missing_expr(
                 any_go_or_revenue,
                 'rating_issue_max',
-                'mergent_wavg_rating_go_revenue_rated',
+                'mergent_wavg_rating_go_revenue_zero_unrated',
             ),
-            weighted_average_expr(
+            weighted_average_zero_missing_expr(
                 all_go,
                 'rating_issue_max',
-                'mergent_wavg_rating_all_go_rated',
+                'mergent_wavg_rating_all_go_zero_unrated',
             ),
-            weighted_average_expr(
+            weighted_average_zero_missing_expr(
                 utgo,
                 'rating_issue_max',
-                'mergent_wavg_rating_utgo_rated',
+                'mergent_wavg_rating_utgo_zero_unrated',
             ),
-            weighted_average_expr(
+            weighted_average_zero_missing_expr(
                 ltgo,
                 'rating_issue_max',
-                'mergent_wavg_rating_ltgo_rated',
+                'mergent_wavg_rating_ltgo_zero_unrated',
             ),
-            weighted_average_expr(
+            weighted_average_zero_missing_expr(
                 revenue,
                 'rating_issue_max',
-                'mergent_wavg_rating_revenue_rated',
+                'mergent_wavg_rating_revenue_zero_unrated',
             ),
+            *[
+                weighted_average_zero_missing_expr(
+                    mask,
+                    feature,
+                    f'mergent_wavg_{feature}_{suffix}',
+                )
+                for feature in ['insured', 'callable', 'sinkable']
+                for mask, suffix in [
+                    (any_go_or_revenue, 'go_revenue'),
+                    (all_go, 'all_go'),
+                    (utgo, 'utgo'),
+                    (ltgo, 'ltgo'),
+                    (revenue, 'revenue'),
+                ]
+            ],
+        ])
+        # The weighted averages are par shares because the underlying bond
+        # characteristics are binary. A share of zero is also recorded as a
+        # separate nonlinear "none of the outstanding bonds" indicator.
+        .with_columns([
+            pl.col(f'mergent_wavg_{feature}_{suffix}')
+            .eq(0)
+            .cast(pl.Int8)
+            .alias(f'mergent_none_{feature}_{suffix}')
+            for feature in ['insured', 'callable', 'sinkable']
+            for suffix in ['go_revenue', 'all_go', 'utgo', 'ltgo', 'revenue']
+        ])
+        .with_columns([
+            pl.col(f'mergent_wavg_{feature}_{suffix}')
+            .gt(0)
+            .cast(pl.Int8)
+            .alias(f'mergent_any_{feature}_{suffix}')
+            for feature in ['insured', 'callable', 'sinkable']
+            for suffix in ['go_revenue', 'all_go', 'utgo', 'ltgo', 'revenue']
         ])
         .with_columns(pl.lit(year).alias('year'))
     )
@@ -586,8 +745,8 @@ mergent_outstanding = mergent_outstanding.with_columns([
 print('Merging Census, Mergent outstanding debt, and controls...')
 full_panel = (
     census_cross_section
-    .join(issuers, on='seed_issuer_id', how='left', suffix='_issuer')
-    .join(mergent_outstanding, on=['seed_issuer_id', 'year'], how='left')
+    .join(issuers, on='issuer_key', how='left', suffix='_issuer')
+    .join(mergent_outstanding, on=['issuer_key', 'year'], how='left')
 )
 
 for col in mergent_amount_cols:
@@ -596,9 +755,12 @@ for col in mergent_amount_cols:
 
 border_memberships = (
     pl.read_csv(border_file, infer_schema_length=10000)
-    .with_columns(pl.col('seed_issuer_id').cast(pl.Float64).round(1))
+    .pipe(normalize_id_columns)
     .select([
+        'issuer_key',
         'seed_issuer_id',
+        'seed_issuer',
+        'state',
         pl.col('group').alias('border_group'),
         pl.col('category').alias('border_category'),
     ])
@@ -612,7 +774,7 @@ border_memberships = (
 
 border_flags = (
     border_memberships
-    .group_by('seed_issuer_id')
+    .group_by('issuer_key')
     .agg([
         pl.lit(1).alias('border_sample'),
         pl.col('border_group').n_unique().alias('border_group_count'),
@@ -621,7 +783,7 @@ border_flags = (
 
 full_panel = (
     full_panel
-    .join(border_flags, on='seed_issuer_id', how='left')
+    .join(border_flags, on='issuer_key', how='left')
     .with_columns([
         pl.col('border_sample').fill_null(0),
         pl.col('border_group_count').fill_null(0),
@@ -632,11 +794,12 @@ border_panel = (
     full_panel
     .filter(pl.col('border_sample').eq(1))
     .drop('border_sample')
-    .join(border_memberships, on='seed_issuer_id', how='inner')
+    .join(border_memberships, on='issuer_key', how='inner', suffix='_border')
 )
 
 ordered_cols_base = [
     'year',
+    'issuer_key',
     'seed_issuer_id',
     'seed_issuer',
     'state',
@@ -699,16 +862,41 @@ ordered_cols_base = [
     'mergent_wavg_yield_spread_all_go',
     'mergent_wavg_yield_spread_utgo',
     'mergent_wavg_yield_spread_ltgo',
+    'mergent_wavg_yield_spread_go_revenue_nc',
+    'mergent_wavg_yield_spread_revenue_nc',
+    'mergent_wavg_yield_spread_all_go_nc',
+    'mergent_wavg_yield_spread_utgo_nc',
+    'mergent_wavg_yield_spread_ltgo_nc',
+    'mergent_wavg_yield_spread_go_revenue_gao',
+    'mergent_wavg_yield_spread_revenue_gao',
+    'mergent_wavg_yield_spread_all_go_gao',
+    'mergent_wavg_yield_spread_utgo_gao',
+    'mergent_wavg_yield_spread_ltgo_gao',
     'mergent_wavg_original_maturity_years_go_revenue',
     'mergent_wavg_original_maturity_years_all_go',
     'mergent_wavg_original_maturity_years_utgo',
     'mergent_wavg_original_maturity_years_ltgo',
     'mergent_wavg_original_maturity_years_revenue',
-    'mergent_wavg_rating_go_revenue_rated',
-    'mergent_wavg_rating_all_go_rated',
-    'mergent_wavg_rating_utgo_rated',
-    'mergent_wavg_rating_ltgo_rated',
-    'mergent_wavg_rating_revenue_rated',
+    'mergent_wavg_rating_go_revenue_zero_unrated',
+    'mergent_wavg_rating_all_go_zero_unrated',
+    'mergent_wavg_rating_utgo_zero_unrated',
+    'mergent_wavg_rating_ltgo_zero_unrated',
+    'mergent_wavg_rating_revenue_zero_unrated',
+    *[
+        f'mergent_wavg_{feature}_{suffix}'
+        for feature in ['insured', 'callable', 'sinkable']
+        for suffix in ['go_revenue', 'all_go', 'utgo', 'ltgo', 'revenue']
+    ],
+    *[
+        f'mergent_none_{feature}_{suffix}'
+        for feature in ['insured', 'callable', 'sinkable']
+        for suffix in ['go_revenue', 'all_go', 'utgo', 'ltgo', 'revenue']
+    ],
+    *[
+        f'mergent_any_{feature}_{suffix}'
+        for feature in ['insured', 'callable', 'sinkable']
+        for suffix in ['go_revenue', 'all_go', 'utgo', 'ltgo', 'revenue']
+    ],
     'border_sample',
     'border_group_count',
     'border_group',

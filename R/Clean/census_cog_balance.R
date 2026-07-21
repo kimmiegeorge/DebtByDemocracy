@@ -64,7 +64,7 @@ matches[, city_go_vote := as.integer(as.numeric(city_go_vote))]
 matches <- matches[
   !is.na(city_go_vote),
   .(
-    seed_issuer_id = as.integer(seed_issuer_id),
+    seed_issuer_id = round(as.numeric(seed_issuer_id), 1),
     seed_issuer,
     state,
     county_fips = as.character(county_fips),
@@ -77,7 +77,7 @@ matches <- matches[
     match_type
   )
 ]
-matches <- unique(matches, by = 'seed_issuer_id')
+matches <- unique(matches, by = c('seed_issuer_id', 'state', 'seed_issuer'))
 
 panel[, census_city_clean := as.character(census_city_clean)]
 panel[, state := as.character(state)]
@@ -138,18 +138,18 @@ balance_data <- rbindlist(
   list(balance_county, balance_state),
   fill = TRUE
 )
-balance_data <- unique(balance_data, by = c('year', 'seed_issuer_id'))
+balance_data <- unique(balance_data, by = c('year', 'seed_issuer_id', 'state', 'seed_issuer'))
 balance_data <- balance_data[!is.na(city_go_vote)]
 balance_data[, lt_outstanding_debt_mil := end_lt_debt_outstanding_dollars / 1e6]
 balance_data[, outstanding_debt_mil := total_end_debt_outstanding_dollars / 1e6]
 balance_data[, population_thou := population / 1e3]
 
 border <- fread(border_file)
-border[, seed_issuer_id := as.integer(as.numeric(seed_issuer_id))]
-border <- unique(border[, .(seed_issuer_id, border_sample = 1L)])
+border[, seed_issuer_id := round(as.numeric(seed_issuer_id), 1)]
+border <- unique(border[, .(state, seed_issuer, border_sample = 1L)])
 balance_data <- border[
   balance_data,
-  on = 'seed_issuer_id'
+  on = .(state, seed_issuer)
 ]
 balance_data[is.na(border_sample), border_sample := 0L]
 

@@ -1,262 +1,245 @@
-'''
-Adjust yields for matched treasury yield
+"""Compute tax-adjusted, maturity-matched municipal bond yield spreads.
 
-From Gao et al. (2020):
+The primary (NC/Garrett et al.) construction is
 
-We calculate the yield on the coupon-equivalent risk-free bond as follows.
-For each municipal bond, we calculate the present value of its coupon payments and face value using the US Treasury yield curve,
-which is based on the zero-coupon yield curve estimated in Gürkaynak et al. (2007).
-This gives us the price of the coupon-equivalent risk-free bond.
-The risk-free yield-to-maturity is then calculated using this price, the coupon payments,
-and the face value payment.
-The yield spread is calculated as the difference between the municipal bond yield and the risk- free yield-to-maturity.
-This is similar to the yield spread calculation in Longstaff et al. (2005).
-'''
+    offering_yield / (1 - tau) - maturity-matched Treasury yield,
 
-#%%------------------------------------
-# set up
-#------------------------------------
+where tau is the Taxsim federal rate adjusted for state-tax deductibility plus
+the Taxsim state rate when the bond is exempt from tax in the issuing state.
+The Treasury match uses the same rounded integer maturity and the offering
+date, or the next trading day for weekend/holiday offerings.
 
+The source Mergent/Gao spread is retained as ``offering_yield_spread_gao``.
+The new spread is stored as both ``offering_yield_spread_nc`` and the
+backward-compatible ``offering_yield_spread`` used by downstream tables.
+"""
+
+from pathlib import Path
 import os
+import re
 
-import polars as pl
-import yfinance as yf
 import pandas as pd
-import numpy as np
-import numpy_financial as npf
-
-pl.Config(tbl_cols=100,
-		  tbl_width_chars=1000)
+import polars as pl
 
 
-data_dir = '~/Dropbox/Voting on Bonds/Data'
-clean_data_dir = '/Users/kmunevar/Dropbox/Voting on Bonds/Data/Clean_Intermediate'
-os.makedirs(os.path.expanduser(f'{clean_data_dir}/Mergent/Clean'), exist_ok=True)
+ROOT = Path(os.path.expanduser("~/Dropbox/Voting on Bonds"))
+DATA = ROOT / "Data"
+BOND_FILE = DATA / "Mergent/Clean/260716_city_cusiplevel_statereq_purpose_yieldspread.dta"
+TAX_FILE = DATA / "MSRB/taxsim_nber_max_state_income_rates_1977_2021.csv"
+TREASURY_FILE = DATA / "Nominal Yield Curve/nominal_yield_curve.csv"
+OUTPUT_DIR = DATA / "Clean_Intermediate/Mergent/Clean"
+OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
 
-#%%------------------------------------
-# load mergent data
-#------------------------------------
-mergent = (pl
-           .DataFrame(
-    pd
-    .read_stata(f'{data_dir}/Mergent/Clean/260716_city_cusiplevel_statereq_purpose_yieldspread.dta')
+BOND_OUTPUT = OUTPUT_DIR / "bond_level_off_yield_spread.csv"
+ISSUER_OUTPUT = OUTPUT_DIR / "issuer_level_nc_yield_spreads.csv"
+
+BOND_COLUMNS = [
+    "issue_id",
+    "cusip",
+    "seed_issuer",
+    "seed_issuer_id",
+    "state",
+    "state_name",
+    "state_tax",
+    "offering_date",
+    "maturity_date",
+    "offering_yield",
+    "offering_yield_spread",
+    "amount",
+    "bond_type",
+    "go_unlim",
+    "go_lim",
+    "rev",
+]
+
+
+def weighted_average(group: pd.DataFrame, mask: pd.Series) -> float:
+    """Return an amount-weighted NC spread for the requested bond category."""
+    valid = mask & group["offering_yield_spread_nc"].notna() & group["amount"].gt(0)
+    if not valid.any():
+        return float("nan")
+    return (
+        (group.loc[valid, "amount"] * group.loc[valid, "offering_yield_spread_nc"]).sum()
+        / group.loc[valid, "amount"].sum()
+    )
+
+
+print("Loading Mergent bonds and preserving the Gao spread...")
+bonds_pd = pd.read_stata(BOND_FILE, columns=BOND_COLUMNS, convert_categoricals=False)
+bonds = (
+    pl.from_pandas(bonds_pd)
+    .rename({"offering_yield_spread": "offering_yield_spread_gao"})
+    .with_columns([
+        pl.col("issue_id").cast(pl.Int64),
+        pl.col("cusip").cast(pl.Utf8),
+        pl.col("offering_date").cast(pl.Date),
+        pl.col("maturity_date").cast(pl.Date),
+        pl.col("offering_yield").cast(pl.Float64),
+        pl.col("offering_yield_spread_gao").cast(pl.Float64),
+        pl.col("amount").cast(pl.Float64),
+        pl.col("state_tax").cast(pl.Utf8).str.strip_chars(),
+    ])
+    .with_columns([
+        pl.col("offering_date").dt.year().alias("year"),
+        (
+            (pl.col("maturity_date") - pl.col("offering_date")).dt.total_days()
+            / 365.25
+        ).alias("maturity_years"),
+    ])
+    .with_columns(
+        pl.col("maturity_years").round(0).cast(pl.Int64).alias("maturity_years_rounded")
+    )
 )
-            .select(['issue_id', 'cusip', 'maturity_date', 'offering_yield', 'offering_price',
-                     'offering_date', 'maturity_mths', 'coupon'])
+
+print("Joining state-year Taxsim rates and applying the state exemption indicator...")
+tax_rates = (
+    pl.read_csv(TAX_FILE)
+    .filter(pl.col("state") != "federal")
+    .select([
+        pl.col("year").cast(pl.Int64),
+        pl.col("state").alias("state_name"),
+        (pl.col("federal_rate").cast(pl.Float64) / 100).alias("federal_tax_rate"),
+        (pl.col("state_rate").cast(pl.Float64) / 100).alias("state_income_tax_rate"),
+    ])
 )
 
-#%%------------------------------------
-# Add additional needed bond information
-#------------------------------------
-coupon = (pd.read_csv(f'{data_dir}/Mergent/Raw/BONDINFO.DLM', delimiter = '|'))
-coupon = coupon[['issue_id_l', 'cusip_c', 'coupon_code_c', 'maturity_amount_f',
-                 'interest_frequency_i']]
-coupon = pl.DataFrame(coupon)
-coupon = (coupon
-          .rename({'issue_id_l': 'issue_id',
-                   'cusip_c': 'cusip',
-                   'coupon_code_c': 'coupon_code',
-                   'maturity_amount_f': 'maturity_amount',
-                   'interest_frequency_i': 'interest_frequency'}))
+bonds = (
+    bonds
+    .join(tax_rates, on=["year", "state_name"], how="left")
+    .with_columns([
+        pl.when(pl.col("state_tax") == "N")
+        .then(1.0)
+        .when(pl.col("state_tax") == "Y")
+        .then(0.0)
+        # When the state rate is zero, the unknown indicator cannot affect tau.
+        .when(pl.col("state_income_tax_rate") == 0)
+        .then(0.0)
+        # Otherwise leave bonds with unknown state-tax status out of the NC
+        # spread rather than imposing an exemption assumption.
+        .otherwise(None)
+        .alias("state_exemption_indicator"),
+        pl.col("state_tax").is_in(["N", "Y"]).alias("state_tax_status_known"),
+    ])
+    .with_columns(
+        (
+            pl.col("federal_tax_rate")
+            + pl.col("state_income_tax_rate") * pl.col("state_exemption_indicator")
+        ).alias("combined_marginal_tax_rate")
+    )
+    .with_columns(
+        (
+            pl.col("offering_yield") / (1 - pl.col("combined_marginal_tax_rate"))
+        ).alias("tax_adjusted_offering_yield")
+    )
+)
 
-mergent = (mergent
-            .with_columns(pl.col('issue_id').cast(pl.Int64))
-           .join(coupon, on = ['issue_id', 'cusip'], how = 'left'))
+print("Matching rounded maturity to the Treasury zero-coupon curve...")
+curve = pl.read_csv(TREASURY_FILE)
+sveny_columns = [column for column in curve.columns if re.fullmatch(r"SVENY\d{2}", column)]
+treasury = (
+    curve
+    .select(["Date", *sveny_columns])
+    .with_columns(pl.col("Date").str.to_date(format="%m/%d/%y"))
+    .unpivot(
+        index="Date",
+        on=sveny_columns,
+        variable_name="treasury_maturity",
+        value_name="treasury_yield",
+    )
+    .with_columns([
+        pl.col("treasury_maturity").str.slice(-2).cast(pl.Int64).alias("maturity_years_rounded"),
+        pl.col("treasury_yield").cast(pl.Float64, strict=False),
+    ])
+    .filter(pl.col("treasury_yield").is_not_null())
+    .select([
+        pl.col("Date").alias("treasury_date"),
+        "maturity_years_rounded",
+        "treasury_yield",
+    ])
+    .sort("treasury_date")
+)
 
-del coupon
-#%%------------------------------------
-# load yield curve data
-#------------------------------------
-yield_curve = (pl
-               .read_csv(f'{data_dir}/Nominal Yield Curve/nominal_yield_curve.csv'))
+eligible = (
+    bonds
+    .filter(pl.col("maturity_years_rounded").is_between(1, 30))
+    .sort("offering_date")
+    .join_asof(
+        treasury,
+        left_on="offering_date",
+        right_on="treasury_date",
+        by="maturity_years_rounded",
+        strategy="forward",
+    )
+    .with_columns(
+        (
+            pl.col("tax_adjusted_offering_yield") - pl.col("treasury_yield")
+        ).alias("offering_yield_spread_nc")
+    )
+    .with_columns(
+        pl.col("offering_yield_spread_nc").alias("offering_yield_spread")
+    )
+)
 
-yield_curve = (yield_curve                # select date and columns containing 'SVENY'
-               .select(['Date',
-     *[col for col in yield_curve.columns if 'SVENY' in col]]))
+bond_output = eligible.select([
+    "issue_id",
+    "cusip",
+    "offering_date",
+    "maturity_date",
+    "maturity_years",
+    "maturity_years_rounded",
+    "state_tax",
+    "state_tax_status_known",
+    "state_exemption_indicator",
+    "federal_tax_rate",
+    "state_income_tax_rate",
+    "combined_marginal_tax_rate",
+    "offering_yield",
+    "tax_adjusted_offering_yield",
+    "treasury_date",
+    "treasury_yield",
+    "offering_yield_spread_gao",
+    "offering_yield_spread_nc",
+    "offering_yield_spread",
+])
+bond_output.write_csv(BOND_OUTPUT)
 
-yield_curve = (yield_curve
-               .with_columns(pl.col('Date').str.to_date(format = '%m/%d/%y'))
-               .filter(pl.col('Date').dt.year().is_between(2000, 2026)))
+print("Constructing issuer-level weighted averages for the full-period tables...")
+issuer_bonds = (
+    eligible
+    .filter(
+        pl.col("seed_issuer").is_not_null()
+        & pl.col("rev").is_not_null()
+        & pl.col("amount").is_not_null()
+        & (pl.col("amount") > 0)
+    )
+    .to_pandas()
+)
 
-# reshape to have 30 observations per date - one for each maturity
-yield_melt = (yield_curve
-              .unpivot(index=['Date'], on=[c for c in yield_curve.columns if 'SVENY' in c],
-                    variable_name='zero_coupon_maturity', value_name='zero_coupon_yield'))
+issuer_rows = []
+for seed_issuer, group in issuer_bonds.groupby("seed_issuer", sort=False, dropna=False):
+    all_rows = pd.Series(True, index=group.index)
+    go = group["bond_type"].eq("go")
+    utgo = group["go_unlim"].eq(1)
+    ltgo = group["go_lim"].eq(1)
+    revenue = group["rev"].eq(1)
+    overall = weighted_average(group, all_rows)
+    issuer_rows.append({
+        "seed_issuer": seed_issuer,
+        "state": group["state"].dropna().iloc[0] if group["state"].notna().any() else None,
+        "issuer_spread_nc": overall,
+        "issuer_yield_spread_nc": overall,
+        "issuer_spread_go_nc": weighted_average(group, go),
+        "issuer_spread_utgo_nc": weighted_average(group, utgo),
+        "issuer_spread_ltgo_nc": weighted_average(group, ltgo),
+        "issuer_spread_rev_nc": weighted_average(group, revenue),
+    })
 
-# adjust maturity to just be int value
-# and adjust coupon rate to be in percent
-yield_melt = (yield_melt
-              .with_columns(pl.col('zero_coupon_maturity').str.slice(-2).cast(pl.Int64))
-                .filter(pl.col('zero_coupon_yield').ne('NA'))
-              .with_columns(pl.col('zero_coupon_yield').cast(pl.Float64).truediv(100)))
+issuer_output = pd.DataFrame(issuer_rows)
+issuer_output.to_csv(ISSUER_OUTPUT, index=False)
 
-
-
-#%%------------------------------------
-# Match to closest zero coupon from yield curve
-#------------------------------------
-
-# first, get maturity in years
-mergent = (mergent
-           .with_columns(pl.col('maturity_date').sub(pl.col('offering_date')).dt.total_days()
-                         .truediv(365).round().cast(pl.Int64).alias('maturity_yrs'))
-           .filter(pl.col('maturity_yrs').is_between(1, 30)))
-
-# filter to semiannual interest or interest at maturity only
-mergent = (mergent
-           .filter(pl.col('interest_frequency').eq(pl.lit('Z')) |
-                                                   pl.col('interest_frequency').eq(pl.lit('S'))))
-
-# merge
-mergent = (mergent
-            .with_columns(pl.col('offering_date').cast(pl.Date))
-           .join(yield_melt.rename({'Date': 'offering_date'}),
-                 left_on = ['offering_date', 'maturity_yrs'],
-                 right_on = ['offering_date', 'zero_coupon_maturity'], how = 'left'))
-
-del yield_melt
-del yield_curve
-
-#%%------------------------------------
-# adjust to semi annual
-#------------------------------------
-
-# present value of face value and coupon payments
-mergent = (mergent
-            .with_columns(pl.col('zero_coupon_yield').truediv(2).alias('semi_annual_zero_yield'))
-            .with_columns(pl.col('maturity_yrs').mul(2).alias('semi_annual_payments'))
-            .with_columns(pl.col('coupon').truediv(2).alias('semi_annual_coupon')))
-
-
-#%%------------------------------------
-# functions for pv and irr
-#------------------------------------
-
-def get_pv_semi(struct):
-    cpn = struct['semi_annual_coupon']
-    cpn_periods = struct['semi_annual_payments']
-    r = struct['semi_annual_zero_yield']
-    fv = struct['maturity_amount']
-    # Initialize cash_sequence
-    cash_sequence = [0] # initialize with zero initial investment, then start the coupon payments
-    cash_sequence.extend([cpn] * (cpn_periods - 1))
-    # Add the sum of the last coupon payment and the face value
-    cash_sequence.append(cpn + fv)
-    pv = npf.npv(r, cash_sequence)
-
-    return pv
-
-def get_pv_maturity(struct):
-    cpn = struct['coupon']
-    cpn_periods = struct['maturity_yrs']
-    r = struct['zero_coupon_yield']
-    fv = struct['maturity_amount']
-    # calculate interest payment at maturity
-    int_payment = (cpn/100) * cpn_periods * fv
-    cash_sequence = [0] # initialize with zero initial investment, then start the coupon payments
-    cash_sequence.extend([0] * (cpn_periods - 1))
-    # Add the sum of the last coupon payment and the face value
-    cash_sequence.append(int_payment + fv)
-    pv = npf.npv(r, cash_sequence)
-    return pv
-
-
-def get_ytm_semi(struct):
-    pv = struct['total_pv']
-    cpn = struct['semi_annual_coupon']
-    cpn_periods = struct['semi_annual_payments']
-    fv = struct['maturity_amount']
-    # Initialize cash_sequence with -pv
-    cash_sequence = [-pv]
-    # Add semi-annual coupon payment for cpn_periods times
-    cash_sequence.extend([cpn] * (cpn_periods-1))
-    # Add the sum of the last coupon payment and the face value
-    cash_sequence.append(cpn + fv)
-    ytm = npf.irr(cash_sequence)
-
-    return ytm
-
-
-def get_ytm_maturity(struct):
-    pv = struct['total_pv']
-    cpn = struct['coupon']
-    cpn_periods = struct['maturity_yrs']
-    fv = struct['maturity_amount']
-    # Initialize cash_sequence with -pv
-    cash_sequence = [-pv]
-    # Add semi-annual coupon payment for cpn_periods times
-    cash_sequence.extend([0] * (cpn_periods-1))
-    # Add the sum of the last coupon payment and the face value
-    int_payment = (cpn/100) * cpn_periods * fv
-    cash_sequence.append(int_payment + fv)
-    ytm = npf.irr(cash_sequence)
-
-    return ytm
-
-#%%------------------------------------
-# calculate pv
-#------------------------------------
-# inputs
-mergent = (mergent.with_columns(pl.struct(pl.col('semi_annual_coupon'),
-                       pl.col('semi_annual_zero_yield'),
-                       pl.col('semi_annual_payments'),
-                       pl.col('maturity_amount')).alias('pv_inputs_semi'),
-                                pl.struct(pl.col('coupon'),
-                                          pl.col('zero_coupon_yield'),
-                                          pl.col('maturity_yrs'),
-                                          pl.col('maturity_amount')).alias('pv_inputs_maturity')))
-
-# calculate yield to maturity
-mergent_semi = (mergent
-            # filter to semiannual interest only
-            .filter(pl.col('interest_frequency').eq(pl.lit('Z')))
-            .with_columns(pl.col('pv_inputs_semi').map_elements(get_pv_semi, return_dtype=pl.Float64).alias('total_pv')))
-
-mergent_maturity = (mergent
-            # filter to semiannual interest only
-            .filter(pl.col('interest_frequency').eq(pl.lit('S')))
-            .with_columns(pl.col('pv_inputs_maturity').map_elements(get_pv_maturity, return_dtype=pl.Float64).alias('total_pv')))
-
-
-
-#%%------------------------------------
-# calculate ytm
-#------------------------------------
-# inputs for ytm
-mergent_semi = (mergent_semi.with_columns(pl.struct(pl.col('total_pv'),
-                       pl.col('semi_annual_coupon'),
-                       pl.col('semi_annual_payments'),
-                       pl.col('maturity_amount')).alias('ytm_inputs_semi')))
-
-mergent_maturity = (mergent_maturity.with_columns(pl.struct(pl.col('total_pv'),
-                       pl.col('coupon'),
-                       pl.col('maturity_yrs'),
-                       pl.col('maturity_amount')).alias('ytm_inputs_maturity')))
-# calculate yield to maturity
-mergent_semi = (mergent_semi
-           .with_columns(pl.col('ytm_inputs_semi').map_elements(get_ytm_semi, return_dtype=pl.Float64).alias('ytm')))
-
-mergent_maturity = (mergent_maturity
-           .with_columns(pl.col('ytm_inputs_maturity').map_elements(get_ytm_maturity, return_dtype=pl.Float64).alias('ytm')))
-
-
-#%%------------------------------------
-# combine semiannual and maturity
-#------------------------------------
-
-mergent_full = (pl.concat([
-    mergent_semi.select(['issue_id', 'interest_frequency', 'cusip', 'offering_yield', 'ytm']),
-    mergent_maturity.select(['issue_id', 'interest_frequency', 'cusip', 'offering_yield', 'ytm'])
-]))
-
-#%%------------------------------------
-# calculate yield spread
-#------------------------------------
-mergent_full = (mergent_full
-           .with_columns(pl.col('offering_yield')
-                         .sub(pl.col('ytm').mul(100)).alias('offering_yield_spread')))
-
-#%%------------------------------------
-# save
-#------------------------------------
-mergent_full.select(['issue_id', 'cusip', 'offering_yield_spread']).write_csv(f'{clean_data_dir}/Mergent/Clean/bond_level_off_yield_spread.csv')
+known_status = eligible.filter(pl.col("state_tax_status_known"))
+print(f"Saved {bond_output.height:,} maturity-eligible bond rows to {BOND_OUTPUT}")
+print(f"New spread available: {bond_output['offering_yield_spread_nc'].is_not_null().sum():,}")
+print(f"Gao spread retained: {bond_output['offering_yield_spread_gao'].is_not_null().sum():,}")
+print(f"Known state-tax status: {known_status.height:,}")
+print(f"Saved {len(issuer_output):,} issuer aggregates to {ISSUER_OUTPUT}")

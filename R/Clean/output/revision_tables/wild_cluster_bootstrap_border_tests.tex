@@ -1,0 +1,73 @@
+\begingroup
+\centering
+\begin{tabular*}{\textwidth}{@{\extracolsep{\fill}}lccccc}
+\multicolumn{6}{l}{\textbf{Panel A: Website disclosure}}\\
+
+\addlinespace
+   \toprule
+ & Bond URLs & Bond Count & Fiscal URLs & Fiscal Count & Financial Docs\\
+ & (1) & (2) & (3) & (4) & (5)\\
+   \midrule 
+Vote & 1.271$^{***}$ & 0.967$^{**}$ & 2.334$^{**}$ & 1.069 & 0.494\\
+ & $[p=0.010]$ & $[p=0.015]$ & $[p=0.030]$ & $[p=0.128]$ & $[p=0.122]$\\
+   \hline
+N & 1,328 & 1,424 & 1,220 & 1,424 & 1,395\\
+Pseudo R$^2$ & 0.144 & 0.192 & 0.249 & 0.263 & 0.142\\
+Controls & Yes & Yes & Yes & Yes & Yes\\
+State-Border FE & Yes & Yes & Yes & Yes & Yes\\
+Year FE & Yes & Yes & Yes & Yes & Yes\\
+Cluster & State & State & State & State & State\\
+   \bottomrule
+\end{tabular*}
+\par\endgroup
+
+\vspace{0.75em}
+
+\begingroup
+\centering
+\begin{tabular*}{\textwidth}{@{\extracolsep{\fill}}lcc}
+\multicolumn{3}{l}{\textbf{Panel B: Media coverage}}\\
+
+\addlinespace
+   \toprule
+    & \multicolumn{2}{c}{Total Articles - 12mo}\\
+   \cmidrule(lr){2-3}
+ & (1) & (2)\\
+   \midrule 
+Vote & 0.664$^{**}$ & 0.706$^{*}$\\
+ & $[p=0.032]$ & $[p=0.058]$\\
+   \hline
+N & 478 & 478\\
+Pseudo R$^2$ & 0.544 & 0.552\\
+County Controls & No & Yes\\
+Year-Month FE & Yes & Yes\\
+Purpose FE & Yes & Yes\\
+State-Border FE & Yes & Yes\\
+Cluster & State & State\\
+   \bottomrule
+\end{tabular*}
+\par\endgroup
+
+\vspace{0.75em}
+
+\begingroup
+\centering
+\begin{tabular*}{\textwidth}{@{\extracolsep{\fill}}lcc}
+\multicolumn{3}{l}{\textbf{Panel C: Debt choice and aggregate yield spread}}\\
+
+\addlinespace
+   \toprule
+ & Pct UTGO & Wtd. Avg. Yield Spread\\
+ & (1) & (2)\\
+   \midrule 
+Vote & -0.391$^{***}$ & 0.380$^{**}$\\
+ & $[p=0.008]$ & $[p=0.023]$\\
+   \hline
+N & 186 & 186\\
+Adj. R$^2$ & 0.343 & 0.502\\
+Controls & Yes & Yes\\
+State-Border FE & Yes & Yes\\
+Cluster & State & State\\
+   \bottomrule
+\end{tabular*}
+\par\endgroup

@@ -9,13 +9,15 @@ Set up
 '''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
 
 import polars as pl
-import os
 import pandas as pd
 import numpy as np
+from pathlib import Path
 
-data_dir = '~/Dropbox/Voting on Bonds/Data'
-clean_data_dir = '/Users/kmunevar/Dropbox/Voting on Bonds/Data/Clean_Intermediate'
-os.makedirs(os.path.expanduser(f'{clean_data_dir}/MSRB/Processed'), exist_ok=True)
+project_dir = Path(__file__).resolve().parents[4]
+data_dir = project_dir / 'Data'
+clean_data_dir = data_dir / 'Clean_Intermediate'
+msrb_processed_dir = clean_data_dir / 'MSRB' / 'Processed'
+msrb_processed_dir.mkdir(parents=True, exist_ok=True)
 
 #%%
 '''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
@@ -29,7 +31,7 @@ issuances = (pl
                       'offering_date']))
 
 liquidity = (pl
-             .read_parquet(f'{data_dir}/MSRB/Processed/All_Trade_Markup_2005_2023.gzip')
+             .read_parquet(msrb_processed_dir / 'All_Trade_Markup_2005_2023.gzip')
              )
 
 # Winsorize markup at 1% and 99% percentiles
@@ -42,7 +44,7 @@ liquidity = liquidity.with_columns(
 
 # load yield spreads
 yields = (pl
-          .read_parquet(f'{data_dir}/MSRB/Processed/All_Trade_Yields_2005_2023.gzip'))
+          .read_parquet(msrb_processed_dir / 'All_Trade_Yields_2005_2023.gzip'))
 
 
 #%%
@@ -386,7 +388,7 @@ issuance_level = (issuance_level
 Output
 '''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
 (issuance_level
- .write_parquet(f'{clean_data_dir}/MSRB/Processed/Bond_Level_Secondary_Market_Vars_With_Bond_Vars_2005_2023.gzip'))
+ .write_parquet(msrb_processed_dir / 'Bond_Level_Secondary_Market_Vars_With_Bond_Vars_2005_2023.gzip'))
 
 (issuance_level
- .write_csv(f'{clean_data_dir}/MSRB/Processed/Bond_Level_Secondary_Market_Vars_With_Bond_Vars_2005_2023.csv'))
+ .write_csv(msrb_processed_dir / 'Bond_Level_Secondary_Market_Vars_With_Bond_Vars_2005_2023.csv'))

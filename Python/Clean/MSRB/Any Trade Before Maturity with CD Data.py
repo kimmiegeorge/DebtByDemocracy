@@ -1,6 +1,7 @@
 '''
-Create file with bond-level any trade before maturity indicators
-and merge with continuing disclosure data
+Create file with bond-level trade-before-maturity indicators and continuing
+disclosure data. Preserve the original markup-sample indicators and add
+separate raw customer-trade indicators without the same-day interdealer rule.
 '''
 
 #%%
@@ -9,12 +10,21 @@ Set up
 '''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
 
 import polars as pl
-import os
 import pandas as pd
+from pathlib import Path
 
-data_dir = '~/Dropbox/Voting on Bonds/Data'
-clean_data_dir = '/Users/kmunevar/Dropbox/Voting on Bonds/Data/Clean_Intermediate'
-os.makedirs(os.path.expanduser(f'{clean_data_dir}/MSRB/Processed'), exist_ok=True)
+project_dir = Path(__file__).resolve().parents[4]
+data_dir = project_dir / 'Data'
+clean_data_dir = data_dir / 'Clean_Intermediate'
+msrb_processed_dir = clean_data_dir / 'MSRB' / 'Processed'
+msrb_processed_dir.mkdir(parents=True, exist_ok=True)
+
+raw_trade_files = [data_dir / 'MSRB' / 'Raw Files' / f'msrb_{year}.gzip'
+                   for year in range(2005, 2024)]
+missing_raw_files = [path for path in raw_trade_files if not path.exists()]
+if missing_raw_files:
+    raise FileNotFoundError(f'Missing MSRB raw files: {missing_raw_files}')
+raw_trade_files = [str(path) for path in raw_trade_files]
 
 #%%
 '''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
@@ -32,7 +42,7 @@ issuances = (pl
 ]))
 
 liquidity = (pl
-             .read_parquet(f'{data_dir}/MSRB/Processed/All_Trade_Markup_2005_2023.gzip')
+             .read_parquet(msrb_processed_dir / 'All_Trade_Markup_2005_2023.gzip')
              )
 daily_liquidity = (liquidity
                    .group_by(['cusip', 'trade_date'])
@@ -41,6 +51,33 @@ daily_liquidity = (liquidity
                         pl.col('retail').sum().alias('retail_trades'),
                         pl.col('institutional').sum().alias('institutional_trades')))
 del liquidity
+
+# Create separate trade-presence indicators directly from all raw customer
+# transactions (P and S). These intentionally do not require a same-day
+# interdealer trade or a nonnegative computed markup. The original indicators
+# above remain based on the markup sample and are preserved unchanged.
+raw_customer_trade_indicators = (pl
+    .scan_parquet(raw_trade_files)
+    .select(['cusip', 'trade_date', 'trade_type_indicator', 'par_traded'])
+    .filter(pl.col('trade_type_indicator').is_in(['P', 'S']))
+    .with_columns(
+        pl.col('par_traded')
+        .replace('1MM+', '1000000')
+        .cast(pl.Float64, strict=False)
+    )
+    .join(issuances.lazy(), on='cusip', how='inner')
+    .filter(pl.col('trade_date') >= pl.col('offering_date') + pl.duration(days=30))
+    .filter(pl.col('trade_date') <= pl.col('maturity_date'))
+    .group_by('cusip')
+    .agg(
+        pl.len().gt(0).cast(pl.Int8).alias('traded_before_maturity_raw'),
+        pl.col('par_traded').lt(100000).fill_null(False).any().cast(pl.Int8)
+        .alias('retail_traded_before_maturity_raw'),
+        pl.col('par_traded').ge(100000).fill_null(False).any().cast(pl.Int8)
+        .alias('institutional_traded_before_maturity_raw'),
+    )
+    .collect()
+)
 
 
 cd = pl.read_csv(f'{data_dir}/Continuing Disclosure/cleaned_daily_disclosure_data.csv',
@@ -129,6 +166,12 @@ bond_agg = (bond_agg
                           pl.when(pl.col('total_institutional_trades_before_maturity').gt(0))
                             .then(1).otherwise(0).alias('institutional_traded_before_maturity'),
                           pl.col('total_disclosures_before_maturity').truediv(pl.col('pre_maturity_years')).alias('avg_disclosures_per_year_before_maturity'))
+            .join(raw_customer_trade_indicators, on='cusip', how='left')
+            .with_columns(
+                pl.col('traded_before_maturity_raw').fill_null(0),
+                pl.col('retail_traded_before_maturity_raw').fill_null(0),
+                pl.col('institutional_traded_before_maturity_raw').fill_null(0),
+            )
             )
 
 #%%
@@ -147,4 +190,4 @@ bond_agg = (bond_agg
 '''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
 save
 '''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
-bond_agg.write_csv(f'{clean_data_dir}/MSRB/Processed/Bond_Level_Any_Trade_Before_Maturity_with_CD_Data.csv')
+bond_agg.write_csv(msrb_processed_dir / 'Bond_Level_Any_Trade_Before_Maturity_with_CD_Data.csv')

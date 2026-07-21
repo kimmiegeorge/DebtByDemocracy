@@ -403,6 +403,85 @@ dpc_issuance_windows = (
 
 #%%
 '''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
+create DPC event-plot data
+'''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
+# Count unique DPC stories in each month from 18 months before through 18
+# months after each unlimited-GO issuance. Issuer-months with no matched story
+# remain in the data with a zero count, so group means have the correct
+# denominator. Restrict to issuers covered by DPC at least once, matching the
+# coverage restriction used in media_coverage_dpc.R.
+dpc_event_issuer_month = (
+    pl.concat([
+        issuance_cusip6.with_columns(
+            pl.lit(event_month).alias('event_month'),
+            (pl.col('dpc_issuance_year_month_id') + event_month).alias('article_year_month_id')
+        )
+        for event_month in range(-18, 19)
+    ])
+    .join(
+        dpc_article_cusip6.select(['cusip6', 'article_year_month_id', 'StoryID']),
+        on=['cusip6', 'article_year_month_id'],
+        how='left'
+    )
+    .group_by(['seed_issuer_id', 'dpc_issuance_year_month_id', 'event_month'])
+    .agg(
+        pl.col('StoryID').drop_nulls().n_unique().alias('dpc_article_count')
+    )
+    .join(
+        issuance_dta.select([
+            'seed_issuer_id',
+            'dpc_issuance_year_month_id',
+            'go_unlim_bond_issuance',
+            'city_go_vote'
+        ]).unique(),
+        on=['seed_issuer_id', 'dpc_issuance_year_month_id'],
+        how='left'
+    )
+    .join(
+        issuance_any_dpc.select([
+            'seed_issuer_id',
+            'dpc_issuance_year_month_id',
+            'dpc_issuer_has_any_articles'
+        ]),
+        on=['seed_issuer_id', 'dpc_issuance_year_month_id'],
+        how='left'
+    )
+    .filter(pl.col('go_unlim_bond_issuance').eq(1))
+    .filter(pl.col('dpc_issuer_has_any_articles').eq(1))
+    .filter(pl.col('city_go_vote').is_not_null())
+)
+
+dpc_event_win_lower, dpc_event_win_upper = (
+    dpc_event_issuer_month
+    .select(
+        pl.col('dpc_article_count')
+        .quantile(0.01, interpolation='linear')
+        .alias('win_lower'),
+        pl.col('dpc_article_count')
+        .quantile(0.99, interpolation='linear')
+        .alias('win_upper')
+    )
+    .row(0)
+)
+
+dpc_event_plot = (
+    dpc_event_issuer_month
+    .with_columns(
+        pl.col('dpc_article_count')
+        .clip(dpc_event_win_lower, dpc_event_win_upper)
+        .alias('dpc_article_count_win')
+    )
+    .group_by(['event_month', 'city_go_vote'])
+    .agg(
+        pl.col('dpc_article_count').mean().alias('dpc_article_count'),
+        pl.col('dpc_article_count_win').mean().alias('dpc_article_count_win')
+    )
+    .sort(['event_month', 'city_go_vote'])
+)
+
+
+#%%
+'''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
 merge DPC variables onto issuance-level data
 '''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
 issuance_with_dpc_news = (
@@ -429,9 +508,11 @@ save outputs and diagnostics
 output_csv = output_dir / 'Issuance_Lvl_DPC_News.csv'
 output_parquet = output_dir / 'Issuance_Lvl_DPC_News.gzip'
 diagnostics_csv = output_dir / 'DPC_News_Issuance_Diagnostics.csv'
+event_plot_csv = output_dir / 'DPC_City_Month_DF_For_Event_Plot_Unlim_GO_Only.csv'
 
 issuance_with_dpc_news.write_csv(output_csv)
 issuance_with_dpc_news.write_parquet(output_parquet, compression='gzip')
+dpc_event_plot.write_csv(event_plot_csv)
 
 diagnostics = pl.DataFrame({
     'metric': [
@@ -465,4 +546,5 @@ diagnostics.write_csv(diagnostics_csv)
 print(f'Wrote {output_csv}')
 print(f'Wrote {output_parquet}')
 print(f'Wrote {diagnostics_csv}')
+print(f'Wrote {event_plot_csv}')
 print(diagnostics)

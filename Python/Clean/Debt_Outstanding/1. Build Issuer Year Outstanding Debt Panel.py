@@ -46,6 +46,39 @@ def read_stata_columns(path: Path, columns: list[str]) -> pd.DataFrame:
     return pd.read_stata(path, columns=columns, convert_categoricals=False)
 
 
+def add_issuer_key(frame: pd.DataFrame) -> pd.DataFrame:
+    """Add a stable issuer key without truncating decimal seed issuer IDs.
+
+    ``seed_issuer_id`` is not unique in the current Mergent files: three ID
+    values are reused by different municipalities.  Some IDs also use a
+    decimal suffix to distinguish issuers.  The integer-tenths component
+    avoids binary floating-point differences, while state and normalized
+    issuer name disambiguate the genuinely reused IDs.
+    """
+    frame = frame.copy()
+    numeric_id = pd.to_numeric(frame['seed_issuer_id'], errors='coerce').astype('float64')
+    issuer_name = frame['seed_issuer'].astype('string').str.strip()
+    state = frame['state'].astype('string').str.strip().str.upper()
+
+    missing_key = numeric_id.isna() | issuer_name.isna() | state.isna()
+    if missing_key.any():
+        raise ValueError(
+            f'Cannot construct issuer key for {int(missing_key.sum()):,} rows with '
+            'missing seed_issuer_id, seed_issuer, or state.'
+        )
+
+    id_tenths = np.rint(numeric_id * 10).astype('int64')
+    name_key = issuer_name.str.upper().str.replace(r'\s+', ' ', regex=True)
+
+    frame['seed_issuer_id'] = id_tenths / 10
+    frame['seed_issuer'] = issuer_name
+    frame['state'] = state
+    frame['issuer_key'] = (
+        id_tenths.astype(str) + '|' + state.astype(str) + '|' + name_key.astype(str)
+    )
+    return frame
+
+
 def main() -> None:
     print('Loading issuer-level debt-choice sample...')
     issuer_cols = [
@@ -70,10 +103,12 @@ def main() -> None:
         'pop',
     ]
     issuers = read_stata_columns(ISSUER_FILE, issuer_cols)
-    issuers = issuers.dropna(subset=['seed_issuer_id'])
-    issuers['seed_issuer_id'] = issuers['seed_issuer_id'].astype('int64')
+    issuers = issuers.dropna(subset=['seed_issuer_id', 'seed_issuer', 'state'])
+    issuers = add_issuer_key(issuers)
     issuers['fips'] = issuers['fips'].astype(str).str.replace(r'\.0$', '', regex=True).str.zfill(5)
-    issuers = issuers.drop_duplicates('seed_issuer_id', keep='first')
+    issuers = issuers.drop_duplicates('issuer_key', keep='first')
+    if issuers['issuer_key'].duplicated().any():
+        raise ValueError('issuer_key is not unique in the issuer-level input.')
     issuers = issuers.rename(columns={'pop': 'issuer_file_pop', 'ln_pop': 'issuer_file_ln_pop'})
     issuers['high_state_tax_privilege'] = (
         issuers['state'].astype(str).str.upper().isin(HIGH_STATE_TAX_PRIVILEGE_STATES)
@@ -81,11 +116,16 @@ def main() -> None:
 
     sample_issuers = issuers.loc[
         issuers['insample'].eq(1),
-        ['seed_issuer_id'],
-    ].drop_duplicates('seed_issuer_id')
+        ['issuer_key'],
+    ].drop_duplicates('issuer_key')
+
+    reused_seed_ids = (
+        issuers.groupby('seed_issuer_id')['issuer_key'].nunique().gt(1).sum()
+    )
 
     print(f'Issuer-level rows: {len(issuers):,}')
     print(f'Full debt-choice sample issuers: {len(sample_issuers):,}')
+    print(f'Seed issuer IDs reused by multiple municipalities: {reused_seed_ids:,}')
 
     print('Loading annual BEA county demographics...')
     bea = read_stata_columns(
@@ -127,9 +167,9 @@ def main() -> None:
         'source_of_repayment',
     ]
     bonds = read_stata_columns(BOND_FILE, bond_cols)
-    bonds = bonds.dropna(subset=['seed_issuer_id'])
-    bonds['seed_issuer_id'] = bonds['seed_issuer_id'].astype('int64')
-    bonds = bonds.merge(sample_issuers, on='seed_issuer_id', how='inner')
+    bonds = bonds.dropna(subset=['seed_issuer_id', 'seed_issuer', 'state'])
+    bonds = add_issuer_key(bonds)
+    bonds = bonds.merge(sample_issuers, on='issuer_key', how='inner', validate='many_to_one')
 
     bonds['offering_date'] = pd.to_datetime(bonds['offering_date'], errors='coerce')
     bonds['maturity_date'] = pd.to_datetime(bonds['maturity_date'], errors='coerce')
@@ -185,7 +225,7 @@ def main() -> None:
 
     print('Aggregating to issuer-year...')
     issuer_year_stock = (
-        expanded.groupby(['seed_issuer_id', 'year'], as_index=False)
+        expanded.groupby(['issuer_key', 'year'], as_index=False)
         .agg(
             total_outstanding_debt=('amount', 'sum'),
             go_outstanding_debt=('go_amount', 'sum'),
@@ -204,7 +244,10 @@ def main() -> None:
     ).drop(columns='_merge_key')
 
     panel = issuer_grid.merge(
-        issuer_year_stock, on=['seed_issuer_id', 'year'], how='left'
+        issuer_year_stock,
+        on=['issuer_key', 'year'],
+        how='left',
+        validate='one_to_one',
     )
 
     amount_cols = [
@@ -221,7 +264,7 @@ def main() -> None:
     ]
     panel[amount_cols + count_cols] = panel[amount_cols + count_cols].fillna(0)
 
-    panel = panel.merge(issuers, on='seed_issuer_id', how='left')
+    panel = panel.merge(issuers, on='issuer_key', how='left', validate='many_to_one')
     panel = panel.merge(bea, on=['fips', 'year'], how='left')
     panel['vote_required'] = panel['city_go_vote']
 
@@ -260,7 +303,7 @@ def main() -> None:
         np.nan,
     )
 
-    panel = panel.sort_values(['seed_issuer_id', 'year'])
+    panel = panel.sort_values(['state', 'seed_issuer', 'year'])
     panel.to_csv(ISSUER_YEAR_PANEL, index=False)
     print(f'Wrote {ISSUER_YEAR_PANEL}')
 
@@ -268,7 +311,7 @@ def main() -> None:
     summary = (
         panel.groupby(['year', 'vote_required'], dropna=False)
         .agg(
-            issuers=('seed_issuer_id', 'nunique'),
+            issuers=('issuer_key', 'nunique'),
             mean_total_outstanding_debt_pc=(
                 'total_outstanding_debt_per_capita',
                 'mean',
@@ -362,7 +405,8 @@ def main() -> None:
                 'bonds_after_end_of_year_filter': len(bonds),
                 'bond_year_rows': len(expanded),
                 'issuer_year_rows': len(panel),
-                'sample_issuers': panel['seed_issuer_id'].nunique(),
+                'sample_issuers': panel['issuer_key'].nunique(),
+                'reused_seed_issuer_ids': int(reused_seed_ids),
                 'min_year': min_year,
                 'max_year': max_year,
                 'bea_min_year': bea_year_min,

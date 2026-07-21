@@ -9,12 +9,14 @@ Set up
 '''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
 
 import polars as pl
-import os
 import pandas as pd
+from pathlib import Path
 
-data_dir = '~/Dropbox/Voting on Bonds/Data'
-clean_data_dir = '/Users/kmunevar/Dropbox/Voting on Bonds/Data/Clean_Intermediate'
-os.makedirs(os.path.expanduser(f'{clean_data_dir}/MSRB/Processed'), exist_ok=True)
+project_dir = Path(__file__).resolve().parents[4]
+data_dir = project_dir / 'Data'
+clean_data_dir = data_dir / 'Clean_Intermediate'
+msrb_processed_dir = clean_data_dir / 'MSRB' / 'Processed'
+msrb_processed_dir.mkdir(parents=True, exist_ok=True)
 
 #%%
 '''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
@@ -28,7 +30,7 @@ issuances = (pl
                       'offering_date']))
 
 liquidity = (pl
-             .read_parquet(f'{data_dir}/MSRB/Processed/All_Trade_Markup_2005_2023.gzip')
+             .read_parquet(msrb_processed_dir / 'All_Trade_Markup_2005_2023.gzip')
              )
 
 # Winsorize markup at 1% and 99% percentiles
@@ -41,7 +43,7 @@ liquidity = liquidity.with_columns(
 
 # load yield spreads
 yields = (pl
-          .read_parquet(f'{data_dir}/MSRB/Processed/All_Trade_Yields_2005_2023.gzip'))
+          .read_parquet(msrb_processed_dir / 'All_Trade_Yields_2005_2023.gzip'))
 
 
 #%%
@@ -51,7 +53,7 @@ Aggregate liquidity to issuance level
 liquidity_3yr = (liquidity
              .join(issuances, on = 'cusip', how = 'inner')
              # keep first 3 years after dated_date
-             .filter(pl.col('trade_date').le(pl.col('offering_date') + 3 * 365))
+             .filter(pl.col('trade_date').le(pl.col('offering_date') + pl.duration(days=3 * 365)))
              # group by issue_id and aggregate
              .group_by('issue_id')
              .agg(pl.col('offering_date').count().alias('number_of_trades_3yr'),
@@ -83,7 +85,7 @@ liquidity_3yr = (liquidity
 liquidity_1yr = (liquidity
              .join(issuances, on = 'cusip', how = 'inner')
              # keep first 3 years after dated_date
-             .filter(pl.col('trade_date').le(pl.col('offering_date') + 365))
+             .filter(pl.col('trade_date').le(pl.col('offering_date') + pl.duration(days=365)))
              # group by issue_id and aggregate
              .group_by('issue_id')
              .agg(pl.col('dated_date').count().alias('number_of_trades_1yr'),
@@ -115,7 +117,7 @@ liquidity_1yr = (liquidity
 liquidity_6mo = (liquidity
              .join(issuances, on = 'cusip', how = 'inner')
              # keep first 3 years after dated_date
-             .filter(pl.col('trade_date').le(pl.col('offering_date') + 183))
+             .filter(pl.col('trade_date').le(pl.col('offering_date') + pl.duration(days=183)))
              # group by issue_id and aggregate
              .group_by('issue_id')
              .agg(pl.col('dated_date').count().alias('number_of_trades_6mo'),
@@ -151,7 +153,7 @@ Aggregate yield spreads to issuance level
 yields_3yr = (yields
           .join(issuances, on = 'cusip', how = 'inner')
           # keep first 3 years after dated date
-          .filter(pl.col('trade_date').lt(pl.col('offering_date') + 3 * 365))
+          .filter(pl.col('trade_date').lt(pl.col('offering_date') + pl.duration(days=3 * 365)))
           # group by issue_id and compute standard deviation of yield
           .group_by('issue_id')
           .agg(pl.col('yield').std().alias('yield_volatility_3yr'))
@@ -160,7 +162,7 @@ yields_3yr = (yields
 yields_1yr = (yields
           .join(issuances, on = 'cusip', how = 'inner')
           # keep first 3 years after dated date
-          .filter(pl.col('trade_date').lt(pl.col('offering_date') + 365))
+          .filter(pl.col('trade_date').lt(pl.col('offering_date') + pl.duration(days=365)))
           # group by issue_id and compute standard deviation of yield
           .group_by('issue_id')
           .agg(pl.col('yield').std().alias('yield_volatility_1yr'))
@@ -169,7 +171,7 @@ yields_1yr = (yields
 yields_6mo = (yields
           .join(issuances, on = 'cusip', how = 'inner')
           # keep first 3 years after dated date
-          .filter(pl.col('trade_date').lt(pl.col('offering_date') + 365))
+          .filter(pl.col('trade_date').lt(pl.col('offering_date') + pl.duration(days=365)))
           # group by issue_id and compute standard deviation of yield
           .group_by('issue_id')
           .agg(pl.col('yield').std().alias('yield_volatility_6mo'))
@@ -197,4 +199,4 @@ Output
 '''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
 (issuance_level
  .drop([ 'issue_id_right'])
- .write_parquet(f'{clean_data_dir}/MSRB/Processed/Issuance_Level_Secondary_Market_Vars_2005_2023.gzip'))
+ .write_parquet(msrb_processed_dir / 'Issuance_Level_Secondary_Market_Vars_2005_2023.gzip'))

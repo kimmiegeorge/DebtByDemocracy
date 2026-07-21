@@ -4,12 +4,10 @@ rm(list = ls())
 library(pacman)
 p_load(data.table, dplyr, stargazer, DescTools, arrow, glue, lfe, ggplot2, gridExtra, sandwich, zoo, fixest, haven, xtable)
 source('/Users/kmunevar/Dropbox/Voting on Bonds/Code/R/Clean/modify_etable_rounding.R')
-source('/Users/kmunevar/Dropbox/Voting on Bonds/Code/R/Clean/robustness_helpers.R')
+source('/Users/kmunevar/Dropbox/Voting on Bonds/Code/R/Clean/state_policy_definitions.R')
 tbl_dir <- "/Users/kmunevar/Dropbox/Voting on Bonds/Code/R/Clean/output/revision_tables"
 data_wd <- "~/Dropbox/Voting on Bonds/Data/"
 clean_data_wd <- "~/Dropbox/Voting on Bonds/Data/Clean_Intermediate/"
-
-super_majority_states <- c('CA', 'ID', 'MO','ND','SD', 'WA')
 
 add_media_sample_headers <- function(tex) {
   if (length(tex) > 1) {
@@ -89,6 +87,7 @@ border_articles[, bond_prior_12 := ifelse(!is.na(diff) & diff <=  12, 1, 0)]
 #border_articles <- border_articles[!(group %in% c('Missouri/Kentucky', 'Missouri/Tennessee', 'Rhode Island/Massachusetts'))]
 
 border_articles <- border_articles[!(group %in% c('Rhode Island/Massachusetts'))]
+border_articles[, state_year := interaction(state, year, drop = TRUE)]
 
 
 border_articles[, log_sources := log(1+unique_sources_12)]
@@ -99,7 +98,7 @@ border_articles[, total_articles_12_0_win := Winsorize(total_rp_articles_12_0, v
 issuance_lvl[, total_articles_12_0_win := Winsorize(total_rp_articles_12_0, val = quantile(total_rp_articles_12_0, probs = c(0.01, 0.99)))]
 
 desc <- issuance_lvl[go_unlim_bond_issuance == 1 & rolling_sum_monthly_article_count_12 > 0, .(city_go_vote, total_articles_12_0_win,
-                            bond_prior_12, log_sources, ln_amount, 
+                            bond_prior_12, log_sources, ln_amount,
                             ln_gdp, ln_pop, ln_pers_inc)]
 
 
@@ -236,7 +235,10 @@ diff_table <- function(dt, group_var, vars) {
 }
 
 
-vars <- c('total_articles_12_0_win')
+vars <- c(
+  "total_articles_12_0_win", "bond_prior_12", "log_sources", "ln_amount",
+  "ln_gdp", "ln_pop", "ln_pers_inc"
+)
 
 table_out <- diff_table(issuance_lvl[go_unlim_bond_issuance == 1 & rolling_sum_monthly_article_count_12 > 0], "city_go_vote", vars)
 
@@ -246,7 +248,10 @@ print(table_out[, .(variable, mean_0, mean_1, diff_fmt)])
 
 
 diff_tbl <- table_out[, .(
-  Variable = "Total Articles - 12mo",
+  Variable = c(
+    "Total Articles - 12mo", "Bond Issuance - 12mo", "Num Sources", "Amount",
+    "County ln(GDP)", "County ln(Pop)", "County ln(Pers. Inc)"
+  ),
   `Mean (Vote = 0)` = mean_0,
   `Mean (Vote = 1)` = mean_1,
   Difference = diff_fmt
@@ -294,26 +299,26 @@ diff_table_output <- add_panel(diff_table_output, 'Panel A: Mean values by vote 
 writeLines(diff_table_output, paste0(tbl_dir, "/media_diff_means_table.tex"))
 
 r1 <- fixest::fepois(total_articles_12_0_win ~city_go_vote + bond_prior_12 + log_sources +
-                        ln_amount|issuance_year_month_id + purp_broad , 
+                        ln_amount | issuance_year_month_id + purp_broad,
                       data = issuance_lvl[go_unlim_bond_issuance == 1 & rolling_sum_monthly_article_count_12 > 0 ], 
-                      vcov = vcov_cluster(~fips))
+                      vcov = vcov_cluster(~state))
 summary(r1)
 r1b <- fixest::fepois(total_articles_12_0_win ~city_go_vote  + bond_prior_12 + log_sources + ln_amount + 
-                       ln_gdp + ln_pop + ln_pers_inc |issuance_year_month_id + purp_broad , 
+                       ln_gdp + ln_pop + ln_pers_inc | issuance_year_month_id + purp_broad,
                      data = issuance_lvl[go_unlim_bond_issuance == 1 & rolling_sum_monthly_article_count_12 > 0 ], 
-                     vcov = vcov_cluster(~fips))
+                     vcov = vcov_cluster(~state))
 summary(r1b)
 
 r2 <- fixest::fepois(total_articles_12_0_win ~city_go_vote + bond_prior_12 + log_sources + 
-                        ln_amount|issuance_year_month_id + group + purp_broad , 
+                        ln_amount | issuance_year_month_id + group + purp_broad,
                       data = border_articles[go_unlim_bond_issuance == 1 & rolling_sum_monthly_article_count_12 > 0], 
-                      vcov = vcov_cluster(~fips))
+                      vcov = vcov_cluster(~state_year))
 summary(r2)
 
 r2b <- fixest::fepois(total_articles_12_0_win ~city_go_vote  + bond_prior_12 + log_sources + ln_amount +
-                       ln_gdp + ln_pop + ln_pers_inc    |issuance_year_month_id + group + purp_broad ,
+                       ln_gdp + ln_pop + ln_pers_inc | issuance_year_month_id + group + purp_broad,
                      data = border_articles[(go_unlim_bond_issuance == 1) & rolling_sum_monthly_article_count_12 > 0], 
-                     vcov = vcov_cluster(~fips))
+                     vcov = vcov_cluster(~state_year))
 summary(r2b)
 
 
@@ -369,7 +374,11 @@ modified_output <- modify_etable_rounding(
   tstat_digits = 2
 )
 
-modified_output <- format_table(modified_output, cluster_level = "County")
+modified_output <- format_table(
+  modified_output,
+  cluster_level = c("State", "State", "State-Year", "State-Year"),
+  drop_covariance = TRUE
+)
 modified_output <- add_media_sample_headers(modified_output)
 modified_output <- add_panel(modified_output, 'Panel B: Regression analyses')
 
@@ -402,14 +411,14 @@ ggsave(paste0(tbl_dir, "/article_counts.png"), plot = plot, width = 7, height = 
 # super majority 
 #===============================
 r1 <- fixest::fepois(total_articles_12_0_win ~city_go_vote + super_majority + bond_prior_12 + log_sources +
-                        ln_amount|issuance_year_month_id + purp_broad , 
+                        ln_amount | issuance_year_month_id + purp_broad,
                       data = issuance_lvl[go_unlim_bond_issuance == 1 & rolling_sum_monthly_article_count_12 > 0], 
-                      vcov = vcov_cluster(~fips))
+                      vcov = vcov_cluster(~state))
 summary(r1)
 r1b <- fixest::fepois(total_articles_12_0_win ~city_go_vote + super_majority + bond_prior_12 + log_sources + ln_amount + 
-                       ln_gdp + ln_pop + ln_pers_inc |issuance_year_month_id + purp_broad , 
+                       ln_gdp + ln_pop + ln_pers_inc | issuance_year_month_id + purp_broad,
                      data = issuance_lvl[go_unlim_bond_issuance == 1 & rolling_sum_monthly_article_count_12 > 0], 
-                     vcov = vcov_cluster(~fips))
+                     vcov = vcov_cluster(~state))
 summary(r1b)
 
 
@@ -431,7 +440,7 @@ table_call <- etable(r1, r1b,
        dict = c(total_articles_12_0_win ='Total Articles - 12mo',
                 total_rp_articles_6_0 ='Total Articles - 6mo',
                 city_go_vote = 'Vote',
-                super_majority = 'Vote * Supermajority State',
+                super_majority = 'Supermajority State',
                 city_rev_vote = "Rev Vote",
                 go = 'GO',
                 rolling_sum = 'City News Coverage',
@@ -460,7 +469,7 @@ modified_output <- modify_etable_rounding(
   tstat_digits = 2
 )
 
-modified_output <- format_table(modified_output, cluster_level = "County")
+modified_output <- format_table(modified_output, cluster_level = "State")
 modified_output <- add_media_sample_headers(modified_output)
 pseudo_r2_idx <- grep("^[[:space:]]*Pseudo R\\$\\^2\\$[[:space:]]*&", modified_output)
 if (length(pseudo_r2_idx) > 0) {
@@ -471,128 +480,6 @@ if (length(pseudo_r2_idx) > 0) {
     after = pseudo_r2_idx[1]
   )
 }
-modified_output <- add_panel(modified_output, 'Panel C: Supermajority split')
+modified_output <- add_panel(modified_output, 'Panel C: Supermajority split', ncols = 3)
 
 writeLines(modified_output, paste0(tbl_dir, '/media_coverage_super_majority.tex'))
-
-
-# ===============================================================================
-# ROBUSTNESS CHECKS
-# ===============================================================================
-
-robustness_dir <- "/Users/kmunevar/Dropbox/Voting on Bonds/Code/R/Clean/output/revision_tables/robustness"
-dir.create(robustness_dir, recursive = TRUE, showWarnings = FALSE)
-
-issuance_lvl_drop_me_nd <- issuance_lvl[!(state %in% c("ME", "ND"))]
-border_articles_drop_me_nd <- border_articles[!(state %in% c("ME", "ND"))]
-
-media_drop_me_nd_r1 <- fixest::fepois(total_articles_12_0_win ~ city_go_vote + bond_prior_12 + log_sources +
-                                        ln_amount | issuance_year_month_id + purp_broad,
-                                      data = issuance_lvl_drop_me_nd[go_unlim_bond_issuance == 1 & rolling_sum_monthly_article_count_12 > 0],
-                                      vcov = vcov_cluster(~fips))
-media_drop_me_nd_r1b <- fixest::fepois(total_articles_12_0_win ~ city_go_vote + bond_prior_12 + log_sources +
-                                         ln_amount + ln_gdp + ln_pop + ln_pers_inc | issuance_year_month_id + purp_broad,
-                                       data = issuance_lvl_drop_me_nd[go_unlim_bond_issuance == 1 & rolling_sum_monthly_article_count_12 > 0],
-                                       vcov = vcov_cluster(~fips))
-media_drop_me_nd_r2 <- fixest::fepois(total_articles_12_0_win ~ city_go_vote + bond_prior_12 + log_sources +
-                                        ln_amount | issuance_year_month_id + group + purp_broad,
-                                      data = border_articles_drop_me_nd[go_unlim_bond_issuance == 1 & rolling_sum_monthly_article_count_12 > 0],
-                                      vcov = vcov_cluster(~fips))
-media_drop_me_nd_r2b <- fixest::fepois(total_articles_12_0_win ~ city_go_vote + bond_prior_12 + log_sources +
-                                         ln_amount + ln_gdp + ln_pop + ln_pers_inc | issuance_year_month_id + group + purp_broad,
-                                       data = border_articles_drop_me_nd[go_unlim_bond_issuance == 1 & rolling_sum_monthly_article_count_12 > 0],
-                                       vcov = vcov_cluster(~fips))
-write_media_coverage_robustness_table(
-  list(media_drop_me_nd_r1, media_drop_me_nd_r1b, media_drop_me_nd_r2, media_drop_me_nd_r2b),
-  file.path(robustness_dir, "media_coverage_drop_me_nd_county_cluster.tex"),
-  cluster_note = "County"
-)
-
-media_state_r1 <- fixest::fepois(total_articles_12_0_win ~ city_go_vote + bond_prior_12 + log_sources +
-                                   ln_amount | issuance_year_month_id + purp_broad,
-                                 data = issuance_lvl[go_unlim_bond_issuance == 1 & rolling_sum_monthly_article_count_12 > 0],
-                                 vcov = vcov_cluster(~state))
-media_state_r1b <- fixest::fepois(total_articles_12_0_win ~ city_go_vote + bond_prior_12 + log_sources +
-                                    ln_amount + ln_gdp + ln_pop + ln_pers_inc | issuance_year_month_id + purp_broad,
-                                  data = issuance_lvl[go_unlim_bond_issuance == 1 & rolling_sum_monthly_article_count_12 > 0],
-                                  vcov = vcov_cluster(~state))
-media_state_r2 <- fixest::fepois(total_articles_12_0_win ~ city_go_vote + bond_prior_12 + log_sources +
-                                   ln_amount | issuance_year_month_id + group + purp_broad,
-                                 data = border_articles[go_unlim_bond_issuance == 1 & rolling_sum_monthly_article_count_12 > 0],
-                                 vcov = vcov_cluster(~fips))
-media_state_r2b <- fixest::fepois(total_articles_12_0_win ~ city_go_vote + bond_prior_12 + log_sources +
-                                    ln_amount + ln_gdp + ln_pop + ln_pers_inc | issuance_year_month_id + group + purp_broad,
-                                  data = border_articles[go_unlim_bond_issuance == 1 & rolling_sum_monthly_article_count_12 > 0],
-                                  vcov = vcov_cluster(~fips))
-write_media_coverage_robustness_table(
-  list(media_state_r1, media_state_r1b, media_state_r2, media_state_r2b),
-  file.path(robustness_dir, "media_coverage_state_cluster.tex"),
-  cluster_note = "Mixed"
-)
-
-media_state_drop_me_nd_r1 <- fixest::fepois(total_articles_12_0_win ~ city_go_vote + bond_prior_12 + log_sources +
-                                             ln_amount | issuance_year_month_id + purp_broad,
-                                           data = issuance_lvl_drop_me_nd[go_unlim_bond_issuance == 1 & rolling_sum_monthly_article_count_12 > 0],
-                                           vcov = vcov_cluster(~state))
-media_state_drop_me_nd_r1b <- fixest::fepois(total_articles_12_0_win ~ city_go_vote + bond_prior_12 + log_sources +
-                                              ln_amount + ln_gdp + ln_pop + ln_pers_inc | issuance_year_month_id + purp_broad,
-                                            data = issuance_lvl_drop_me_nd[go_unlim_bond_issuance == 1 & rolling_sum_monthly_article_count_12 > 0],
-                                            vcov = vcov_cluster(~state))
-media_state_drop_me_nd_r2 <- fixest::fepois(total_articles_12_0_win ~ city_go_vote + bond_prior_12 + log_sources +
-                                             ln_amount | issuance_year_month_id + group + purp_broad,
-                                           data = border_articles_drop_me_nd[go_unlim_bond_issuance == 1 & rolling_sum_monthly_article_count_12 > 0],
-                                           vcov = vcov_cluster(~fips))
-media_state_drop_me_nd_r2b <- fixest::fepois(total_articles_12_0_win ~ city_go_vote + bond_prior_12 + log_sources +
-                                              ln_amount + ln_gdp + ln_pop + ln_pers_inc | issuance_year_month_id + group + purp_broad,
-                                            data = border_articles_drop_me_nd[go_unlim_bond_issuance == 1 & rolling_sum_monthly_article_count_12 > 0],
-                                            vcov = vcov_cluster(~fips))
-write_media_coverage_robustness_table(
-  list(media_state_drop_me_nd_r1, media_state_drop_me_nd_r1b, media_state_drop_me_nd_r2, media_state_drop_me_nd_r2b),
-  file.path(robustness_dir, "media_coverage_state_cluster_drop_me_nd.tex"),
-  cluster_note = "Mixed"
-)
-
-media_super_drop_me_nd_r1 <- fixest::fepois(total_articles_12_0_win ~ city_go_vote + super_majority +
-                                              bond_prior_12 + log_sources + ln_amount | issuance_year_month_id + purp_broad,
-                                            data = issuance_lvl_drop_me_nd[go_unlim_bond_issuance == 1 & rolling_sum_monthly_article_count_12 > 0],
-                                            vcov = vcov_cluster(~fips))
-media_super_drop_me_nd_r1b <- fixest::fepois(total_articles_12_0_win ~ city_go_vote + super_majority +
-                                               bond_prior_12 + log_sources + ln_amount + ln_gdp + ln_pop + ln_pers_inc |
-                                               issuance_year_month_id + purp_broad,
-                                             data = issuance_lvl_drop_me_nd[go_unlim_bond_issuance == 1 & rolling_sum_monthly_article_count_12 > 0],
-                                             vcov = vcov_cluster(~fips))
-write_media_supermajority_robustness_table(
-  list(media_super_drop_me_nd_r1, media_super_drop_me_nd_r1b),
-  file.path(robustness_dir, "media_coverage_super_majority_drop_me_nd_county_cluster.tex"),
-  cluster_label = "County"
-)
-
-media_super_state_r1 <- fixest::fepois(total_articles_12_0_win ~ city_go_vote + super_majority +
-                                         bond_prior_12 + log_sources + ln_amount | issuance_year_month_id + purp_broad,
-                                       data = issuance_lvl[go_unlim_bond_issuance == 1 & rolling_sum_monthly_article_count_12 > 0],
-                                       vcov = vcov_cluster(~state))
-media_super_state_r1b <- fixest::fepois(total_articles_12_0_win ~ city_go_vote + super_majority +
-                                          bond_prior_12 + log_sources + ln_amount + ln_gdp + ln_pop + ln_pers_inc |
-                                          issuance_year_month_id + purp_broad,
-                                        data = issuance_lvl[go_unlim_bond_issuance == 1 & rolling_sum_monthly_article_count_12 > 0],
-                                        vcov = vcov_cluster(~state))
-write_media_supermajority_robustness_table(
-  list(media_super_state_r1, media_super_state_r1b),
-  file.path(robustness_dir, "media_coverage_super_majority_state_cluster.tex"),
-  cluster_label = "State"
-)
-
-media_super_state_drop_me_nd_r1 <- fixest::fepois(total_articles_12_0_win ~ city_go_vote + super_majority +
-                                                   bond_prior_12 + log_sources + ln_amount | issuance_year_month_id + purp_broad,
-                                                 data = issuance_lvl_drop_me_nd[go_unlim_bond_issuance == 1 & rolling_sum_monthly_article_count_12 > 0],
-                                                 vcov = vcov_cluster(~state))
-media_super_state_drop_me_nd_r1b <- fixest::fepois(total_articles_12_0_win ~ city_go_vote + super_majority +
-                                                    bond_prior_12 + log_sources + ln_amount + ln_gdp + ln_pop + ln_pers_inc |
-                                                    issuance_year_month_id + purp_broad,
-                                                  data = issuance_lvl_drop_me_nd[go_unlim_bond_issuance == 1 & rolling_sum_monthly_article_count_12 > 0],
-                                                  vcov = vcov_cluster(~state))
-write_media_supermajority_robustness_table(
-  list(media_super_state_drop_me_nd_r1, media_super_state_drop_me_nd_r1b),
-  file.path(robustness_dir, "media_coverage_super_majority_state_cluster_drop_me_nd.tex"),
-  cluster_label = "State"
-)

@@ -57,19 +57,6 @@ format_fips <- function(x) {
   fifelse(is.na(x), NA_character_, sprintf('%05d', as.integer(x)))
 }
 
-recode_election_purpose <- function(dt) {
-  dt <- copy(dt)
-  if (!('purp_broad_new' %in% names(dt))) {
-    return(dt)
-  }
-
-  dt[purp_broad_new %in% c('pension', 'educ', 'housing', 'econdev', 'health'), purp_broad_new := 'other']
-  dt[purp_broad_new == 'wtrswr', purp_broad_new := 'utilities']
-  dt[purp_broad_new %in% c('fire', 'police'), purp_broad_new := 'public_safety']
-  dt[purp_broad_new %in% c('envir', 'arts'), purp_broad_new := 'parksrec']
-  return(dt)
-}
-
 build_actual_issue_city_year <- function(data_wd) {
   issue_level <- as.data.table(read_dta(paste0(data_wd, 'Mergent/Clean/260716_city_cusiplevel_statereq_purpose_yieldspread.dta')))
   issue_level <- unique(issue_level[state == 'TX' & !is.na(seed_issuer) & !is.na(year),
@@ -203,7 +190,6 @@ election <- add_updated_county_controls(election,
                                         updated_county_controls,
                                         fips_map = media_election_fips_map,
                                         demo_year_offset = -1L)
-election <- recode_election_purpose(election)
 election_missing_updated <- summarize_county_demo_missingness(
   election,
   'raw election-level media file after updated BEA prior-year merge'
@@ -259,9 +245,12 @@ full_data[, bond_issuance := 1]
 city_month <- full_data[city_month, on = .(seed_issuer_id, ym_id)]
 city_month[, next_month_bond_issuance := ifelse(shift(bond_issuance, type = 'lead') == 1, 1, 0), .(seed_issuer_id)]
 city_month[, next_next_month_bond_issuance := ifelse(shift(bond_issuance, type = 'lead', 2) == 1, 1, 0), .(seed_issuer_id)]
-#city_month[, next_next_next_month_bond_issuance := ifelse(shift(bond_issuance, type = 'lead', 3) == 1, 1, 0), .(seed_issuer_id)]
-#city_month[, issuance_window := ifelse(next_month_bond_issuance == 1 | bond_issuance == 1 |next_next_month_bond_issuance == 1 | next_next_next_month_bond_issuance == 1,1, 0)]
-city_month[, issuance_window := ifelse(bond_issuance == 1   ,1, 0)]
+city_month[, next_next_next_month_bond_issuance := ifelse(shift(bond_issuance, type = 'lead', 3) == 1, 1, 0), .(seed_issuer_id)]
+city_month[, issuance_window := ifelse(bond_issuance == 1 |
+                                        next_month_bond_issuance == 1 |
+                                        next_next_month_bond_issuance == 1 |
+                                        next_next_next_month_bond_issuance == 1,
+                                      1, 0)]
 city_month[is.na(issuance_window), issuance_window := 0]
 
 city_month[, prev_month_election := ifelse(shift(has_bond_election, type = 'lag', 1) == 1, 1, 0), .(seed_issuer_id)]
@@ -302,6 +291,7 @@ website_city_year_desc <- fread(paste0(clean_data_wd, 'Websites/Texas/time_serie
 # website_city_year_desc <- website_city_year_desc[total_subs == 50]
 website_city_year_desc <- website_city_year_desc[!is.na(seed_issuer) & seed_issuer != '']
 setorder(website_city_year_desc, seed_issuer, year)
+website_city_year_desc <- unique(website_city_year_desc, by = c('seed_issuer', 'year'))
 website_city_year_desc[, seed_issuer_key := tolower(seed_issuer)]
 website_city_year_desc <- actual_issue_city_year[website_city_year_desc, on = .(seed_issuer_key, year)]
 website_city_year_desc[is.na(num_issues_bond_data), num_issues_bond_data := 0L]
@@ -315,10 +305,25 @@ website_city_year_desc <- website_city_year_desc_lag1[website_city_year_desc, on
 website_city_year_desc[, delta_bond_debt_count1 := total_words - total_words_lag1]
 website_city_year_desc[, positive_delta_bond_debt1 := ifelse(delta_bond_debt_count1 > 0, 1, 0)]
 
-desc_city_year <- website_city_year_desc[, .(positive_delta_bond_debt1,
-                                             election,
-                                             issuance_year)]
-desc_city_year <- desc_city_year[!is.na(positive_delta_bond_debt1)]
+desc_city_year <- website_city_year_desc[!is.na(positive_delta_bond_debt1),
+                                         .(seed_issuer,
+                                           year,
+                                           positive_delta_bond_debt1,
+                                           election,
+                                           issuance_year)]
+
+# Match fixest's iterative removal of singleton city and year fixed effects.
+repeat {
+  rows_before <- nrow(desc_city_year)
+  eligible_cities <- desc_city_year[, .N, by = seed_issuer][N > 1L, seed_issuer]
+  eligible_years <- desc_city_year[, .N, by = year][N > 1L, year]
+  desc_city_year <- desc_city_year[
+    seed_issuer %in% eligible_cities & year %in% eligible_years
+  ]
+  if (nrow(desc_city_year) == rows_before) break
+}
+
+desc_city_year[, c('seed_issuer', 'year') := NULL]
 desc_city_year_col <- summarize_desc_cols(
   desc_city_year,
   'City-Year',
@@ -354,11 +359,19 @@ desc_bond_text_col <- summarize_desc_cols(
   c('Bond Count')
 )
 
-desc_election_coverage <- election[, .(coverage_3)]
+desc_election_coverage <- election[, .(
+  coverage_3,
+  ln_Amount,
+  unique_sources_12m_prior
+)]
 desc_election_coverage_col <- summarize_desc_cols(
   desc_election_coverage,
   'Election',
-  c('Bond Coverage [-3, 0]')
+  c(
+    'Bond Coverage [-3, 0]',
+    'Amount',
+    'Num Sources'
+  )
 )
 
 # Combine tables in requested order.
@@ -531,7 +544,7 @@ modified_output <- modify_etable_rounding(
 )
 
 modified_output <- format_table(modified_output, cluster_level = "County")
-modified_output <- add_panel(modified_output, 'Panel B: Elections and media coverage over time')
+modified_output <- add_panel(modified_output, 'Panel B: Elections and media coverage over time', ncols = 3)
 
 writeLines(modified_output, paste0(tbl_dir, '/tx_city_month_reg.tex'))
 
@@ -605,7 +618,6 @@ election <- add_updated_county_controls(election,
                                         updated_county_controls,
                                         demo_year_offset = -1L)
 election <- fill_missing_county_controls_earliest(election, updated_county_controls)
-election <- recode_election_purpose(election)
 website_election_missing_updated <- summarize_county_demo_missingness(
   election[total_subs == 50],
   'raw website election-level file after updated BEA prior-year merge, total_subs == 50'
@@ -617,6 +629,7 @@ website_election_missing_updated <- summarize_county_demo_missingness(
 
 website_city_year <- city_month[!is.na(seed_issuer) & seed_issuer != '']
 setorder(website_city_year, seed_issuer, year)
+website_city_year <- unique(website_city_year, by = c('seed_issuer', 'year'))
 
 website_city_year[, seed_issuer_key := tolower(seed_issuer)]
 

@@ -1,36 +1,34 @@
 \begingroup
 \centering
-\begin{tabular*}{\textwidth}{@{\extracolsep{\fill}}lcccc}
-\multicolumn{5}{l}{\textbf{Panel D: PPML debt stock, GO vote required}}\\
-
-\addlinespace
+\begin{tabular*}{\textwidth}{@{\extracolsep{\fill}}lccc}
    \toprule
-                               & \multicolumn{3}{c}{Census Debt} & \multicolumn{1}{c}{Mergent Debt}\\  
-   \cmidrule(lr){2-4}\cmidrule(lr){5-5}
-                               & Total             & Long-term             & Per capita                   & GO + Revenue \\   
-                               & (1)               & (2)                   & (3)                          & (4)\\  
+                        & \multicolumn{2}{c}{Census Debt} & \multicolumn{1}{c}{Mergent Debt}\\  
+   \cmidrule(lr){2-3}\cmidrule(lr){4-4}
+                        & Total             & Long-term             & GO + Revenue \\   
+                        & (1)               & (2)                   & (3)\\  
    \midrule 
-   GO Vote                     & 0.081             & 0.153                 & 0.082                        & 0.002\\   
-                               & (0.39)           & (0.75)               & (0.24)                      & (0.00)\\   
-   County ln(GDP)              & 0.400$^{**}$      & 0.417$^{**}$          & 0.986$^{***}$                & 0.470$^{*}$\\   
-                               & (2.30)            & (2.41)                & (2.72)                       & (1.94)\\   
-   City ln(Pop)                & 1.18$^{***}$      & 1.19$^{***}$          & -0.817$^{***}$               & 1.16$^{***}$\\   
-                               & (22.60)            & (22.00)                & (-14.10)                      & (21.90)\\   
-   County ln(Pers. Inc)        & -0.381$^{**}$     & -0.409$^{**}$         & -0.450                       & -0.488$^{*}$\\   
-                               & (-2.33)           & (-2.53)               & (-1.15)                      & (-1.82)\\   
-   ln(1 + County Noncity Debt) & -0.013            & -0.012                & 0.171$^{**}$                 & -0.005\\   
-                               & (-0.25)          & (-0.23)              & (2.39)                       & (-0.07)\\   
-   Proactive State             & -0.171            & -0.240                & -1.77$^{***}$                & -0.123\\   
-                               & (-1.10)           & (-1.58)               & (-4.48)                      & (-0.44)\\   
-   LTGO Allowed                & -0.119            & -0.151                & -1.28$^{***}$                & -0.083\\   
-                               & (-0.86)          & (-1.11)               & (-4.50)                      & (-0.37)\\   
-   State GO Vote               & 0.064             & 0.049                 & 0.520$^{*}$                  & -0.338\\   
-                               & (0.29)           & (0.23)               & (1.72)                       & (-1.19)\\   
-   High Tax Priv.              & -0.282$^{*}$      & -0.298$^{*}$          & 0.390                        & -0.108\\   
-                               & (-1.75)           & (-1.88)               & (1.21)                       & (-0.42)\\   
+   Vote                 & -0.020            & 0.048                 & -0.082\\   
+                        & (-0.10)          & (0.23)               & (-0.31)\\   
+   County ln(GDP)       & 0.449             & 0.470$^{*}$           & 0.529\\   
+                        & (1.64)           & (1.69)               & (1.50)\\   
+   City ln(Pop)         & 1.183$^{***}$     & 1.188$^{***}$         & 1.158$^{***}$\\   
+                        & (25.55)          & (25.77)              & (17.93)\\   
+   County ln(Pers. Inc) & -0.447            & -0.478$^{*}$          & -0.592$^{*}$\\   
+                        & (-1.62)          & (-1.71)              & (-1.70)\\   
+   County Non-City Debt & -0.004            & -0.004                & 0.028\\   
+                        & (-0.06)          & (-0.05)              & (0.30)\\   
+   Proactive State      & -0.279$^{**}$     & -0.350$^{***}$        & -0.256\\   
+                        & (-2.03)          & (-2.84)              & (-1.62)\\   
+   LTGO Allowed         & 0.008             & -0.020                & 0.031\\   
+                        & (0.08)           & (-0.18)              & (0.18)\\   
+   State GO Vote        & 0.007             & -0.012                & -0.310\\   
+                        & (0.03)           & (-0.05)              & (-1.01)\\   
+   Low Tax Priv.        & 0.065             & 0.074                 & -0.168\\   
+                        & (0.52)           & (0.57)               & (-0.97)\\   
    \hline
-   N                & 1,850             & 1,850                 & 1,850                        & 1,850\\  
-   Cluster              & County & County & County & County\\  
+   N         & 1,865             & 1,865                 & 1,865\\  
+   Pseudo R$^2$         & 0.888             & 0.888                 & 0.774\\  
+   Cluster              & State & State & State\\  
    \bottomrule
 \end{tabular*}
 \par\endgroup

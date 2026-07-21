@@ -21,14 +21,16 @@ except ImportError:
     pd = None
 
 
-output_date = '260715'
+output_date = '260719'
 
 root = Path(os.path.expanduser('~/Dropbox/Voting on Bonds'))
 data_dir = root / 'Data'
 dpc_uop_dir = data_dir / 'DPC Data' / 'Use Of Proceeds'
 purpose_dir = dpc_uop_dir / 'Purposes Substitution'
 mergent_dir = data_dir / 'Mergent' / 'Clean'
-census_processed_dir = data_dir / 'Census COG Finance' / 'processed'
+census_processed_dir = (
+    data_dir / 'Clean_Intermediate' / 'Census COG Finance' / 'processed'
+)
 
 purpose_dir.mkdir(parents=True, exist_ok=True)
 
@@ -63,6 +65,15 @@ def read_stata_columns(path, columns):
 
 def zero_if_missing(col):
     return pl.col(col).fill_null(0).cast(pl.Int64)
+
+
+def issuer_match_key_expr():
+    '''Match legacy DPC bonds to current cross sections without numeric issuer IDs.'''
+    return pl.concat_str([
+        pl.col('state').cast(pl.Utf8).str.strip_chars().str.to_uppercase(),
+        pl.lit('|'),
+        pl.col('seed_issuer').cast(pl.Utf8).str.strip_chars().str.to_uppercase(),
+    ])
 
 
 #%% -----------------------------------------------------------------------
@@ -132,7 +143,7 @@ raw_purpose_vars = sorted({
     for raw_var in category['raw_vars']
 })
 
-for col in raw_purpose_vars + ['dpc_match', 'go_unlim', 'go_lim', 'rev']:
+for col in raw_purpose_vars + ['dpc_match']:
     if col in bond.columns:
         bond = bond.with_columns(zero_if_missing(col))
 
@@ -140,6 +151,9 @@ print('Loading Mergent dates and security details...')
 mergent_cols = [
     'cusip',
     'maturity_date',
+    'go_unlim',
+    'go_lim',
+    'rev',
     'security_code',
     'source_of_repayment',
 ]
@@ -150,6 +164,9 @@ mergent = (
     .with_columns([
         pl.col('cusip').cast(pl.Utf8),
         pl.col('maturity_date').cast(pl.Date),
+        pl.col('go_unlim').fill_null(0).cast(pl.Int64),
+        pl.col('go_lim').fill_null(0).cast(pl.Int64),
+        pl.col('rev').cast(pl.Int64),
         pl.col('security_code').cast(pl.Utf8),
         pl.col('source_of_repayment').cast(pl.Utf8),
     ])
@@ -160,24 +177,38 @@ bond = (
     bond
     .with_columns([
         pl.col('cusip').cast(pl.Utf8),
-        pl.col('seed_issuer_id').cast(pl.Int64),
         pl.col('issue_id').cast(pl.Int64, strict=False),
         pl.col('state').cast(pl.Utf8).str.to_uppercase(),
         pl.col('amount').cast(pl.Float64),
         pl.col('offering_date').cast(pl.Date),
+        issuer_match_key_expr().alias('issuer_match_key'),
     ])
     .join(mergent, on='cusip', how='left', suffix='_mergent')
 )
 
-if 'security_code_mergent' in bond.columns:
-    bond = bond.with_columns(
-        pl.coalesce(['security_code', 'security_code_mergent']).alias('security_code')
-    ).drop('security_code_mergent')
-
-if 'source_of_repayment_mergent' in bond.columns:
-    bond = bond.with_columns(
-        pl.coalesce(['source_of_repayment', 'source_of_repayment_mergent']).alias('source_of_repayment')
-    ).drop('source_of_repayment_mergent')
+# Use the current Mergent classifications rather than the older copies in the
+# DPC merge. In particular, the current `rev` field excludes the same
+# sales/excise-tax and other non-strict revenue bonds as the point-in-time
+# debt-choice pipeline. That pipeline also restricts its bond universe to
+# nonmissing `rev` (0 for GO, 1 for strict revenue), so apply the same screen.
+bond = (
+    bond
+    .with_columns([
+        pl.col('go_unlim_mergent').alias('go_unlim'),
+        pl.col('go_lim_mergent').alias('go_lim'),
+        pl.col('rev_mergent').alias('rev'),
+        pl.col('security_code_mergent').alias('security_code'),
+        pl.col('source_of_repayment_mergent').alias('source_of_repayment'),
+    ])
+    .drop([
+        'go_unlim_mergent',
+        'go_lim_mergent',
+        'rev_mergent',
+        'security_code_mergent',
+        'source_of_repayment_mergent',
+    ])
+    .filter(pl.col('rev').is_not_null())
+)
 
 
 #%% -----------------------------------------------------------------------
@@ -199,7 +230,7 @@ bond = (
         pl.col('rev').eq(1).cast(pl.Int64).alias('revenue_bond'),
     ])
     .filter(pl.col('dpc_match').eq(1))
-    .filter(pl.col('seed_issuer_id').is_not_null())
+    .filter(pl.col('issuer_match_key').is_not_null())
     .filter(pl.col('offering_date').is_not_null())
     .filter(pl.col('maturity_date').is_not_null())
     .filter(pl.col('amount').is_not_null())
@@ -220,8 +251,9 @@ for year in target_years:
     cross_section = (
         pl.read_csv(cross_section_file, infer_schema_length=10000)
         .with_columns([
-            pl.col('seed_issuer_id').cast(pl.Int64),
+            pl.col('seed_issuer_id').cast(pl.Float64),
             pl.col('fips').cast(pl.Utf8).str.replace(r'\.0$', '').str.zfill(5),
+            issuer_match_key_expr().alias('issuer_match_key'),
             pl.when(pl.col('census_population') > 0)
             .then(pl.col('census_population').log())
             .otherwise(None)
@@ -230,8 +262,19 @@ for year in target_years:
             .log()
             .alias('ln_1p_census_total_debt'),
         ])
-        .filter(pl.col('seed_issuer_id').is_not_null())
+        .filter(pl.col('issuer_match_key').is_not_null())
     )
+
+    duplicate_match_keys = (
+        cross_section
+        .group_by('issuer_match_key')
+        .len()
+        .filter(pl.col('len') > 1)
+    )
+    if duplicate_match_keys.height > 0:
+        raise ValueError(
+            f'Current {year} cross section contains duplicate state/name issuer keys.'
+        )
 
     outstanding = (
         bond
@@ -240,8 +283,8 @@ for year in target_years:
             & (pl.col('maturity_date') > as_of)
         )
         .filter(
-            pl.col('seed_issuer_id').is_in(
-                cross_section['seed_issuer_id'].unique().to_list()
+            pl.col('issuer_match_key').is_in(
+                cross_section['issuer_match_key'].to_list()
             )
         )
         .with_columns([
@@ -261,7 +304,7 @@ for year in target_years:
     id_cols = [
         'cusip',
         'issue_id',
-        'seed_issuer_id',
+        'issuer_match_key',
         'amount',
         'go_any',
         'revenue_bond',
@@ -272,9 +315,9 @@ for year in target_years:
     cusip_category = (
         outstanding
         .select(id_cols + category_cols)
-        .melt(
-            id_vars=id_cols,
-            value_vars=category_cols,
+        .unpivot(
+            index=id_cols,
+            on=category_cols,
             variable_name='purpose_category',
             value_name='has_purpose_category',
         )
@@ -285,7 +328,7 @@ for year in target_years:
 
     issuer_denominator = (
         outstanding
-        .group_by('seed_issuer_id')
+        .group_by('issuer_match_key')
         .agg([
             pl.col('go_or_revenue_amount').sum().alias('total_go_or_revenue_amount'),
             pl.col('cusip')
@@ -298,7 +341,7 @@ for year in target_years:
 
     issuer_category_amount = (
         cusip_category
-        .group_by(['seed_issuer_id', 'purpose_category'])
+        .group_by(['issuer_match_key', 'purpose_category'])
         .agg([
             pl.col('go_or_revenue_amount').sum().alias('category_amount'),
             pl.col('go_or_revenue_amount').sum().alias('go_or_revenue_category_amount'),
@@ -317,7 +360,7 @@ for year in target_years:
     )
 
     issuer_category_grid = pl.DataFrame({
-        'seed_issuer_id': issuer_denominator['seed_issuer_id'].to_list()
+        'issuer_match_key': issuer_denominator['issuer_match_key'].to_list()
     }).join(
         pl.DataFrame({'purpose_category': category_cols}),
         how='cross',
@@ -325,7 +368,11 @@ for year in target_years:
 
     issuer_category = (
         issuer_category_grid
-        .join(issuer_category_amount, on=['seed_issuer_id', 'purpose_category'], how='left')
+        .join(
+            issuer_category_amount,
+            on=['issuer_match_key', 'purpose_category'],
+            how='left',
+        )
         .with_columns([
             pl.col('category_amount').fill_null(0),
             pl.col('go_or_revenue_category_amount').fill_null(0),
@@ -335,7 +382,7 @@ for year in target_years:
             pl.col('go_or_revenue_category_bonds').fill_null(0),
             pl.col('revenue_category_bonds').fill_null(0),
         ])
-        .join(issuer_denominator, on='seed_issuer_id', how='left')
+        .join(issuer_denominator, on='issuer_match_key', how='left')
         .join(category_dictionary, on='purpose_category', how='left')
         .with_columns([
             (pl.col('category_amount') / pl.col('total_go_or_revenue_amount'))
@@ -350,11 +397,13 @@ for year in target_years:
             .alias('share_revenue_vs_go_bonds'),
             pl.lit(year).alias('year'),
         ])
-        .join(cross_section, on='seed_issuer_id', how='left', suffix='_cs')
+        .join(cross_section, on='issuer_match_key', how='left', suffix='_cs')
     )
 
     column_order = [
         'year',
+        'issuer_key',
+        'issuer_match_key',
         'seed_issuer_id',
         'seed_issuer',
         'state',
@@ -377,6 +426,7 @@ for year in target_years:
         'ln_1p_county_nonmunicipal_total_debt',
         'glm_proactive',
         'high_state_tax_privilege',
+        'mergent_go_revenue_bonds_outstanding',
         'purpose_category',
         'purpose_category_label',
         'revenue_feasible',
@@ -405,6 +455,8 @@ for year in target_years:
         issuer_category
         .select([
             'year',
+            'issuer_key',
+            'issuer_match_key',
             'seed_issuer_id',
             'seed_issuer',
             'state',
@@ -427,8 +479,9 @@ for year in target_years:
             'ln_1p_county_nonmunicipal_total_debt',
             'glm_proactive',
             'high_state_tax_privilege',
+            'mergent_go_revenue_bonds_outstanding',
         ])
-        .unique(subset=['seed_issuer_id'])
+        .unique(subset=['issuer_match_key'])
     )
 
     wide_components = [wide_base]
@@ -444,11 +497,11 @@ for year in target_years:
     ]:
         wide_component = (
             issuer_category
-            .select(['seed_issuer_id', 'purpose_category', value_col])
+            .select(['issuer_match_key', 'purpose_category', value_col])
             .pivot(
                 values=value_col,
-                index='seed_issuer_id',
-                columns='purpose_category',
+                index='issuer_match_key',
+                on='purpose_category',
                 aggregate_function='first',
             )
             .rename({
@@ -461,7 +514,11 @@ for year in target_years:
 
     issuer_wide = wide_components[0]
     for wide_component in wide_components[1:]:
-        issuer_wide = issuer_wide.join(wide_component, on='seed_issuer_id', how='left')
+        issuer_wide = issuer_wide.join(
+            wide_component,
+            on='issuer_match_key',
+            how='left',
+        )
 
     wide_output = Path(str(wide_output_template).format(year=year))
     issuer_wide.write_csv(wide_output)

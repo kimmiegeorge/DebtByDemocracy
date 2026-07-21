@@ -118,7 +118,8 @@ modify_etable_tex_rounding <- function(..., coef_digits = 3, tstat_digits = 2, f
   invisible(modified_content)
 }
 # Format table with custom styling
-format_table <- function(tex, cluster_level = "FIPS", fixed_width = TRUE, width = "\\textwidth") {
+format_table <- function(tex, cluster_level = "FIPS", fixed_width = TRUE, width = "\\textwidth",
+                         drop_covariance = FALSE) {
   # Collapse to single string if it's a vector
   if (length(tex) > 1) {
     tex <- paste(tex, collapse = "\n")
@@ -126,6 +127,16 @@ format_table <- function(tex, cluster_level = "FIPS", fixed_width = TRUE, width 
   
   # Split into lines
   lines <- strsplit(tex, "\n", fixed = TRUE)[[1]]
+
+  # etable adds a Co-variance row when models use different vcov formulas.
+  # The Cluster row below reports this information more clearly, so drop the
+  # redundant automatically generated row.
+  if (isTRUE(drop_covariance)) {
+    covariance_idx <- grep("^[[:space:]]*Co-variance[[:space:]]*&", lines)
+    if (length(covariance_idx) > 0) {
+      lines <- lines[-covariance_idx]
+    }
+  }
   
   # 0. Convert tabular to tabular* with @{\extracolsep{\fill}}
   for (i in seq_along(lines)) {
@@ -287,8 +298,16 @@ format_table <- function(tex, cluster_level = "FIPS", fixed_width = TRUE, width 
     
     n_cols <- length(gregexpr("&", sample_row)[[1]]) + 1
     
-    # Create cluster row with the specified level in all columns
-    cluster_values <- paste(rep(cluster_level, n_cols - 1), collapse = " & ")
+    # Accept either one label for every model or one label per model.
+    n_models <- n_cols - 1
+    if (length(cluster_level) == 1) {
+      cluster_levels <- rep(cluster_level, n_models)
+    } else if (length(cluster_level) == n_models) {
+      cluster_levels <- cluster_level
+    } else {
+      stop("cluster_level must contain either one label or one label per model")
+    }
+    cluster_values <- paste(cluster_levels, collapse = " & ")
     cluster_row <- paste0("   Cluster              & ", cluster_values, "\\\\  ")
     
     lines <- append(lines, cluster_row, after = bottomrule_idx - 1)

@@ -1,0 +1,2 @@
+variable,mean_0,mean_1,diff,tstat,pval,n_0,n_1
+ln_1p_outstanding_debt_lag1,14.41,13.67,-0.75,2.68,0.00752246521388747,963,461

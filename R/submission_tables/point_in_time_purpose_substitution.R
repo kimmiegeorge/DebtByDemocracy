@@ -48,7 +48,7 @@ control_dict <- c(
 #==============================================================================
 
 purpose_2017 <- fread(
-  file.path(panel_dir, '260715_dpc_point_in_time_purpose_substitution_2017_issuer_category_panel.csv')
+  file.path(panel_dir, '260719_dpc_point_in_time_purpose_substitution_2017_issuer_category_panel.csv')
 )
 
 if ('nh_city' %in% names(purpose_2017)) {
@@ -536,7 +536,7 @@ writeLines(modified_output, file.path(tbl_dir, 'point_in_time_purpose_revenue_sh
 #==============================================================================
 
 purpose_2012 <- fread(
-  file.path(panel_dir, '260715_dpc_point_in_time_purpose_substitution_2012_issuer_category_panel.csv')
+  file.path(panel_dir, '260719_dpc_point_in_time_purpose_substitution_2012_issuer_category_panel.csv')
 )
 
 if ('nh_city' %in% names(purpose_2012)) {

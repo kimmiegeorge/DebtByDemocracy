@@ -1,34 +1,47 @@
 \begingroup
 \centering
-\begin{tabular*}{\textwidth}{@{\extracolsep{\fill}}lcc}
-\multicolumn{5}{l}{\textbf{Panel B: Only UTGO vote required}}\\
+\begin{tabular*}{\textwidth}{@{\extracolsep{\fill}}lccc}
+\multicolumn{4}{l}{\textbf{Panel B: Only UTGO vote required}}\\
 
 \addlinespace
    \toprule
-    & \multicolumn{2}{c}{Wtd. Avg. Yield Spread}\\
-   \cmidrule(lr){2-3}
-                              & (1)    & (2)\\  
+                              & Full Wtd. Avg. Yield Spread & All GO Yield Spread & Revenue Yield Spread\\  
+                              & (1)                         & (2)                 & (3)\\  
    \midrule 
-   Only UTGO Vote             & 0.184  & 0.281$^{***}$\\   
-                              & (1.79) & (10.40)\\   
-   County ln(GDP)             &        & 0.125$^{**}$\\   
-                              &        & (2.88)\\   
-   County ln(Pop)             &        & 0.205$^{**}$\\   
-                              &        & (2.65)\\   
-   County ln(Pers. Inc)       &        & -0.374$^{***}$\\   
-                              &        & (-8.86)\\   
-   ln(Non-issuer county debt) &        & -0.007\\   
-                              &        & (-1.47)\\   
-   Proactive State            &        & -0.244$^{***}$\\   
-                              &        & (-8.33)\\   
-   State GO Vote              &        & $0.000$\\    
-                              &        & (0.00)\\   
-   High Tax Priv.             &        & 0.108$^{**}$\\   
-                              &        & (3.16)\\   
+   Only UTGO Vote             & -0.072                      & -0.119              & -0.115\\   
+                              & (-0.71)                    & (-1.03)            & (-1.05)\\   
+   County ln(GDP)             & 0.105$^{**}$                & 0.052               & -0.036\\   
+                              & (2.53)                     & (0.95)             & (-0.25)\\   
+   County ln(Pop)             & 0.330$^{***}$               & 0.292$^{***}$       & 0.322\\   
+                              & (4.62)                     & (4.54)             & (1.69)\\   
+   County ln(Pers. Inc)       & -0.441$^{***}$              & -0.362$^{***}$      & -0.248\\   
+                              & (-6.02)                    & (-4.85)            & (-0.89)\\   
+   ln(Non-issuer county debt) & -0.017$^{**}$               & -0.008              & -0.022$^{*}$\\   
+                              & (-2.72)                    & (-1.81)            & (-1.89)\\   
+   Proactive State            & 0.265$^{***}$               & 0.318$^{***}$       & 0.320$^{***}$\\   
+                              & (3.28)                     & (3.93)             & (4.25)\\   
+   LTGO Allowed               & 0.227$^{**}$                & 0.271$^{***}$       & 0.180\\   
+                              & (2.86)                     & (3.52)             & (1.48)\\   
+   State GO Vote              & 0.260$^{***}$               & 0.228$^{***}$       & 0.202\\   
+                              & (5.08)                     & (6.62)             & (1.73)\\   
+   Low Tax Priv.              & -0.260$^{**}$               & -0.226$^{**}$       & -0.267$^{*}$\\   
+                              & (-2.98)                    & (-2.89)            & (-1.96)\\   
+   Wtd. Avg. Maturity         & 0.007$^{***}$               &                     &   \\   
+                              & (12.10)                    &                     &   \\   
+   Wtd. Avg. Rating           & -0.043$^{***}$              &                     &   \\   
+                              & (-7.92)                    &                     &   \\   
+   Wtd. Avg. Maturity (GO)    &                             & 0.006$^{***}$       &   \\   
+                              &                             & (7.53)             &   \\   
+   Wtd. Avg. Rating (GO)      &                             & -0.036$^{***}$      &   \\   
+                              &                             & (-8.29)            &   \\   
+   Wtd. Avg. Maturity (Rev)   &                             &                     & 0.008$^{***}$\\   
+                              &                             &                     & (9.31)\\   
+   Wtd. Avg. Rating (Rev)     &                             &                     & -0.051$^{***}$\\   
+                              &                             &                     & (-4.21)\\   
    \hline
-   N               & 1,687  & 1,687\\  
-   Adj. R$^2$             & 0.027  & 0.104\\  
-   Cluster              & County & County\\  
+   N               & 1,672                       & 1,577               & 404\\  
+   Adj. R$^2$             & 0.392                       & 0.356               & 0.460\\  
+   Cluster              & State & State & State\\  
    \bottomrule
 \end{tabular*}
 \par\endgroup

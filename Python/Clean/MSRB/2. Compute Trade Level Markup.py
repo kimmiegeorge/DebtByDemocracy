@@ -15,20 +15,30 @@ greater than or equal to 250,000 (large institutional)
 Set up 
 '''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
 
-import os
+from pathlib import Path
 
 import polars as pl
 
-data_dir = '~/Dropbox/Voting on Bonds/Data/MSRB'
-clean_data_dir = '/Users/kmunevar/Dropbox/Voting on Bonds/Data/Clean_Intermediate/MSRB'
-os.makedirs(os.path.expanduser(f'{clean_data_dir}/Processed'), exist_ok=True)
+project_dir = Path(__file__).resolve().parents[4]
+data_dir = project_dir / 'Data' / 'MSRB'
+processed_dir = project_dir / 'Data' / 'Clean_Intermediate' / 'MSRB' / 'Processed'
+processed_dir.mkdir(parents=True, exist_ok=True)
+
+# The output filename and downstream sample are explicitly limited to 2005--2023.
+# Do not use a wildcard here: raw files for later years may also be present.
+raw_trade_files = [data_dir / 'Raw Files' / f'msrb_{year}.gzip'
+                   for year in range(2005, 2024)]
+missing_raw_files = [path for path in raw_trade_files if not path.exists()]
+if missing_raw_files:
+    raise FileNotFoundError(f'Missing MSRB raw files: {missing_raw_files}')
+raw_trade_files = [str(path) for path in raw_trade_files]
 
 #%%
 '''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
 Compute daily average interdealer price for each bond 
 '''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
 inter_dealer_price = (pl
-                      .scan_parquet(f'{data_dir}/Raw Files/*')
+                      .scan_parquet(raw_trade_files)
                       # filter to interdealer trades (trade type = D)
                       .filter(pl.col('trade_type_indicator').eq('D'))
                       # filter to positive dollar_price
@@ -38,7 +48,7 @@ inter_dealer_price = (pl
                       # compute average price
                       .agg(pl.col('dollar_price').mean().alias('AvgInterdealerPrice'))
                       # collect to memory
-                      .collect(streaming = True)
+                      .collect()
                       )
 #%%
 '''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
@@ -47,7 +57,7 @@ Compute markup for trades and create indicators for retail and institutional tra
 From customer perspective, P is a sale and S is a purchase 
 '''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
 markup = (pl
-          .scan_parquet(f'{data_dir}/Raw Files/*')
+          .scan_parquet(raw_trade_files)
           .select(['cusip', 'dated_date', 'trade_date', 'trade_type_indicator', 'dollar_price', 'par_traded'])
           # only keep customer transactions (purchases and sales)
           .filter(pl.col('trade_type_indicator').is_in(['P', 'S']))
@@ -63,8 +73,7 @@ markup = (pl
           .filter(pl.col('markup').ge(0))
           # create indicators for retail and institutional trades
           # first adjust dtype for par traded
-          .with_columns(par_traded = pl.when(pl.col('par_traded').eq("1MM+")).then(pl.lit('1000000')).otherwise(pl.col('par_traded')))
-          .with_columns(pl.col('par_traded').cast(pl.Float64))
+          .with_columns(pl.col('par_traded').replace('1MM+', '1000000').cast(pl.Float64))
           .with_columns(retail = pl.when(pl.col('par_traded').lt(100000)).then(1).otherwise(0),
                         institutional = pl.when(pl.col('par_traded').ge(100000)).then(1).otherwise(0))
           # create indicators for small and large retail trades
@@ -74,11 +83,11 @@ markup = (pl
           .with_columns(small_institutional = pl.when(pl.col('institutional').eq(1) & pl.col('par_traded').lt(250000)).then(1).otherwise(0),
                         large_institutional = pl.when(pl.col('par_traded').ge(250000)).then(1).otherwise(0))
           # collect to memory
-          .collect(streaming = True)
+          .collect()
           )
 
 #%%
 '''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
 Output
 '''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
-markup.write_parquet(f'{clean_data_dir}/Processed/All_Trade_Markup_2005_2023.gzip')
+markup.write_parquet(processed_dir / 'All_Trade_Markup_2005_2023.gzip')

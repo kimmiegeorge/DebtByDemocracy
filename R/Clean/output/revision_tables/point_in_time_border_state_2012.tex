@@ -1,38 +1,42 @@
 \begingroup
 \centering
-\begin{tabular*}{\textwidth}{@{\extracolsep{\fill}}lcccc}
-\multicolumn{5}{l}{\textbf{Panel E: Border-state sample}}\\
+\begin{tabular*}{\textwidth}{@{\extracolsep{\fill}}lccc}
+\multicolumn{4}{l}{\textbf{Panel E: Border-state sample}}\\
 
 \addlinespace
    \toprule
-                               & Pct UTGO       & Pct Revenue   & Wtd. Avg. Yield Spread & ln(1 + Census Total Debt)\\  
-                               & (1)            & (2)           & (3)                    & (4)\\  
+                               & Pct UTGO       & Wtd. Avg. Yield Spread & Census Total Debt\\  
+                               & (1)            & (2)                    & (3)\\  
+                               &  OLS           & OLS                    & Poisson\\  
    \midrule 
-   Vote                        & -0.320$^{**}$  & 0.283$^{**}$  & 0.428$^{*}$            & -1.23\\   
-                               & (-2.31)        & (2.21)        & (1.89)                 & (-1.43)\\   
-   County ln(GDP)              & 0.095          & 0.040         & -0.157                 & -1.25\\   
-                               & (0.70)        & (0.29)       & (-1.06)                & (-1.46)\\   
-   City ln(Pop)                & -0.153$^{***}$ & 0.055$^{*}$   & 0.035                  & 1.54$^{***}$\\   
-                               & (-4.18)        & (1.86)        & (1.14)                 & (6.72)\\   
-   County ln(Pers. Inc)        & -0.084         & -0.072        & 0.201                  & 1.25\\   
-                               & (-0.55)       & (-0.49)      & (1.24)                 & (1.35)\\   
-   ln(1 + County Noncity Debt) & 0.068$^{***}$  & -0.026        & -0.033                 & 0.125\\   
-                               & (2.76)         & (-1.20)       & (-1.32)                & (1.43)\\   
-   State GO Vote               & 0.405$^{*}$    & -0.510$^{**}$ & 0.494                  & -0.650\\   
-                               & (1.92)         & (-2.43)       & (0.98)                & (-0.48)\\   
-   High Tax Priv.              & 0.021          & 0.144         & -0.811                 & 0.744\\   
-                               & (0.10)        & (0.67)       & (-1.51)                & (0.66)\\   
-   ln(1 + Census Total Debt)   &                &               & 0.014                  &   \\   
-                               &                &               & (1.10)                 &   \\   
-   Wtd. Avg. Rating            &                &               & -0.145$^{***}$         &   \\   
-                               &                &               & (-5.30)                &   \\   
-   Wtd. Avg. Original Maturity &                &               & 0.030$^{**}$           &   \\   
-                               &                &               & (2.34)                 &   \\   
+   Vote                        & 0.038          & 0.899$^{***}$          & -1.248$^{**}$\\   
+                               & (1.09)        & (5.89)                & (-2.35)\\   
+   County ln(GDP)              & 0.064          & -0.248                 & -0.327\\   
+                               & (0.54)        & (-0.87)               & (-0.48)\\   
+   City ln(Pop)                & -0.149$^{***}$ & 0.008                  & 1.067$^{***}$\\   
+                               & (-3.29)       & (0.23)                & (12.92)\\   
+   County ln(Pers. Inc)        & -0.049         & 0.204                  & 0.457\\   
+                               & (-0.45)       & (0.68)                & (0.66)\\   
+   County Non-City Debt        & 0.071$^{**}$   & -0.100$^{**}$          & -0.073\\   
+                               & (2.82)        & (-3.14)               & (-1.41)\\   
+   State GO Vote               & 0.061          & 0.324                  & 0.550\\   
+                               & (1.07)        & (1.23)                & (1.05)\\   
+   Low Tax Priv.               & 0.582$^{***}$  & 0.146                  & -1.856$^{***}$\\   
+                               & (9.91)        & (0.70)                & (-3.41)\\   
+   Wtd. Avg. Rating            &                & -0.017                 &   \\   
+                               &                & (-0.89)               &   \\   
+   Wtd. Avg. Original Maturity &                & 0.155$^{***}$          &   \\   
+                               &                & (6.12)                &   \\   
+   Any Insured                 &                & 0.012                  &   \\   
+                               &                & (0.16)                &   \\   
+   Any Callable                &                & -0.114                 &   \\   
+                               &                & (-0.31)               &   \\   
+   Any Sinkable                &                & 0.012                  &   \\   
+                               &                & (0.22)                &   \\   
    \hline
-   N                & 265            & 265           & 220                    & 326\\  
-   Adj. R$^2$              & 0.217          & 0.373         & 0.495                  & 0.393\\  
-   State-Border FE             & Yes            & Yes           & Yes                    & Yes\\  
-   Cluster              & County & County & County & County\\  
+   N                & 263            & 263                    & 263\\  
+   State-Border FE             & Yes            & Yes                    & Yes\\  
+   Cluster              & State-Year & State-Year & State-Year\\  
    \bottomrule
 \end{tabular*}
 \par\endgroup

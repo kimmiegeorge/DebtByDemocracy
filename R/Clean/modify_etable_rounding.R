@@ -1,53 +1,77 @@
-# Function to modify t-stat rounding in etable output
-# Allows different rounding for coefficients and t-statistics
+# Helpers for applying fixed decimal places to etable output. fixest treats a
+# numeric `digits` argument as significant digits, so `digits = 3` prints 2.35
+# rather than the fixed-decimal value 2.346.
+
+# All Clean table scripts source this file before calling etable(). Normalize a
+# numeric digits argument to fixest's fixed-decimal "r" form *before* etable
+# reads the full-precision model coefficients. This obtains the true third
+# decimal; it does not pad an already rounded value with a zero.
+etable <- function(..., digits = "r3") {
+  digits_value <- eval(substitute(digits), envir = parent.frame())
+  if (is.numeric(digits_value) && length(digits_value) == 1L) {
+    digits_value <- paste0("r", digits_value)
+  }
+
+  etable_call <- match.call(expand.dots = TRUE)
+  etable_call[[1L]] <- quote(fixest::etable)
+  etable_call$digits <- digits_value
+  eval(etable_call, envir = parent.frame())
+}
+
+format_fixed_number <- function(value, digits) {
+  sprintf(paste0("%.", digits, "f"), as.numeric(value))
+}
+
+format_tstat_line <- function(line, digits) {
+  tstat_pattern <- "\\(([+-]?[0-9]*\\.[0-9]+)\\)"
+  matches <- gregexpr(tstat_pattern, line, perl = TRUE)
+  matched_text <- regmatches(line, matches)[[1]]
+
+  if (length(matched_text) == 0 || identical(matched_text, character(0))) {
+    return(line)
+  }
+
+  starts <- as.integer(matches[[1]])
+  lengths <- attr(matches[[1]], "match.length")
+  pieces <- character(0)
+  cursor <- 1L
+
+  for (j in seq_along(starts)) {
+    pieces <- c(pieces, substr(line, cursor, starts[j] - 1L))
+    value <- sub(tstat_pattern, "\\1", matched_text[j], perl = TRUE)
+    pieces <- c(pieces, paste0("(", format_fixed_number(value, digits), ")"))
+    cursor <- starts[j] + lengths[j]
+  }
+
+  paste0(c(pieces, substr(line, cursor, nchar(line))), collapse = "")
+}
+
+# Coefficients have already been rendered from the model at fixed precision by
+# the etable wrapper above. Only t-statistics need post-processing from three to
+# two decimal places.
 
 modify_etable_rounding <- function(etable_call, coef_digits = 3, tstat_digits = 2) {
-  # First, capture the etable output as text
   etable_output <- capture.output(eval(etable_call))
-  
-  # Find lines that contain t-statistics (they come after coefficient lines)
-  # In etable with se.below = TRUE and coefstat = 'tstat', 
-  # t-stats appear in parentheses on lines following coefficient lines
-  
-  modified_output <- character(length(etable_output))
-  
-  for (i in seq_along(etable_output)) {
-    line <- etable_output[i]
-    
-    # Check if this line contains t-statistics (look for parentheses with numbers)
-    if (grepl("\\([^)]*[0-9]+\\.[0-9]+[^)]*\\)", line)) {
-      # Extract all numbers in parentheses (t-stats)
-      tstat_pattern <- "\\(([+-]?[0-9]*\\.?[0-9]+)\\)"
-      
-      # Find all matches
-      matches <- gregexpr(tstat_pattern, line, perl = TRUE)
-      match_data <- regmatches(line, matches)[[1]]
-      
-      if (length(match_data) > 0) {
-        # Process each t-statistic
-        new_line <- line
-        for (match in match_data) {
-          # Extract the numeric value
-          numeric_val <- as.numeric(gsub("\\(|\\)", "", match))
-          # Round to specified digits
-          rounded_val <- round(numeric_val, tstat_digits)
-          # Format to ensure consistent decimal places
-          formatted_val <- sprintf(paste0("%.", tstat_digits, "f"), rounded_val)
-          # Replace in the line
-          new_match <- paste0("(", formatted_val, ")")
-          new_line <- sub(gsub("\\(", "\\\\(", gsub("\\)", "\\\\)", match)), new_match, new_line, fixed = FALSE)
-        }
-        modified_output[i] <- new_line
-      } else {
-        modified_output[i] <- line
-      }
-    } else {
-      modified_output[i] <- line
-    }
+  modified_output <- etable_output
+
+  # Require a blank first cell so model numbers and parenthesized text in labels
+  # are not mistaken for t-statistics.
+  tstat_pattern <- "\\([+-]?[0-9]*\\.[0-9]+\\)"
+  is_tstat_line <- grepl(
+    paste0("^[[:space:]]*&.*", tstat_pattern),
+    etable_output,
+    perl = TRUE
+  )
+  if (any(is_tstat_line)) {
+    modified_output[is_tstat_line] <- vapply(
+      etable_output[is_tstat_line],
+      format_tstat_line,
+      FUN.VALUE = character(1),
+      digits = tstat_digits
+    )
   }
-  
-  # Return the modified output
-  return(modified_output)
+
+  modified_output
 }
 
 # Alternative function that works with the tex output directly
@@ -55,16 +79,26 @@ modify_etable_tex_rounding <- function(..., coef_digits = 3, tstat_digits = 2, f
   # Capture the etable arguments
   etable_args <- list(...)
   
-  # Set coefficient digits
-  etable_args$digits <- coef_digits
+  # "r" requests fixed decimal places instead of significant digits.
+  etable_args$digits <- paste0("r", coef_digits)
   
   # Generate the table to a temporary location first
   temp_file <- tempfile(fileext = ".tex")
   etable_args$file <- temp_file
   etable_args$replace <- TRUE
   
-  # Call etable with original arguments
-  do.call(etable, etable_args)
+  # do.call evaluates model arguments before fixest can inspect `...`. Bundle
+  # those evaluated models into one list and keep recognized etable options as
+  # named arguments.
+  argument_names <- names(etable_args)
+  if (is.null(argument_names)) {
+    argument_names <- rep("", length(etable_args))
+  }
+  etable_option_names <- setdiff(names(formals(fixest::etable)), "...")
+  is_etable_option <- nzchar(argument_names) & argument_names %in% etable_option_names
+  model_args <- etable_args[!is_etable_option]
+  option_args <- etable_args[is_etable_option]
+  do.call(fixest::etable, c(list(model_args), option_args))
   
   # Read the generated tex file
   tex_content <- readLines(temp_file)
@@ -118,7 +152,8 @@ modify_etable_tex_rounding <- function(..., coef_digits = 3, tstat_digits = 2, f
   invisible(modified_content)
 }
 # Format table with custom styling
-format_table <- function(tex, cluster_level = "FIPS", fixed_width = TRUE, width = "\\textwidth") {
+format_table <- function(tex, cluster_level = "FIPS", fixed_width = TRUE, width = "\\textwidth",
+                         drop_covariance = FALSE) {
   # Collapse to single string if it's a vector
   if (length(tex) > 1) {
     tex <- paste(tex, collapse = "\n")
@@ -126,6 +161,16 @@ format_table <- function(tex, cluster_level = "FIPS", fixed_width = TRUE, width 
   
   # Split into lines
   lines <- strsplit(tex, "\n", fixed = TRUE)[[1]]
+
+  # etable adds a Co-variance row when models use different vcov formulas.
+  # The Cluster row below reports this information more clearly, so drop the
+  # redundant automatically generated row.
+  if (isTRUE(drop_covariance)) {
+    covariance_idx <- grep("^[[:space:]]*Co-variance[[:space:]]*&", lines)
+    if (length(covariance_idx) > 0) {
+      lines <- lines[-covariance_idx]
+    }
+  }
   
   # 0. Convert tabular to tabular* with @{\extracolsep{\fill}}
   for (i in seq_along(lines)) {
@@ -287,8 +332,16 @@ format_table <- function(tex, cluster_level = "FIPS", fixed_width = TRUE, width 
     
     n_cols <- length(gregexpr("&", sample_row)[[1]]) + 1
     
-    # Create cluster row with the specified level in all columns
-    cluster_values <- paste(rep(cluster_level, n_cols - 1), collapse = " & ")
+    # Accept either one label for every model or one label per model.
+    n_models <- n_cols - 1
+    if (length(cluster_level) == 1) {
+      cluster_levels <- rep(cluster_level, n_models)
+    } else if (length(cluster_level) == n_models) {
+      cluster_levels <- cluster_level
+    } else {
+      stop("cluster_level must contain either one label or one label per model")
+    }
+    cluster_values <- paste(cluster_levels, collapse = " & ")
     cluster_row <- paste0("   Cluster              & ", cluster_values, "\\\\  ")
     
     lines <- append(lines, cluster_row, after = bottomrule_idx - 1)
@@ -299,7 +352,12 @@ format_table <- function(tex, cluster_level = "FIPS", fixed_width = TRUE, width 
 }
 
 
-add_panel <- function(tex, panel_title = "Panel B: Only UTGO vote required", ncols = NULL) {
+add_panel <- function(
+  tex,
+  panel_title = "Panel B: Only UTGO vote required",
+  ncols = NULL,
+  zero_width = FALSE
+) {
   
   # Work with lines if it's a vector, or split if it's a single string
   if (length(tex) == 1) {
@@ -341,9 +399,16 @@ add_panel <- function(tex, panel_title = "Panel B: Only UTGO vote required", nco
   # Escape characters that would break LaTeX (minimal set)
   panel_title <- gsub("([%&#_{}$])", "\\\\\\1", panel_title)
   
+  # A zero-width box keeps a long spanning panel title inside the tabular
+  # without allowing it to distort the underlying model-column widths.
+  panel_contents <- paste0("\\textbf{", panel_title, "}")
+  if (isTRUE(zero_width)) {
+    panel_contents <- paste0("\\makebox[0pt][l]{", panel_contents, "}")
+  }
+
   # Create panel lines to insert after the tabular declaration
   panel_lines <- c(
-    paste0("\\multicolumn{", ncols, "}{l}{\\textbf{", panel_title, "}}\\\\\n"),
+    paste0("\\multicolumn{", ncols, "}{l}{", panel_contents, "}\\\\\n"),
     "\\addlinespace"
   )
   

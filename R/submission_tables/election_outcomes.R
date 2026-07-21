@@ -56,19 +56,6 @@ format_fips <- function(x) {
   fifelse(is.na(x), NA_character_, sprintf('%05d', as.integer(x)))
 }
 
-recode_election_purpose <- function(dt) {
-  dt <- copy(dt)
-  if (!('purp_broad_new' %in% names(dt))) {
-    return(dt)
-  }
-
-  dt[purp_broad_new %in% c('pension', 'educ', 'housing', 'econdev', 'health'), purp_broad_new := 'other']
-  dt[purp_broad_new == 'wtrswr', purp_broad_new := 'utilities']
-  dt[purp_broad_new %in% c('fire', 'police'), purp_broad_new := 'public_safety']
-  dt[purp_broad_new %in% c('envir', 'arts'), purp_broad_new := 'parksrec']
-  return(dt)
-}
-
 build_actual_issue_city_year <- function(data_wd) {
   issue_level <- as.data.table(read_dta(paste0(data_wd, 'Mergent/Clean/260610_city_cusiplevel_statereq_purpose_yieldspread.dta')))
   issue_level <- unique(issue_level[state == 'TX' & !is.na(seed_issuer) & !is.na(year),
@@ -202,7 +189,6 @@ election <- add_updated_county_controls(election,
                                         updated_county_controls,
                                         fips_map = media_election_fips_map,
                                         demo_year_offset = -1L)
-election <- recode_election_purpose(election)
 election_missing_updated <- summarize_county_demo_missingness(
   election,
   'raw election-level media file after updated BEA prior-year merge'
@@ -604,7 +590,6 @@ election <- add_updated_county_controls(election,
                                         updated_county_controls,
                                         demo_year_offset = -1L)
 election <- fill_missing_county_controls_earliest(election, updated_county_controls)
-election <- recode_election_purpose(election)
 website_election_missing_updated <- summarize_county_demo_missingness(
   election[total_subs == 50],
   'raw website election-level file after updated BEA prior-year merge, total_subs == 50'
