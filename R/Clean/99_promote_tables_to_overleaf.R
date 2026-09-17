@@ -77,7 +77,7 @@ document_table_files <- c(
   'trade_before_maturity_full_sample_tax.tex',
   'trade_before_maturity_border_sample_tax.tex',
   'issuer_level_desc.tex',
-  'point_in_time_census_debt_poisson_2017_full_sample.tex',
+  'point_in_time_census_debt_poisson_2017_expanded_sample.tex',
   'point_in_time_debt_choice_2017_allgo.tex',
   'point_in_time_debt_choice_2017_utgo_only.tex',
   'point_in_time_purpose_category_amount_ppml_2017_full_sample.tex',
