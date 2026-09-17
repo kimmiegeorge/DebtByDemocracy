@@ -1,0 +1,12 @@
+\clearpage
+\begin{table}[H]\centering
+\def\sym#1{\ifmmode^{#1}\else\(^{#1}\)\fi}
+\begingroup
+\caption{\textbf{Texas GO bond referendums and website disclosure: Poisson specification}}
+\label{tab:tx_election_time_series_poisson}
+
+\parbox{\textwidth}{This table examines the level of bond-related website disclosure around GO bond elections in Texas cities. Observations are at the city-year level, and the dependent variable is \textit{Bond Count}, the number of occurrences of the word ``bond'' across the processed text of a city's website. The sample is restricted to city-years with 50 processed sub-URLs. The table reports Poisson pseudo-maximum likelihood regressions with city and year fixed effects. Column~(2) controls for bond issuance years and county economic characteristics. z-statistics are reported in parentheses, and standard errors are clustered by county. *, **, and *** indicate statistical significance at the 10\%, 5\%, and 1\% levels. All variables are defined in \textit{Appendix A}.}
+\endgroup
+\end{table}
+
+\input{tables/clean/raw/tx_website_time_series_reg_2yr_poisson}

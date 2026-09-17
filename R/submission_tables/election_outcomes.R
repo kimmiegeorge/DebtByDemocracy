@@ -727,6 +727,62 @@ modified_output <- add_panel(modified_output, 'Panel A: Elections and website di
 writeLines(modified_output, paste0(tbl_dir, '/tx_website_time_series_reg_2yr.tex'))
 
 
+# Estimate the website-disclosure specification in levels using PPML. Restrict
+# the sample to city-years with 50 processed sub-URLs so Bond Count is measured
+# over a comparable amount of website content across observations.
+website_city_year_poisson <- website_city_year[
+  !is.na(fips) & total_subs == 50
+]
+
+r1_poisson <- fepois(
+  bond_count ~ election | seed_issuer + year,
+  data = website_city_year_poisson,
+  cluster = ~fips
+)
+summary(r1_poisson)
+
+r2_poisson <- fepois(
+  bond_count ~ election + issuance_window + ln_county_gdp_prior +
+    ln_county_pop_prior + ln_county_pers_inc_prior | seed_issuer + year,
+  data = website_city_year_poisson,
+  cluster = ~fips
+)
+summary(r2_poisson)
+
+table_call <- etable(r1_poisson, r2_poisson,
+                     coefstat = 'tstat',
+                     style.tex = style.tex(main = 'aer', fixef.suffix = ' FE', yesNo = c("Yes", "No")),
+                     fitstat = c('n', 'pr2'),
+                     se.below = TRUE,
+                     digits = 3,
+                     digits.stats = 3,
+                     signif.code = c("***"=0.01, "**"=0.05, "*"=0.10),
+                     tex = TRUE,
+                     dict = c(bond_count = 'Bond Count',
+                              election = 'Election Year',
+                              issuance_window = 'Bond Issuance Year',
+                              ln_county_gdp_prior = 'County ln(GDP)',
+                              ln_county_pop_prior = 'County ln(Pop)',
+                              ln_county_pers_inc_prior = 'County ln(Pers. Inc)',
+                              ln_county_employment_prior = 'County ln(Emp)',
+                              seed_issuer = 'City',
+                              year = 'Year'),
+                     placement = 'H',
+                     replace = TRUE)
+
+
+modified_output <- modify_etable_rounding(
+  table_call,
+  coef_digits = 3,
+  tstat_digits = 2
+)
+
+modified_output <- format_table(modified_output, cluster_level = "County")
+modified_output <- add_panel(modified_output, 'Panel A: Elections and website disclosure over time', ncols = 3)
+
+writeLines(modified_output, paste0(tbl_dir, '/tx_website_time_series_reg_2yr_poisson.tex'))
+
+
 
 
 
