@@ -5,6 +5,7 @@ library(pacman)
 p_load(data.table, dplyr, stargazer, DescTools, arrow, glue, lfe, ggplot2, gridExtra, sandwich, zoo, fixest, haven, xtable)
 source('/Users/kmunevar/Dropbox/Voting on Bonds/Code/R/submission_tables/modify_etable_rounding.R')
 source('/Users/kmunevar/Dropbox/Voting on Bonds/Code/R/submission_tables/robustness_helpers.R')
+source('/Users/kmunevar/Dropbox/Voting on Bonds/Code/R/Clean/border_pair_definitions.R')
 tbl_dir <- "~/Dropbox/Apps/Overleaf/Voting on bonds/tables/revision_tables"
 data_wd <- "~/Dropbox/Voting on Bonds/Data/"
 
@@ -85,17 +86,20 @@ border_articles[, diff := issuance_year_month_id - lag_issuance_ym_id]
 border_articles[, bond_prior_12 := ifelse(!is.na(diff) & diff <=  12, 1, 0)]
 
 #border_articles <- border_articles[group %in% all_border_states]
-#border_articles <- border_articles[!(group %in% c('Missouri/Kentucky', 'Missouri/Tennessee', 'Rhode Island/Massachusetts'))]
-
-border_articles <- border_articles[!(group %in% c('Rhode Island/Massachusetts'))]
+border_articles <- filter_paper_border_pairs(border_articles)
 
 
 border_articles[, log_sources := log(1+unique_sources_12)]
 issuance_lvl[, log_sources := log(1+unique_sources_12)]
 #_______________Descriptives________________
 
-border_articles[, total_articles_12_0_win := Winsorize(total_rp_articles_12_0, val = quantile(total_rp_articles_12_0, probs = c(0.01, 0.99)))]
-issuance_lvl[, total_articles_12_0_win := Winsorize(total_rp_articles_12_0, val = quantile(total_rp_articles_12_0, probs = c(0.01, 0.99)))]
+border_article_caps <- quantile(border_articles$total_rp_articles_12_0, probs = c(0.01, 0.99))
+border_article_caps <- c(floor(border_article_caps[1]), ceiling(border_article_caps[2]))
+border_articles[, total_articles_12_0_win := Winsorize(total_rp_articles_12_0, val = border_article_caps)]
+
+issuance_article_caps <- quantile(issuance_lvl$total_rp_articles_12_0, probs = c(0.01, 0.99))
+issuance_article_caps <- c(floor(issuance_article_caps[1]), ceiling(issuance_article_caps[2]))
+issuance_lvl[, total_articles_12_0_win := Winsorize(total_rp_articles_12_0, val = issuance_article_caps)]
 
 desc <- issuance_lvl[go_unlim_bond_issuance == 1 & rolling_sum_monthly_article_count_12 > 0, .(city_go_vote, total_articles_12_0_win,
                             bond_prior_12, log_sources, ln_amount, 

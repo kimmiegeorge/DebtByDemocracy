@@ -352,7 +352,29 @@ desc_election_col <- summarize_desc_cols(
 )
 
 website_election_desc <- fread(paste0(clean_data_wd, 'Websites/Texas/election_level_website_data.csv'))
-desc_bond_text <- website_election_desc[total_subs == 50 & !is.na(bond_count), .(bond_count)]
+# Match the unrestricted Texas website-outcome regression sample: merge the
+# covered-media election file, retain nonmissing bond text, and remove the same
+# year/purpose fixed-effect singletons as the regression below.
+website_election_desc <- election[, .(
+  GovernmentName,
+  ElectionDate,
+  PropNumber,
+  unique_sources_12m_prior,
+  articles_2m_before_to_election
+)][website_election_desc, on = .(GovernmentName, ElectionDate, PropNumber)]
+website_election_desc[, high_bond_count := ifelse(
+  bond_count > median(bond_count, na.rm = TRUE),
+  1,
+  0
+)]
+website_desc_sample_model <- feols(
+  failed ~ high_bond_count | year + purp_broad_new,
+  data = website_election_desc,
+  cluster = ~County,
+  fixef.rm = 'singleton',
+  notes = FALSE
+)
+desc_bond_text <- website_election_desc[obs(website_desc_sample_model), .(bond_count)]
 desc_bond_text_col <- summarize_desc_cols(
   desc_bond_text,
   'Election',

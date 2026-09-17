@@ -14,6 +14,16 @@ data_dir = '/Users/kmunevar/Dropbox/Voting on Bonds/Data/'
 clean_data_dir = '/Users/kmunevar/Dropbox/Voting on Bonds/Data/Clean_Intermediate/'
 processed_dir = Path(f'{clean_data_dir}Continuing Disclosure/Processed')
 processed_dir.mkdir(parents=True, exist_ok=True)
+project_root = next(
+    parent for parent in Path(__file__).resolve().parents
+    if (parent / 'Code/Config/border_state_pairs.csv').exists()
+)
+paper_border_pairs = (
+    pl.read_csv(project_root / 'Code/Config/border_state_pairs.csv')
+    .filter(pl.col('include_in_paper') == 1)
+    .get_column('group')
+    .to_list()
+)
 
 
 def add_issuer_key(frame: pl.DataFrame) -> pl.DataFrame:
@@ -481,7 +491,7 @@ border_state = pl.read_csv(
 )
 border_state = (border_state
                 .select(['seed_issuer_id', 'seed_issuer', 'state', 'group'])
-                .filter(pl.col('group').ne(pl.lit('Rhode Island/Massachusetts')))
+                .filter(pl.col('group').is_in(paper_border_pairs))
                 .unique())
 border_panel = (add_issuer_key(border_state)
                 .join(final_panel,

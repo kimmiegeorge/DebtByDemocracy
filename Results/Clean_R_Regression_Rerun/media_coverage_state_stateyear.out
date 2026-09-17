@@ -1,0 +1,107 @@
+/Volumes/Temp/tmp/RtmpKxlZl3/R.INSTALL104a432591603/arrow/tools/cpp/src/arrow/util/cpu_info.cc:239: IOError: sysctlbyname failed for 'hw.l1dcachesize'. Detail: [errno 1] Operation not permitted
+/Volumes/Temp/tmp/RtmpKxlZl3/R.INSTALL104a432591603/arrow/tools/cpp/src/arrow/util/cpu_info.cc:239: IOError: sysctlbyname failed for 'hw.l2cachesize'. Detail: [errno 1] Operation not permitted
+/Volumes/Temp/tmp/RtmpKxlZl3/R.INSTALL104a432591603/arrow/tools/cpp/src/arrow/util/cpu_info.cc:239: IOError: sysctlbyname failed for 'hw.l3cachesize'. Detail: [errno 1] Operation not permitted
+/Volumes/Temp/tmp/RtmpKxlZl3/R.INSTALL104a432591603/arrow/tools/cpp/src/arrow/util/cpu_info.cc:239: IOError: sysctlbyname failed for 'hw.optional.neon'. Detail: [errno 1] Operation not permitted
+                  variable mean_0 mean_1       diff_fmt
+                    <char>  <num>  <num>         <char>
+1: total_articles_12_0_win   1.59   3.09 1.50*** (4.73)
+NOTE: 40/1 fixed-effects (652 observations) removed because of only 0 outcomes or singletons.
+Poisson estimation, Dep. Var.: total_articles_12_0_win
+Observations: 2,831
+Fixed-effects: issuance_year_month_id: 197,  purp_broad: 13
+Standard-errors: Clustered (state) 
+              Estimate Std. Error  z value   Pr(>|z|)    
+city_go_vote  0.256403   0.110359  2.32335 0.02016029 *  
+bond_prior_12 0.196305   0.088745  2.21203 0.02696476 *  
+log_sources   0.971518   0.060357 16.09630  < 2.2e-16 ***
+ln_amount     0.190328   0.057688  3.29926 0.00096941 ***
+---
+Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
+Log-Likelihood: -5,052.6   Adj. Pseudo R2: 0.665101
+           BIC: 11,798.2     Squared Cor.: 0.853902
+NOTE: 40/1 fixed-effects (652 observations) removed because of only 0 outcomes or singletons.
+Poisson estimation, Dep. Var.: total_articles_12_0_win
+Observations: 2,831
+Fixed-effects: issuance_year_month_id: 197,  purp_broad: 13
+Standard-errors: Clustered (state) 
+               Estimate Std. Error   z value  Pr(>|z|)    
+city_go_vote   0.226580   0.113636  1.993915 0.0461614 *  
+bond_prior_12  0.189789   0.095852  1.980023 0.0477009 *  
+log_sources    0.856646   0.044738 19.148031 < 2.2e-16 ***
+ln_amount      0.151509   0.047334  3.200835 0.0013703 ** 
+ln_gdp         0.593578   0.315626  1.880638 0.0600212 .  
+ln_pop        -0.135297   0.198759 -0.680708 0.4960563    
+ln_pers_inc   -0.327906   0.407842 -0.804002 0.4213960    
+---
+Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
+Log-Likelihood: -4,935.3   Adj. Pseudo R2: 0.672373
+           BIC: 11,587.4     Squared Cor.: 0.865237
+NOTES: 85 observations removed because of NA values (RHS: 85).
+       102/0/2 fixed-effects (344 observations) removed because of only 0 outcomes or singletons.
+Poisson estimation, Dep. Var.: total_articles_12_0_win
+Observations: 478
+Fixed-effects: issuance_year_month_id: 115,  group: 15,  purp_broad: 9
+Standard-errors: Clustered (state_year) 
+              Estimate Std. Error  z value   Pr(>|z|)    
+city_go_vote  0.664325   0.256492 2.590042 9.5964e-03 ** 
+bond_prior_12 0.107737   0.178716 0.602842 5.4661e-01    
+log_sources   0.992546   0.185125 5.361486 8.2540e-08 ***
+ln_amount     0.036480   0.119269 0.305865 7.5971e-01    
+---
+Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
+Log-Likelihood:  -702.1   Adj. Pseudo R2: 0.453001
+           BIC: 2,274.2     Squared Cor.: 0.827751
+NOTES: 85 observations removed because of NA values (RHS: 85).
+       102/0/2 fixed-effects (344 observations) removed because of only 0 outcomes or singletons.
+Poisson estimation, Dep. Var.: total_articles_12_0_win
+Observations: 478
+Fixed-effects: issuance_year_month_id: 115,  group: 15,  purp_broad: 9
+Standard-errors: Clustered (state_year) 
+               Estimate Std. Error   z value   Pr(>|z|)    
+city_go_vote   0.706110   0.266283  2.651732 8.0080e-03 ** 
+bond_prior_12  0.107448   0.181150  0.593145 5.5308e-01    
+log_sources    0.931116   0.188127  4.949386 7.4448e-07 ***
+ln_amount     -0.032966   0.122070 -0.270061 7.8711e-01    
+ln_gdp        -0.083126   0.747340 -0.111229 9.1144e-01    
+ln_pop         1.127810   1.583400  0.712271 4.7630e-01    
+ln_pers_inc   -0.605034   1.644535 -0.367906 7.1294e-01    
+---
+Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
+Log-Likelihood:  -690.0   Adj. Pseudo R2: 0.458916
+           BIC: 2,268.5     Squared Cor.: 0.844225
+Warning message:
+Using `size` aesthetic for lines was deprecated in ggplot2 3.4.0.
+ℹ Please use `linewidth` instead. 
+NOTE: 40/1 fixed-effects (652 observations) removed because of only 0 outcomes or singletons.
+Poisson estimation, Dep. Var.: total_articles_12_0_win
+Observations: 2,831
+Fixed-effects: issuance_year_month_id: 197,  purp_broad: 13
+Standard-errors: Clustered (state) 
+               Estimate Std. Error   z value  Pr(>|z|)    
+city_go_vote   0.253493   0.113104  2.241237 0.0250107 *  
+super_majority 0.022715   0.178535  0.127232 0.8987565    
+bond_prior_12  0.198902   0.098012  2.029358 0.0424218 *  
+log_sources    0.970794   0.059825 16.227351 < 2.2e-16 ***
+ln_amount      0.190611   0.057961  3.288595 0.0010069 ** 
+---
+Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
+Log-Likelihood: -5,052.5   Adj. Pseudo R2: 0.665043
+           BIC: 11,806.0     Squared Cor.: 0.85411 
+NOTE: 40/1 fixed-effects (652 observations) removed because of only 0 outcomes or singletons.
+Poisson estimation, Dep. Var.: total_articles_12_0_win
+Observations: 2,831
+Fixed-effects: issuance_year_month_id: 197,  purp_broad: 13
+Standard-errors: Clustered (state) 
+                Estimate Std. Error   z value  Pr(>|z|)    
+city_go_vote    0.236955   0.111775  2.119930  0.034012 *  
+super_majority -0.086147   0.160162 -0.537870  0.590667    
+bond_prior_12   0.180306   0.104344  1.727998  0.083989 .  
+log_sources     0.858184   0.043775 19.604296 < 2.2e-16 ***
+ln_amount       0.150324   0.046527  3.230898  0.001234 ** 
+ln_gdp          0.587777   0.319470  1.839848  0.065790 .  
+ln_pop         -0.150993   0.203936 -0.740391  0.459063    
+ln_pers_inc    -0.304059   0.425988 -0.713773  0.475367    
+---
+Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
+Log-Likelihood: -4,934.1   Adj. Pseudo R2: 0.672384
+           BIC: 11,593.1     Squared Cor.: 0.864727

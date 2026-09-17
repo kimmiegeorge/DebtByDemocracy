@@ -7,6 +7,7 @@ p_load(data.table, fixest, xtable)
 source('/Users/kmunevar/Dropbox/Voting on Bonds/Code/R/Clean/modify_etable_rounding.R')
 source('/Users/kmunevar/Dropbox/Voting on Bonds/Code/R/Clean/tax_privilege_definitions.R')
 source('/Users/kmunevar/Dropbox/Voting on Bonds/Code/R/Clean/state_policy_definitions.R')
+source('/Users/kmunevar/Dropbox/Voting on Bonds/Code/R/Clean/border_pair_definitions.R')
 
 root <- '/Users/kmunevar/Dropbox/Voting on Bonds'
 tbl_dir <- '/Users/kmunevar/Dropbox/Voting on Bonds/Code/R/Clean/output/revision_tables'
@@ -1379,11 +1380,7 @@ border_2017[, ln_1p_census_total_debt := log1p(census_total_debt_mil * 1000000)]
 border_2017[, ln_census_population := log(census_population)]
 border_2017[, state_year := interaction(state, year, drop = TRUE)]
 
-border_2017 <- border_2017[
-  !is.na(border_group) &
-    border_group != 'Rhode Island/Massachusetts' & border_group != 'Maine/New Hampshire'
-    #!(border_group %in% c('Ohio/Kentucky', 'Michigan/Wisconsin', 'Maine/New Hampshire'))
-]
+border_2017 <- filter_debt_yield_border_pairs(border_2017, 'border_group')
 
 border_2017 <- border_2017[
   !is.na(ln_gdp) &
@@ -2359,11 +2356,7 @@ border_2012[, ln_1p_census_total_debt := log1p(census_total_debt_mil * 1000000)]
 border_2012[, ln_census_population := log(census_population)]
 border_2012[, state_year := interaction(state, year, drop = TRUE)]
 
-border_2012 <- border_2012[
-  !is.na(border_group) &
-    border_group != 'Rhode Island/Massachusetts' &
-    !(border_group %in% c('Ohio/Kentucky', 'Michigan/Wisconsin'))
-]
+border_2012 <- filter_debt_yield_border_pairs(border_2012, 'border_group')
 
 border_2012 <- border_2012[
   !is.na(ln_gdp) &

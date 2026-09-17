@@ -8,8 +8,19 @@
 #%%=================== Set up ===================
 import polars as pl
 import pandas as pd
+from pathlib import Path
 
 data_dir = '/Users/kmunevar/Dropbox/Voting on Bonds/Data/'
+project_root = next(
+    parent for parent in Path(__file__).resolve().parents
+    if (parent / 'Code/Config/border_state_pairs.csv').exists()
+)
+paper_border_pairs = (
+    pl.read_csv(project_root / 'Code/Config/border_state_pairs.csv')
+    .filter(pl.col('include_in_paper') == 1)
+    .get_column('group')
+    .to_list()
+)
 
 #%%=================== Load Mergent bond-level data ===================
 print("Loading Mergent data...")
@@ -360,7 +371,7 @@ print("\nDone!")
 border_state = pl.read_csv(f'{data_dir}/Border States/Border Matches All Mergent Data Expanded Set Buffer 100000 20251013.csv', infer_schema_length = 10000)
 border_state = (border_state
                 .select(['seed_issuer_id', 'group'])
-                .filter(pl.col('group').ne(pl.lit('Rhode Island/Massachusetts')))
+                .filter(pl.col('group').is_in(paper_border_pairs))
                 .unique())
 border_panel = (border_state.with_columns(pl.col('seed_issuer_id').cast(pl.Int64))
                 .join(final_panel,

@@ -86,6 +86,35 @@ def aggregate_event_window(
     )
 
 
+def aggregate_source_window(
+        issuance_cusip6: pl.DataFrame,
+        dpc_articles_by_cusip6: pl.DataFrame,
+        start_lag: int,
+        end_lag: int,
+        output_col: str
+) -> pl.DataFrame:
+    '''Count distinct DPC news sources in a relative month window.'''
+    window_rows = pl.concat([
+        issuance_cusip6.with_columns(
+            (pl.col('dpc_issuance_year_month_id') + lag).alias('article_year_month_id')
+        )
+        for lag in range(start_lag, end_lag + 1)
+    ])
+
+    return (
+        window_rows
+        .join(
+            dpc_articles_by_cusip6,
+            on=['cusip6', 'article_year_month_id'],
+            how='left'
+        )
+        .group_by(['seed_issuer_id', 'dpc_issuance_year_month_id'])
+        .agg(
+            pl.col('NewsSource').drop_nulls().n_unique().alias(output_col)
+        )
+    )
+
+
 def load_dpc_article_metadata(path: Path) -> pl.DataFrame:
     '''
     Load NewsArticles.txt despite embedded tabs in NewsContent.
@@ -128,6 +157,10 @@ def load_dpc_article_metadata(path: Path) -> pl.DataFrame:
             pl.col('ObligorID').cast(pl.Int64, strict=False)
         ])
         .with_columns(
+            pl.when(pl.col('NewsSource').str.strip_chars().eq(''))
+            .then(None)
+            .otherwise(pl.col('NewsSource').str.strip_chars())
+            .alias('NewsSource'),
             pl.col('StoryDate').dt.year().cast(pl.Int64).alias('article_year'),
             pl.col('StoryDate').dt.month().cast(pl.Int64).alias('article_month')
         )
@@ -382,6 +415,16 @@ window_aggs = [
     for start_lag, end_lag, output_col in bond_election_window_specs
 ]
 
+# Raw number of distinct DPC outlets covering the issuer during the 12 calendar
+# months before issuance. The issuance month is excluded.
+dpc_sources_12_neg1 = aggregate_source_window(
+    issuance_cusip6,
+    dpc_article_cusip6,
+    -12,
+    -1,
+    'dpc_sources_12_neg1'
+)
+
 dpc_issuance_windows = issuance_any_dpc
 for window_agg in window_aggs:
     dpc_issuance_windows = dpc_issuance_windows.join(
@@ -390,14 +433,20 @@ for window_agg in window_aggs:
         how='full',
         coalesce=True
     )
+dpc_issuance_windows = dpc_issuance_windows.join(
+    dpc_sources_12_neg1,
+    on=['seed_issuer_id', 'dpc_issuance_year_month_id'],
+    how='full',
+    coalesce=True
+)
 
 dpc_count_cols = [name for _, _, name in window_specs + bond_election_window_specs]
 dpc_issuance_windows = (
     dpc_issuance_windows
-    .with_columns([
-        pl.col(col).fill_null(0).cast(pl.Int64)
-        for col in dpc_count_cols
-    ])
+    .with_columns(
+        *[pl.col(col).fill_null(0).cast(pl.Int64) for col in dpc_count_cols],
+        pl.col('dpc_sources_12_neg1').fill_null(0).cast(pl.Int64)
+    )
 )
 
 
@@ -495,6 +544,7 @@ issuance_with_dpc_news = (
         pl.col('dpc_num_issuance_cusip6').fill_null(0).cast(pl.Int64),
         pl.col('dpc_lifetime_article_count').fill_null(0).cast(pl.Int64),
         pl.col('dpc_lifetime_source_count').fill_null(0).cast(pl.Int64),
+        pl.col('dpc_sources_12_neg1').fill_null(0).cast(pl.Int64),
         pl.col('dpc_issuer_has_any_articles').fill_null(0).cast(pl.Int64),
         *[pl.col(col).fill_null(0).cast(pl.Int64) for col in dpc_count_cols]
     )
@@ -522,6 +572,7 @@ diagnostics = pl.DataFrame({
         'dpc_bond_election_story_cusip6_rows',
         'dpc_bond_election_unique_stories',
         'issuance_rows_with_any_dpc_sources',
+        'issuance_rows_with_prior_12m_dpc_sources',
         'issuance_rows_with_any_dpc_articles',
         'issuance_rows_with_prior_12m_dpc_articles',
         'issuance_rows_with_prior_12m_dpc_bond_election_articles'
@@ -536,6 +587,7 @@ diagnostics = pl.DataFrame({
         .select('StoryID')
         .n_unique(),
         issuance_with_dpc_news.filter(pl.col('dpc_lifetime_source_count').gt(0)).height,
+        issuance_with_dpc_news.filter(pl.col('dpc_sources_12_neg1').gt(0)).height,
         issuance_with_dpc_news.filter(pl.col('dpc_issuer_has_any_articles').eq(1)).height,
         issuance_with_dpc_news.filter(pl.col('dpc_total_articles_12_neg1').gt(0)).height,
         issuance_with_dpc_news.filter(pl.col('dpc_bond_election_articles_12_neg1').gt(0)).height

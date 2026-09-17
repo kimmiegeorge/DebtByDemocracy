@@ -2,6 +2,7 @@ rm(list = ls())
 library(pacman)
 p_load(data.table, dplyr, stargazer, DescTools, arrow, glue, lfe, ggplot2, gridExtra, sandwich, zoo, fixest)
 source('/Users/kmunevar/Dropbox/Voting on Bonds/Code/R/submission_tables/modify_etable_rounding.R')
+source('/Users/kmunevar/Dropbox/Voting on Bonds/Code/R/Clean/border_pair_definitions.R')
 tables_wd <- "~/Dropbox/Apps/Overleaf/Voting on bonds/tables/revision_tables/"
 
 #----------------------------------
@@ -23,7 +24,8 @@ data[, super_majority := ifelse(state %in% super_majority_states, 1, 0)]
 #----------------------------------
 
 border_states <- fread('~/Dropbox/Voting on Bonds/Data/Border States/Border Matches All Mergent Data Expanded Set Buffer 100000 20260611.csv')
-border_states <- border_states[go_unlim == 1 & !(group %in% c('Rhode Island/Massachusetts'))]
+border_states <- filter_paper_border_pairs(border_states)
+border_states <- border_states[go_unlim == 1]
 #border_states <- Wins(border_states, col_list)
 border_states <- unique(border_states[, .(seed_issuer_id,group)])
 border_states <- data[border_states, on = .(seed_issuer_id)]

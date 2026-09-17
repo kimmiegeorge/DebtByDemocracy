@@ -1,0 +1,1817 @@
+NOTE: 271 observations removed because of NA values (LHS: 271).
+OLS estimation, Dep. Var.: frac_utgo_outstanding
+Observations: 1,583
+Standard-errors: Clustered (state) 
+              Estimate Std. Error  t value   Pr(>|t|)    
+(Intercept)   0.729136   0.098982  7.36636 3.0119e-07 ***
+city_go_vote -0.326507   0.148036 -2.20559 3.8693e-02 *  
+---
+Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
+RMSE: 0.417757   Adj. R2: 0.131856
+NOTE: 271 observations removed because of NA values (LHS: 271).
+OLS estimation, Dep. Var.: frac_utgo_outstanding
+Observations: 1,583
+Standard-errors: Clustered (state) 
+                      Estimate Std. Error  t value  Pr(>|t|)    
+(Intercept)           1.333065   0.381773  3.49177 0.0021741 ** 
+city_go_vote         -0.313439   0.121655 -2.57646 0.0175991 *  
+ln_gdp                0.094693   0.054413  1.74025 0.0964507 .  
+ln_census_population -0.074250   0.024343 -3.05016 0.0060815 ** 
+ln_pers_inc          -0.091149   0.069162 -1.31790 0.2017323    
+---
+Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
+RMSE: 0.402239   Adj. R2: 0.193622
+NOTE: 271 observations removed because of NA values (LHS: 271).
+OLS estimation, Dep. Var.: frac_utgo_outstanding
+Observations: 1,583
+Standard-errors: Clustered (state) 
+                                      Estimate Std. Error   t value   Pr(>|t|)
+(Intercept)                           1.164639   0.285176  4.083930 0.00053162
+city_go_vote                         -0.230677   0.055922 -4.124958 0.00048195
+ln_gdp                                0.044798   0.050783  0.882148 0.38768286
+ln_census_population                 -0.073725   0.023266 -3.168848 0.00462574
+ln_pers_inc                          -0.060668   0.053091 -1.142708 0.26602089
+ln_1p_county_nonmunicipal_total_debt  0.024159   0.016921  1.427747 0.16806768
+glm_proactive                         0.171201   0.100017  1.711720 0.10167916
+state_ltgo_allowed                   -0.141138   0.047677 -2.960301 0.00746852
+state_go_vote                        -0.127699   0.052917 -2.413184 0.02503526
+high_state_tax_privilege              0.216351   0.092588  2.336694 0.02944291
+                                        
+(Intercept)                          ***
+city_go_vote                         ***
+ln_gdp                                  
+ln_census_population                 ** 
+ln_pers_inc                             
+ln_1p_county_nonmunicipal_total_debt    
+glm_proactive                           
+state_ltgo_allowed                   ** 
+state_go_vote                        *  
+high_state_tax_privilege             *  
+---
+Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
+RMSE: 0.368954   Adj. R2: 0.3194
+NOTE: 271 observations removed because of NA values (LHS: 271).
+OLS estimation, Dep. Var.: frac_ltgo_outstanding
+Observations: 1,583
+Standard-errors: Clustered (state) 
+                                      Estimate Std. Error   t value   Pr(>|t|)
+(Intercept)                          -0.603167   0.172175 -3.503226 2.1162e-03
+city_go_vote                         -0.079383   0.071409 -1.111660 2.7885e-01
+ln_gdp                               -0.021408   0.034979 -0.612015 5.4710e-01
+ln_census_population                  0.010428   0.016695  0.624623 5.3895e-01
+ln_pers_inc                           0.066405   0.044309  1.498671 1.4884e-01
+ln_1p_county_nonmunicipal_total_debt -0.006517   0.015828 -0.411746 6.8470e-01
+glm_proactive                         0.030146   0.093015  0.324099 7.4907e-01
+state_ltgo_allowed                    0.322653   0.051700  6.240889 3.4374e-06
+state_go_vote                         0.054222   0.078151  0.693801 4.9541e-01
+high_state_tax_privilege             -0.162578   0.117894 -1.379019 1.8240e-01
+                                        
+(Intercept)                          ** 
+city_go_vote                            
+ln_gdp                                  
+ln_census_population                    
+ln_pers_inc                             
+ln_1p_county_nonmunicipal_total_debt    
+glm_proactive                           
+state_ltgo_allowed                   ***
+state_go_vote                           
+high_state_tax_privilege                
+---
+Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
+RMSE: 0.264557   Adj. R2: 0.340598
+NOTE: 271 observations removed because of NA values (LHS: 271).
+OLS estimation, Dep. Var.: frac_rev_outstanding
+Observations: 1,583
+Standard-errors: Clustered (state) 
+                                      Estimate Std. Error   t value   Pr(>|t|)
+(Intercept)                           0.438528   0.261269  1.678455 0.10807896
+city_go_vote                          0.310059   0.066709  4.647918 0.00013818
+ln_gdp                               -0.023390   0.041890 -0.558372 0.58249554
+ln_census_population                  0.063297   0.021846  2.897400 0.00861529
+ln_pers_inc                          -0.005737   0.043855 -0.130823 0.89716067
+ln_1p_county_nonmunicipal_total_debt -0.017642   0.016833 -1.048029 0.30653830
+glm_proactive                        -0.201347   0.107077 -1.880385 0.07399859
+state_ltgo_allowed                   -0.181515   0.052257 -3.473529 0.00226963
+state_go_vote                         0.073478   0.068782  1.068274 0.29752378
+high_state_tax_privilege             -0.053773   0.114759 -0.468570 0.64420425
+                                        
+(Intercept)                             
+city_go_vote                         ***
+ln_gdp                                  
+ln_census_population                 ** 
+ln_pers_inc                             
+ln_1p_county_nonmunicipal_total_debt    
+glm_proactive                        .  
+state_ltgo_allowed                   ** 
+state_go_vote                           
+high_state_tax_privilege                
+---
+Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
+RMSE: 0.348482   Adj. R2: 0.246255
+NOTE: 170 observations removed because of NA values (LHS: 170).
+OLS estimation, Dep. Var.: frac_utgo_outstanding
+Observations: 1,325
+Standard-errors: Clustered (state) 
+              Estimate Std. Error  t value   Pr(>|t|)    
+(Intercept)   0.729136   0.101944  7.15236 5.3527e-05 ***
+city_go_vote -0.474729   0.114024 -4.16340 2.4354e-03 ** 
+---
+Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
+RMSE: 0.382146   Adj. R2: 0.26747
+NOTE: 170 observations removed because of NA values (LHS: 170).
+OLS estimation, Dep. Var.: frac_utgo_outstanding
+Observations: 1,325
+Standard-errors: Clustered (state) 
+                      Estimate Std. Error   t value  Pr(>|t|)    
+(Intercept)           0.959041   0.552635  1.735396 0.1166923    
+city_go_vote         -0.473865   0.106441 -4.451926 0.0015958 ** 
+ln_gdp                0.006506   0.085830  0.075798 0.9412380    
+ln_census_population -0.048021   0.025481 -1.884559 0.0921334 .  
+ln_pers_inc           0.006934   0.114802  0.060398 0.9531582    
+---
+Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
+RMSE: 0.378161   Adj. R2: 0.281037
+NOTE: 170 observations removed because of NA values (LHS: 170).
+OLS estimation, Dep. Var.: frac_utgo_outstanding
+Observations: 1,325
+Standard-errors: Clustered (state) 
+                                      Estimate Std. Error   t value  Pr(>|t|)
+(Intercept)                           0.599070   0.328191  1.825372 0.1012366
+city_go_vote                         -0.376059   0.084201 -4.466215 0.0015632
+ln_gdp                               -0.021748   0.053257 -0.408354 0.6925587
+ln_census_population                 -0.038408   0.024498 -1.567765 0.1513800
+ln_pers_inc                           0.046554   0.073875  0.630174 0.5442468
+ln_1p_county_nonmunicipal_total_debt  0.006923   0.026689  0.259409 0.8011556
+glm_proactive                         0.187235   0.044190  4.237055 0.0021838
+state_ltgo_allowed                   -0.306743   0.070144 -4.373046 0.0017891
+state_go_vote                         0.056658   0.037099  1.527231 0.1610504
+high_state_tax_privilege             -0.060323   0.031700 -1.902916 0.0894699
+                                        
+(Intercept)                             
+city_go_vote                         ** 
+ln_gdp                                  
+ln_census_population                    
+ln_pers_inc                             
+ln_1p_county_nonmunicipal_total_debt    
+glm_proactive                        ** 
+state_ltgo_allowed                   ** 
+state_go_vote                           
+high_state_tax_privilege             .  
+---
+Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
+RMSE: 0.346966   Adj. R2: 0.39246
+NOTE: 170 observations removed because of NA values (LHS: 170).
+OLS estimation, Dep. Var.: frac_ltgo_outstanding
+Observations: 1,325
+Standard-errors: Clustered (state) 
+                                      Estimate Std. Error   t value   Pr(>|t|)
+(Intercept)                          -0.109769   0.147638 -0.743499 0.47613974
+city_go_vote                          0.037606   0.096503  0.389684 0.70583137
+ln_gdp                               -0.055962   0.054266 -1.031262 0.32933351
+ln_census_population                  0.016784   0.019771  0.848950 0.41791700
+ln_pers_inc                           0.045584   0.056342  0.809063 0.43934302
+ln_1p_county_nonmunicipal_total_debt  0.007361   0.033260  0.221319 0.82978373
+glm_proactive                         0.082898   0.023722  3.494614 0.00678073
+state_ltgo_allowed                    0.528863   0.081418  6.495619 0.00011202
+state_go_vote                        -0.099299   0.019129 -5.190973 0.00057090
+high_state_tax_privilege              0.020706   0.019914  1.039805 0.32555707
+                                        
+(Intercept)                             
+city_go_vote                            
+ln_gdp                                  
+ln_census_population                    
+ln_pers_inc                             
+ln_1p_county_nonmunicipal_total_debt    
+glm_proactive                        ** 
+state_ltgo_allowed                   ***
+state_go_vote                        ***
+high_state_tax_privilege                
+---
+Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
+RMSE: 0.313198   Adj. R2: 0.452168
+NOTE: 170 observations removed because of NA values (LHS: 170).
+OLS estimation, Dep. Var.: frac_rev_outstanding
+Observations: 1,325
+Standard-errors: Clustered (state) 
+                                      Estimate Std. Error   t value   Pr(>|t|)
+(Intercept)                           0.510699   0.245599   2.07940 6.7331e-02
+city_go_vote                          0.338453   0.029972  11.29223 1.2901e-06
+ln_gdp                                0.077710   0.050356   1.54323 1.5717e-01
+ln_census_population                  0.021623   0.015662   1.38064 2.0071e-01
+ln_pers_inc                          -0.092138   0.048139  -1.91399 8.7898e-02
+ln_1p_county_nonmunicipal_total_debt -0.014284   0.012811  -1.11499 2.9374e-01
+glm_proactive                        -0.270133   0.023226 -11.63065 1.0045e-06
+state_ltgo_allowed                   -0.222120   0.034601  -6.41940 1.2245e-04
+state_go_vote                         0.042640   0.021864   1.95026 8.2932e-02
+high_state_tax_privilege              0.039617   0.022011   1.79988 1.0541e-01
+                                        
+(Intercept)                          .  
+city_go_vote                         ***
+ln_gdp                                  
+ln_census_population                    
+ln_pers_inc                          .  
+ln_1p_county_nonmunicipal_total_debt    
+glm_proactive                        ***
+state_ltgo_allowed                   ***
+state_go_vote                        .  
+high_state_tax_privilege                
+---
+Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
+RMSE: 0.269238   Adj. R2: 0.159734
+NOTE: 338 observations removed because of NA values (LHS: 338).
+OLS estimation, Dep. Var.: frac_utgo_outstanding
+Observations: 2,096
+Standard-errors: Clustered (state) 
+                Estimate Std. Error   t value   Pr(>|t|)    
+(Intercept)     0.729136   0.098716  7.386184 1.2583e-07 ***
+city_go_vote   -0.379266   0.127166 -2.982436 6.4700e-03 ** 
+super_majority -0.052841   0.138823 -0.380637 7.0682e-01    
+---
+Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
+RMSE: 0.41413   Adj. R2: 0.170677
+NOTE: 338 observations removed because of NA values (LHS: 338).
+OLS estimation, Dep. Var.: frac_utgo_outstanding
+Observations: 2,096
+Standard-errors: Clustered (state) 
+                      Estimate Std. Error   t value  Pr(>|t|)    
+(Intercept)           1.338176   0.391124  3.421363 0.0022369 ** 
+city_go_vote         -0.382402   0.105817 -3.613807 0.0013891 ** 
+super_majority        0.010989   0.152096  0.072248 0.9430029    
+ln_gdp                0.067883   0.053342  1.272611 0.2153475    
+ln_census_population -0.065838   0.023776 -2.769053 0.0106677 *  
+ln_pers_inc          -0.069070   0.065422 -1.055755 0.3015927    
+---
+Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
+RMSE: 0.402367   Adj. R2: 0.215997
+NOTE: 338 observations removed because of NA values (LHS: 338).
+OLS estimation, Dep. Var.: frac_utgo_outstanding
+Observations: 2,096
+Standard-errors: Clustered (state) 
+                                      Estimate Std. Error   t value   Pr(>|t|)
+(Intercept)                           1.094880   0.272396  4.019444 5.0164e-04
+city_go_vote                         -0.312453   0.055676 -5.611985 8.9105e-06
+super_majority                       -0.107628   0.073586 -1.462628 1.5654e-01
+ln_gdp                                0.030685   0.050753  0.604587 5.5113e-01
+ln_census_population                 -0.069686   0.019361 -3.599280 1.4402e-03
+ln_pers_inc                          -0.025459   0.053753 -0.473625 6.4005e-01
+ln_1p_county_nonmunicipal_total_debt  0.009923   0.014799  0.670506 5.0894e-01
+glm_proactive                        -0.033408   0.085015 -0.392966 6.9781e-01
+state_ltgo_allowed                   -0.224722   0.049557 -4.534582 1.3563e-04
+state_go_vote                         0.090722   0.077804  1.166032 2.5506e-01
+high_state_tax_privilege              0.156997   0.079778  1.967915 6.0736e-02
+                                        
+(Intercept)                          ***
+city_go_vote                         ***
+super_majority                          
+ln_gdp                                  
+ln_census_population                 ** 
+ln_pers_inc                             
+ln_1p_county_nonmunicipal_total_debt    
+glm_proactive                           
+state_ltgo_allowed                   ***
+state_go_vote                           
+high_state_tax_privilege             .  
+---
+Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
+RMSE: 0.378166   Adj. R2: 0.30581
+NOTE: 338 observations removed because of NA values (LHS: 338).
+OLS estimation, Dep. Var.: frac_ltgo_outstanding
+Observations: 2,096
+Standard-errors: Clustered (state) 
+                                      Estimate Std. Error   t value   Pr(>|t|)
+(Intercept)                          -0.361461   0.267838 -1.349548 1.8975e-01
+city_go_vote                         -0.010920   0.058491 -0.186695 8.5347e-01
+super_majority                        0.199398   0.115115  1.732162 9.6080e-02
+ln_gdp                               -0.026562   0.046001 -0.577427 5.6903e-01
+ln_census_population                  0.007750   0.011892  0.651706 5.2078e-01
+ln_pers_inc                           0.039741   0.051473  0.772083 4.4760e-01
+ln_1p_county_nonmunicipal_total_debt  0.006757   0.017940  0.376669 7.0973e-01
+glm_proactive                         0.284463   0.070832  4.015992 5.0604e-04
+state_ltgo_allowed                    0.420425   0.036205 11.612301 2.4592e-11
+state_go_vote                        -0.144213   0.067903 -2.123795 4.4190e-02
+high_state_tax_privilege             -0.152320   0.045919 -3.317165 2.8883e-03
+                                        
+(Intercept)                             
+city_go_vote                            
+super_majority                       .  
+ln_gdp                                  
+ln_census_population                    
+ln_pers_inc                             
+ln_1p_county_nonmunicipal_total_debt    
+glm_proactive                        ***
+state_ltgo_allowed                   ***
+state_go_vote                        *  
+high_state_tax_privilege             ** 
+---
+Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
+RMSE: 0.316883   Adj. R2: 0.372216
+NOTE: 338 observations removed because of NA values (LHS: 338).
+OLS estimation, Dep. Var.: frac_rev_outstanding
+Observations: 2,096
+Standard-errors: Clustered (state) 
+                                      Estimate Std. Error   t value   Pr(>|t|)
+(Intercept)                           0.266581   0.240851  1.106830 2.7934e-01
+city_go_vote                          0.323373   0.047254  6.843255 4.4553e-07
+super_majority                       -0.091769   0.084279 -1.088878 2.8702e-01
+ln_gdp                               -0.004123   0.038042 -0.108368 9.1460e-01
+ln_census_population                  0.061936   0.017321  3.575753 1.5269e-03
+ln_pers_inc                          -0.014283   0.039324 -0.363200 7.1964e-01
+ln_1p_county_nonmunicipal_total_debt -0.016680   0.014724 -1.132881 2.6846e-01
+glm_proactive                        -0.251055   0.066709 -3.763445 9.5579e-04
+state_ltgo_allowed                   -0.195702   0.046319 -4.225102 2.9791e-04
+state_go_vote                         0.053491   0.049989  1.070043 2.9524e-01
+high_state_tax_privilege             -0.004677   0.063087 -0.074131 9.4152e-01
+                                        
+(Intercept)                             
+city_go_vote                         ***
+super_majority                          
+ln_gdp                                  
+ln_census_population                 ** 
+ln_pers_inc                             
+ln_1p_county_nonmunicipal_total_debt    
+glm_proactive                        ***
+state_ltgo_allowed                   ***
+state_go_vote                           
+high_state_tax_privilege                
+---
+Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
+RMSE: 0.336584   Adj. R2: 0.238642
+NOTE: 649 observations removed because of NA values (LHS: 280, RHS: 647).
+OLS estimation, Dep. Var.: mergent_wavg_yield_spread_go_revenue
+Observations: 1,205
+Standard-errors: Clustered (state) 
+                                      Estimate Std. Error    t value   Pr(>|t|)
+(Intercept)                           1.538985   0.188310   8.172637 5.8384e-08
+city_go_vote                          0.117549   0.031649   3.714150 1.2842e-03
+ln_gdp                               -0.001414   0.035372  -0.039973 9.6849e-01
+ln_census_population                  0.056411   0.014068   4.009822 6.3465e-04
+ln_pers_inc                           0.031956   0.038094   0.838881 4.1098e-01
+ln_1p_census_total_debt              -0.000167   0.004163  -0.040206 9.6831e-01
+ln_1p_county_nonmunicipal_total_debt -0.015433   0.005280  -2.922949 8.1305e-03
+wavg_rating                          -0.170346   0.016522 -10.310154 1.1318e-09
+wavg_original_maturity                0.006012   0.004832   1.244219 2.2713e-01
+glm_proactive                        -0.096150   0.056137  -1.712770 1.0148e-01
+state_ltgo_allowed                   -0.038239   0.030042  -1.272839 2.1699e-01
+state_go_vote                         0.030583   0.034775   0.879445 3.8911e-01
+high_state_tax_privilege             -0.019836   0.046069  -0.430566 6.7117e-01
+                                        
+(Intercept)                          ***
+city_go_vote                         ** 
+ln_gdp                                  
+ln_census_population                 ***
+ln_pers_inc                             
+ln_1p_census_total_debt                 
+ln_1p_county_nonmunicipal_total_debt ** 
+wavg_rating                          ***
+wavg_original_maturity                  
+glm_proactive                           
+state_ltgo_allowed                      
+state_go_vote                           
+high_state_tax_privilege                
+---
+Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
+RMSE: 0.341829   Adj. R2: 0.420696
+NOTE: 982 observations removed because of NA values (LHS: 712, RHS: 981).
+OLS estimation, Dep. Var.: mergent_wavg_yield_spread_utgo
+Observations: 872
+Standard-errors: Clustered (state) 
+                                      Estimate Std. Error   t value   Pr(>|t|)
+(Intercept)                           1.053959   0.268120  3.930920 8.2682e-04
+city_go_vote                          0.087327   0.070101  1.245736 2.2726e-01
+ln_gdp                               -0.079404   0.047472 -1.672674 1.0996e-01
+ln_census_population                  0.057356   0.016768  3.420560 2.7097e-03
+ln_pers_inc                           0.112291   0.048213  2.329046 3.0453e-02
+ln_1p_census_total_debt              -0.002992   0.002839 -1.053796 3.0454e-01
+ln_1p_county_nonmunicipal_total_debt  0.001807   0.011622  0.155484 8.7800e-01
+wavg_rating                          -0.149954   0.024506 -6.119158 5.5816e-06
+wavg_original_maturity               -0.005620   0.005338 -1.052822 3.0498e-01
+glm_proactive                        -0.073895   0.096821 -0.763213 4.5425e-01
+state_ltgo_allowed                   -0.063582   0.054381 -1.169200 2.5607e-01
+state_go_vote                         0.012871   0.074051  0.173817 8.6376e-01
+high_state_tax_privilege             -0.026706   0.073710 -0.362313 7.2092e-01
+                                        
+(Intercept)                          ***
+city_go_vote                            
+ln_gdp                                  
+ln_census_population                 ** 
+ln_pers_inc                          *  
+ln_1p_census_total_debt                 
+ln_1p_county_nonmunicipal_total_debt    
+wavg_rating                          ***
+wavg_original_maturity                  
+glm_proactive                           
+state_ltgo_allowed                      
+state_go_vote                           
+high_state_tax_privilege                
+---
+Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
+RMSE: 0.319403   Adj. R2: 0.37116
+NOTE: 1,518 observations removed because of NA values (LHS: 1,486, RHS: 1,518).
+OLS estimation, Dep. Var.: mergent_wavg_yield_spread_ltgo
+Observations: 336
+Standard-errors: Clustered (state) 
+                                      Estimate Std. Error    t value   Pr(>|t|)
+(Intercept)                           1.098949   0.187116   5.873091 1.5664e-04
+city_go_vote                          0.004677   0.186471   0.025081 9.8048e-01
+ln_gdp                                0.066483   0.051868   1.281769 2.2884e-01
+ln_census_population                  0.012759   0.033266   0.383539 7.0935e-01
+ln_pers_inc                          -0.044655   0.050530  -0.883731 3.9759e-01
+ln_1p_census_total_debt               0.026160   0.021667   1.207361 2.5507e-01
+ln_1p_county_nonmunicipal_total_debt -0.005958   0.008717  -0.683535 5.0980e-01
+wavg_rating                          -0.148919   0.004854 -30.678823 3.1745e-11
+wavg_original_maturity               -0.010609   0.006498  -1.632640 1.3359e-01
+glm_proactive                        -0.029621   0.269821  -0.109782 9.1475e-01
+state_ltgo_allowed                    0.252630   0.104442   2.418858 3.6132e-02
+state_go_vote                         0.106930   0.161642   0.661522 5.2323e-01
+high_state_tax_privilege              0.043331   0.122827   0.352780 7.3158e-01
+                                        
+(Intercept)                          ***
+city_go_vote                            
+ln_gdp                                  
+ln_census_population                    
+ln_pers_inc                             
+ln_1p_census_total_debt                 
+ln_1p_county_nonmunicipal_total_debt    
+wavg_rating                          ***
+wavg_original_maturity                  
+glm_proactive                           
+state_ltgo_allowed                   *  
+state_go_vote                           
+high_state_tax_privilege                
+---
+Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
+RMSE: 0.303056   Adj. R2: 0.313642
+NOTE: 1,432 observations removed because of NA values (LHS: 1,243, RHS: 1,428).
+OLS estimation, Dep. Var.: mergent_wavg_yield_spread_revenue
+Observations: 422
+Standard-errors: Clustered (state) 
+                                      Estimate Std. Error   t value   Pr(>|t|)
+(Intercept)                           2.208761   0.299661  7.370869 4.0339e-07
+city_go_vote                          0.065913   0.052202  1.262639 2.2124e-01
+ln_gdp                               -0.010733   0.072520 -0.147994 8.8383e-01
+ln_census_population                  0.043086   0.022993  1.873857 7.5636e-02
+ln_pers_inc                           0.036093   0.077718  0.464409 6.4737e-01
+ln_1p_census_total_debt              -0.004715   0.007386 -0.638407 5.3045e-01
+ln_1p_county_nonmunicipal_total_debt -0.020857   0.007587 -2.749157 1.2369e-02
+wavg_rating                          -0.195636   0.022454 -8.712673 3.0433e-08
+wavg_original_maturity                0.013948   0.007014  1.988563 6.0608e-02
+glm_proactive                         0.084043   0.050617  1.660380 1.1244e-01
+state_ltgo_allowed                    0.013993   0.054788  0.255410 8.0101e-01
+state_go_vote                         0.036670   0.070595  0.519444 6.0915e-01
+high_state_tax_privilege             -0.012984   0.058438 -0.222185 8.2642e-01
+                                        
+(Intercept)                          ***
+city_go_vote                            
+ln_gdp                                  
+ln_census_population                 .  
+ln_pers_inc                             
+ln_1p_census_total_debt                 
+ln_1p_county_nonmunicipal_total_debt *  
+wavg_rating                          ***
+wavg_original_maturity               .  
+glm_proactive                           
+state_ltgo_allowed                      
+state_go_vote                           
+high_state_tax_privilege                
+---
+Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
+RMSE: 0.424188   Adj. R2: 0.433665
+NOTE: 369 observations removed because of NA values (LHS: 181, RHS: 367).
+OLS estimation, Dep. Var.: mergent_wavg_yield_spread_go_revenue
+Observations: 1,126
+Standard-errors: Clustered (state) 
+                                      Estimate Std. Error    t value   Pr(>|t|)
+(Intercept)                           2.060657   0.339759   6.065055 1.8702e-04
+city_go_vote                          0.227407   0.033802   6.727606 8.5801e-05
+ln_gdp                               -0.046652   0.053981  -0.864243 4.0990e-01
+ln_census_population                  0.048094   0.014339   3.354128 8.4678e-03
+ln_pers_inc                           0.068238   0.056920   1.198857 2.6120e-01
+ln_1p_census_total_debt               0.003386   0.003549   0.954022 3.6499e-01
+ln_1p_county_nonmunicipal_total_debt -0.019820   0.007657  -2.588554 2.9283e-02
+wavg_rating                          -0.181524   0.016299 -11.137129 1.4501e-06
+wavg_original_maturity               -0.002766   0.004442  -0.622716 5.4892e-01
+glm_proactive                        -0.087965   0.024185  -3.637089 5.4254e-03
+state_go_vote                         0.039508   0.018128   2.179417 5.7229e-02
+high_state_tax_privilege              0.004886   0.020714   0.235904 8.1879e-01
+                                        
+(Intercept)                          ***
+city_go_vote                         ***
+ln_gdp                                  
+ln_census_population                 ** 
+ln_pers_inc                             
+ln_1p_census_total_debt                 
+ln_1p_county_nonmunicipal_total_debt *  
+wavg_rating                          ***
+wavg_original_maturity                  
+glm_proactive                        ** 
+state_go_vote                        .  
+high_state_tax_privilege                
+---
+Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
+RMSE: 0.320027   Adj. R2: 0.454028
+NOTE: 726 observations removed because of NA values (LHS: 573, RHS: 725).
+OLS estimation, Dep. Var.: mergent_wavg_yield_spread_utgo
+Observations: 769
+Standard-errors: Clustered (state) 
+                                      Estimate Std. Error   t value   Pr(>|t|)
+(Intercept)                           1.420361   0.328188  4.327882 0.00191101
+city_go_vote                          0.139289   0.067636  2.059402 0.06954746
+ln_gdp                               -0.152598   0.063975 -2.385257 0.04087395
+ln_census_population                  0.054033   0.020059  2.693706 0.02464646
+ln_pers_inc                           0.179439   0.067372  2.663430 0.02589982
+ln_1p_census_total_debt              -0.000873   0.004980 -0.175317 0.86471127
+ln_1p_county_nonmunicipal_total_debt -0.004179   0.011953 -0.349606 0.73467558
+wavg_rating                          -0.155609   0.023707 -6.563761 0.00010351
+wavg_original_maturity               -0.012414   0.006168 -2.012729 0.07499701
+glm_proactive                        -0.091888   0.079311 -1.158575 0.27644651
+state_go_vote                         0.089504   0.057273  1.562744 0.15254907
+high_state_tax_privilege             -0.013512   0.056919 -0.237393 0.81766803
+                                        
+(Intercept)                          ** 
+city_go_vote                         .  
+ln_gdp                               *  
+ln_census_population                 *  
+ln_pers_inc                          *  
+ln_1p_census_total_debt                 
+ln_1p_county_nonmunicipal_total_debt    
+wavg_rating                          ***
+wavg_original_maturity               .  
+glm_proactive                           
+state_go_vote                           
+high_state_tax_privilege                
+---
+Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
+RMSE: 0.305683   Adj. R2: 0.422319
+NOTE: 995 observations removed because of NA values (LHS: 934, RHS: 994).
+OLS estimation, Dep. Var.: mergent_wavg_yield_spread_ltgo
+Observations: 500
+Standard-errors: Clustered (state) 
+                                      Estimate Std. Error    t value   Pr(>|t|)
+(Intercept)                           2.786581   0.266919  10.439787 1.3902e-04
+city_go_vote                          0.355206   0.024003  14.798212 2.5482e-05
+ln_gdp                                0.006717   0.122358   0.054893 9.5835e-01
+ln_census_population                  0.002034   0.012495   0.162791 8.7706e-01
+ln_pers_inc                           0.004015   0.113997   0.035220 9.7327e-01
+ln_1p_census_total_debt               0.004974   0.003031   1.641256 1.6167e-01
+ln_1p_county_nonmunicipal_total_debt -0.017413   0.022771  -0.764697 4.7897e-01
+wavg_rating                          -0.186843   0.020137  -9.278475 2.4453e-04
+wavg_original_maturity               -0.008222   0.009020  -0.911508 4.0383e-01
+glm_proactive                        -0.008308   0.013185  -0.630129 5.5628e-01
+state_go_vote                        -0.214426   0.031855  -6.731359 1.0970e-03
+high_state_tax_privilege             -0.226286   0.005706 -39.657140 1.9220e-07
+                                        
+(Intercept)                          ***
+city_go_vote                         ***
+ln_gdp                                  
+ln_census_population                    
+ln_pers_inc                             
+ln_1p_census_total_debt                 
+ln_1p_county_nonmunicipal_total_debt    
+wavg_rating                          ***
+wavg_original_maturity                  
+glm_proactive                           
+state_go_vote                        ** 
+high_state_tax_privilege             ***
+---
+Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
+RMSE: 0.344862   Adj. R2: 0.398049
+NOTE: 1,268 observations removed because of NA values (LHS: 1,183, RHS: 1,266).
+OLS estimation, Dep. Var.: mergent_wavg_yield_spread_revenue
+Observations: 227
+Standard-errors: Clustered (state) 
+                                      Estimate Std. Error    t value   Pr(>|t|)
+(Intercept)                           2.314492   0.403957   5.729548 2.8352e-04
+city_go_vote                          0.268677   0.059657   4.503682 1.4811e-03
+ln_gdp                                0.039097   0.114292   0.342082 7.4014e-01
+ln_census_population                  0.054187   0.014948   3.625128 5.5274e-03
+ln_pers_inc                          -0.027456   0.121256  -0.226428 8.2593e-01
+ln_1p_census_total_debt               0.008776   0.006207   1.413889 1.9104e-01
+ln_1p_county_nonmunicipal_total_debt -0.044047   0.011658  -3.778415 4.3596e-03
+wavg_rating                          -0.165611   0.007353 -22.524010 3.1755e-09
+wavg_original_maturity                0.001610   0.006492   0.247961 8.0973e-01
+glm_proactive                        -0.086483   0.012066  -7.167722 5.2641e-05
+state_go_vote                        -0.083457   0.050632  -1.648295 1.3369e-01
+high_state_tax_privilege             -0.006502   0.045913  -0.141624 8.9050e-01
+                                        
+(Intercept)                          ***
+city_go_vote                         ** 
+ln_gdp                                  
+ln_census_population                 ** 
+ln_pers_inc                             
+ln_1p_census_total_debt                 
+ln_1p_county_nonmunicipal_total_debt ** 
+wavg_rating                          ***
+wavg_original_maturity                  
+glm_proactive                        ***
+state_go_vote                           
+high_state_tax_privilege                
+---
+Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
+RMSE: 0.383191   Adj. R2: 0.392032
+NOTE: 796 observations removed because of NA values (LHS: 356, RHS: 793).
+OLS estimation, Dep. Var.: mergent_wavg_yield_spread_go_revenue
+Observations: 1,638
+Standard-errors: Clustered (state) 
+                                      Estimate Std. Error    t value   Pr(>|t|)
+(Intercept)                           1.845334   0.229573   8.038109 2.9011e-08
+city_go_vote                          0.161806   0.026302   6.151942 2.3478e-06
+ln_gdp                               -0.019787   0.037820  -0.523181 6.0565e-01
+ln_census_population                  0.045766   0.011568   3.956394 5.8825e-04
+ln_pers_inc                           0.042300   0.038518   1.098187 2.8302e-01
+ln_1p_census_total_debt               0.002177   0.002939   0.740929 4.6592e-01
+ln_1p_county_nonmunicipal_total_debt -0.014745   0.004455  -3.309538 2.9426e-03
+wavg_rating                          -0.178421   0.013473 -13.243172 1.5820e-12
+wavg_original_maturity                0.004328   0.004225   1.024446 3.1584e-01
+glm_proactive                        -0.017289   0.021312  -0.811229 4.2521e-01
+state_ltgo_allowed                   -0.006848   0.025610  -0.267387 7.9146e-01
+state_go_vote                         0.006401   0.019941   0.320996 7.5099e-01
+high_state_tax_privilege             -0.042686   0.023091  -1.848646 7.6867e-02
+                                        
+(Intercept)                          ***
+city_go_vote                         ***
+ln_gdp                                  
+ln_census_population                 ***
+ln_pers_inc                             
+ln_1p_census_total_debt                 
+ln_1p_county_nonmunicipal_total_debt ** 
+wavg_rating                          ***
+wavg_original_maturity                  
+glm_proactive                           
+state_ltgo_allowed                      
+state_go_vote                           
+high_state_tax_privilege             .  
+---
+Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
+RMSE: 0.345973   Adj. R2: 0.425433
+NOTE: 1,407 observations removed because of NA values (LHS: 1,086, RHS: 1,406).
+OLS estimation, Dep. Var.: mergent_wavg_yield_spread_utgo
+Observations: 1,027
+Standard-errors: Clustered (state) 
+                                      Estimate Std. Error   t value   Pr(>|t|)
+(Intercept)                           1.183955   0.266999  4.434305 1.9069e-04
+city_go_vote                          0.129295   0.050703  2.550022 1.7898e-02
+ln_gdp                               -0.105348   0.049359 -2.134334 4.3698e-02
+ln_census_population                  0.044706   0.017233  2.594164 1.6220e-02
+ln_pers_inc                           0.135426   0.048441  2.795709 1.0271e-02
+ln_1p_census_total_debt               0.000504   0.004259  0.118227 9.0691e-01
+ln_1p_county_nonmunicipal_total_debt  0.001883   0.010001  0.188332 8.5227e-01
+wavg_rating                          -0.149420   0.020270 -7.371538 1.6950e-07
+wavg_original_maturity               -0.007844   0.004897 -1.601676 1.2287e-01
+glm_proactive                        -0.015774   0.037122 -0.424928 6.7484e-01
+state_ltgo_allowed                   -0.048595   0.051149 -0.950065 3.5196e-01
+state_go_vote                         0.002230   0.044950  0.049615 9.6086e-01
+high_state_tax_privilege             -0.060837   0.043034 -1.413682 1.7085e-01
+                                        
+(Intercept)                          ***
+city_go_vote                         *  
+ln_gdp                               *  
+ln_census_population                 *  
+ln_pers_inc                          *  
+ln_1p_census_total_debt                 
+ln_1p_county_nonmunicipal_total_debt    
+wavg_rating                          ***
+wavg_original_maturity                  
+glm_proactive                           
+state_ltgo_allowed                      
+state_go_vote                           
+high_state_tax_privilege                
+---
+Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
+RMSE: 0.323965   Adj. R2: 0.370973
+NOTE: 1,766 observations removed because of NA values (LHS: 1,677, RHS: 1,765).
+OLS estimation, Dep. Var.: mergent_wavg_yield_spread_ltgo
+Observations: 668
+Standard-errors: Clustered (state) 
+                                      Estimate Std. Error    t value   Pr(>|t|)
+(Intercept)                           2.073247   0.447721   4.630668 4.7073e-04
+city_go_vote                          0.040614   0.132651   0.306168 7.6433e-01
+ln_gdp                                0.023178   0.049020   0.472822 6.4418e-01
+ln_census_population                  0.017199   0.017587   0.977917 3.4596e-01
+ln_pers_inc                          -0.013323   0.043004  -0.309805 7.6162e-01
+ln_1p_census_total_debt               0.003123   0.002794   1.117812 2.8388e-01
+ln_1p_county_nonmunicipal_total_debt -0.009651   0.012736  -0.757785 4.6210e-01
+wavg_rating                          -0.173927   0.016359 -10.632232 8.7946e-08
+wavg_original_maturity               -0.007960   0.005874  -1.355179 1.9844e-01
+glm_proactive                         0.025694   0.017188   1.494900 1.5881e-01
+state_ltgo_allowed                    0.263089   0.126832   2.074313 5.8472e-02
+state_go_vote                         0.064228   0.116492   0.551349 5.9075e-01
+high_state_tax_privilege              0.036186   0.112746   0.320950 7.5335e-01
+                                        
+(Intercept)                          ***
+city_go_vote                            
+ln_gdp                                  
+ln_census_population                    
+ln_pers_inc                             
+ln_1p_census_total_debt                 
+ln_1p_county_nonmunicipal_total_debt    
+wavg_rating                          ***
+wavg_original_maturity                  
+glm_proactive                           
+state_ltgo_allowed                   .  
+state_go_vote                           
+high_state_tax_privilege                
+---
+Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
+RMSE: 0.342123   Adj. R2: 0.372679
+NOTE: 1,907 observations removed because of NA values (LHS: 1,698, RHS: 1,902).
+OLS estimation, Dep. Var.: mergent_wavg_yield_spread_revenue
+Observations: 527
+Standard-errors: Clustered (state) 
+                                      Estimate Std. Error    t value   Pr(>|t|)
+(Intercept)                           2.312811   0.254088   9.102412 4.3711e-09
+city_go_vote                          0.082921   0.058645   1.413963 1.7077e-01
+ln_gdp                               -0.022090   0.057126  -0.386684 7.0254e-01
+ln_census_population                  0.038348   0.017382   2.206201 3.7629e-02
+ln_pers_inc                           0.032486   0.060643   0.535693 5.9731e-01
+ln_1p_census_total_debt               0.003246   0.005911   0.549028 5.8828e-01
+ln_1p_county_nonmunicipal_total_debt -0.020222   0.007053  -2.867137 8.7111e-03
+wavg_rating                          -0.191195   0.018968 -10.080149 6.5743e-10
+wavg_original_maturity                0.012233   0.005642   2.168345 4.0724e-02
+glm_proactive                         0.012943   0.043945   0.294535 7.7099e-01
+state_ltgo_allowed                    0.010598   0.045501   0.232912 8.1789e-01
+state_go_vote                         0.028596   0.056242   0.508447 6.1598e-01
+high_state_tax_privilege             -0.001594   0.051898  -0.030722 9.7576e-01
+                                        
+(Intercept)                          ***
+city_go_vote                            
+ln_gdp                                  
+ln_census_population                 *  
+ln_pers_inc                             
+ln_1p_census_total_debt                 
+ln_1p_county_nonmunicipal_total_debt ** 
+wavg_rating                          ***
+wavg_original_maturity               *  
+glm_proactive                           
+state_ltgo_allowed                      
+state_go_vote                           
+high_state_tax_privilege                
+---
+Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
+RMSE: 0.417714   Adj. R2: 0.427355
+OLS estimation, Dep. Var.: ln_1p_census_total_debt
+Observations: 1,854
+Standard-errors: Clustered (state) 
+                                      Estimate Std. Error   t value   Pr(>|t|)
+(Intercept)                           0.066820   1.665876  0.040111 9.6838e-01
+city_go_vote                         -1.173294   0.727251 -1.613328 1.2160e-01
+ln_gdp                                0.076871   0.270793  0.283873 7.7929e-01
+ln_census_population                  1.475609   0.142460 10.358023 1.0427e-09
+ln_pers_inc                          -0.104399   0.233079 -0.447912 6.5880e-01
+ln_1p_county_nonmunicipal_total_debt  0.112888   0.093921  1.201955 2.4276e-01
+glm_proactive                        -0.313450   0.622499 -0.503535 6.1983e-01
+state_ltgo_allowed                    1.023118   0.356044  2.873573 9.0923e-03
+state_go_vote                         0.490569   0.487895  1.005480 3.2611e-01
+high_state_tax_privilege              0.191408   0.334718  0.571849 5.7350e-01
+                                        
+(Intercept)                             
+city_go_vote                            
+ln_gdp                                  
+ln_census_population                 ***
+ln_pers_inc                             
+ln_1p_county_nonmunicipal_total_debt    
+glm_proactive                           
+state_ltgo_allowed                   ** 
+state_go_vote                           
+high_state_tax_privilege                
+---
+Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
+RMSE: 3.22324   Adj. R2: 0.359871
+OLS estimation, Dep. Var.: ln_1p_census_lt_debt
+Observations: 1,854
+Standard-errors: Clustered (state) 
+                                      Estimate Std. Error   t value   Pr(>|t|)
+(Intercept)                           0.167583   1.677620  0.099893 9.2138e-01
+city_go_vote                         -1.164238   0.783741 -1.485488 1.5227e-01
+ln_gdp                                0.047791   0.258096  0.185166 8.5488e-01
+ln_census_population                  1.489002   0.142329 10.461673 8.7393e-10
+ln_pers_inc                          -0.092641   0.222015 -0.417271 6.8071e-01
+ln_1p_county_nonmunicipal_total_debt  0.111698   0.093629  1.192990 2.4618e-01
+glm_proactive                        -0.467805   0.672338 -0.695788 4.9419e-01
+state_ltgo_allowed                    1.009522   0.374214  2.697708 1.3478e-02
+state_go_vote                         0.529004   0.521277  1.014823 3.2174e-01
+high_state_tax_privilege              0.223864   0.349745  0.640076 5.2905e-01
+                                        
+(Intercept)                             
+city_go_vote                            
+ln_gdp                                  
+ln_census_population                 ***
+ln_pers_inc                             
+ln_1p_county_nonmunicipal_total_debt    
+glm_proactive                           
+state_ltgo_allowed                   *  
+state_go_vote                           
+high_state_tax_privilege                
+---
+Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
+RMSE: 3.29734   Adj. R2: 0.348259
+OLS estimation, Dep. Var.: ln_1p_census_total_debt_pc
+Observations: 1,854
+Standard-errors: Clustered (state) 
+                                      Estimate Std. Error   t value  Pr(>|t|)
+(Intercept)                           2.830961   0.946496  2.990991 0.0069637
+city_go_vote                         -0.705686   0.423497 -1.666331 0.1104950
+ln_gdp                                0.069075   0.161254  0.428363 0.6727487
+ln_census_population                  0.285286   0.088128  3.237180 0.0039474
+ln_pers_inc                          -0.071322   0.136865 -0.521109 0.6077427
+ln_1p_county_nonmunicipal_total_debt  0.068414   0.057427  1.191325 0.2468173
+glm_proactive                        -0.274559   0.388461 -0.706785 0.4874693
+state_ltgo_allowed                    0.584801   0.208029  2.811153 0.0104645
+state_go_vote                         0.254083   0.283316  0.896818 0.3799822
+high_state_tax_privilege              0.077426   0.190148  0.407189 0.6879902
+                                        
+(Intercept)                          ** 
+city_go_vote                            
+ln_gdp                                  
+ln_census_population                 ** 
+ln_pers_inc                             
+ln_1p_county_nonmunicipal_total_debt    
+glm_proactive                           
+state_ltgo_allowed                   *  
+state_go_vote                           
+high_state_tax_privilege                
+---
+Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
+RMSE: 1.81297   Adj. R2: 0.087034
+OLS estimation, Dep. Var.: ln_1p_mergent_go_revenue_outstanding_debt
+Observations: 1,854
+Standard-errors: Clustered (state) 
+                                      Estimate Std. Error   t value   Pr(>|t|)
+(Intercept)                           8.152155   1.179504  6.911510 7.8977e-07
+city_go_vote                         -2.310988   1.370518 -1.686215 1.0656e-01
+ln_gdp                                3.373115   0.801527  4.208360 3.9479e-04
+ln_census_population                  1.206347   0.168534  7.157893 4.6691e-07
+ln_pers_inc                          -3.922302   0.916159 -4.281248 3.3164e-04
+ln_1p_county_nonmunicipal_total_debt  0.122594   0.162706  0.753469 4.5953e-01
+glm_proactive                        -1.053260   1.318525 -0.798817 4.3334e-01
+state_ltgo_allowed                    1.559017   0.612828  2.543970 1.8890e-02
+state_go_vote                        -0.804069   0.944961 -0.850902 4.0442e-01
+high_state_tax_privilege              0.610969   0.607505  1.005702 3.2601e-01
+                                        
+(Intercept)                          ***
+city_go_vote                            
+ln_gdp                               ***
+ln_census_population                 ***
+ln_pers_inc                          ***
+ln_1p_county_nonmunicipal_total_debt    
+glm_proactive                           
+state_ltgo_allowed                   *  
+state_go_vote                           
+high_state_tax_privilege                
+---
+Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
+RMSE: 5.33438   Adj. R2: 0.148958
+OLS estimation, Dep. Var.: ln_1p_census_total_debt
+Observations: 1,495
+Standard-errors: Clustered (state) 
+                                      Estimate Std. Error   t value   Pr(>|t|)
+(Intercept)                          -3.371777   3.187463 -1.057825 3.1770e-01
+city_go_vote                         -1.842937   0.457715 -4.026391 2.9892e-03
+ln_gdp                                0.690515   0.483059  1.429464 1.8665e-01
+ln_census_population                  1.538828   0.210654  7.305000 4.5403e-05
+ln_pers_inc                          -0.499435   0.454893 -1.097918 3.0074e-01
+ln_1p_county_nonmunicipal_total_debt  0.082791   0.094802  0.873309 4.0519e-01
+glm_proactive                        -1.251028   0.264654 -4.727037 1.0784e-03
+state_ltgo_allowed                    0.748846   0.502694  1.489665 1.7050e-01
+state_go_vote                         1.308279   0.219831  5.951287 2.1500e-04
+high_state_tax_privilege             -0.339047   0.326804 -1.037463 3.2659e-01
+                                        
+(Intercept)                             
+city_go_vote                         ** 
+ln_gdp                                  
+ln_census_population                 ***
+ln_pers_inc                             
+ln_1p_county_nonmunicipal_total_debt    
+glm_proactive                        ** 
+state_ltgo_allowed                      
+state_go_vote                        ***
+high_state_tax_privilege                
+---
+Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
+RMSE: 3.70355   Adj. R2: 0.301219
+OLS estimation, Dep. Var.: ln_1p_census_lt_debt
+Observations: 1,495
+Standard-errors: Clustered (state) 
+                                      Estimate Std. Error   t value   Pr(>|t|)
+(Intercept)                          -3.442193   3.225999 -1.067016 0.31374915
+city_go_vote                         -1.698587   0.458797 -3.702263 0.00490335
+ln_gdp                                0.599176   0.489976  1.222869 0.25243383
+ln_census_population                  1.545318   0.217132  7.116960 0.00005563
+ln_pers_inc                          -0.404778   0.459377 -0.881147 0.40115671
+ln_1p_county_nonmunicipal_total_debt  0.079878   0.094585  0.844503 0.42026979
+glm_proactive                        -1.266389   0.258139 -4.905843 0.00084085
+state_ltgo_allowed                    0.660870   0.506821  1.303951 0.22461263
+state_go_vote                         1.311405   0.218763  5.994641 0.00020383
+high_state_tax_privilege             -0.487211   0.328441 -1.483402 0.17211852
+                                        
+(Intercept)                             
+city_go_vote                         ** 
+ln_gdp                                  
+ln_census_population                 ***
+ln_pers_inc                             
+ln_1p_county_nonmunicipal_total_debt    
+glm_proactive                        ***
+state_ltgo_allowed                      
+state_go_vote                        ***
+high_state_tax_privilege                
+---
+Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
+RMSE: 3.76584   Adj. R2: 0.293131
+OLS estimation, Dep. Var.: ln_1p_census_total_debt_pc
+Observations: 1,495
+Standard-errors: Clustered (state) 
+                                      Estimate Std. Error   t value   Pr(>|t|)
+(Intercept)                           2.042075   1.786582  1.143007 0.28252882
+city_go_vote                         -1.117030   0.200450 -5.572609 0.00034622
+ln_gdp                                0.499711   0.264089  1.892207 0.09101475
+ln_census_population                  0.297616   0.127771  2.329290 0.04479918
+ln_pers_inc                          -0.397915   0.273683 -1.453925 0.17993276
+ln_1p_county_nonmunicipal_total_debt  0.015563   0.037169  0.418704 0.68524790
+glm_proactive                        -0.867092   0.218239 -3.973125 0.00323930
+state_ltgo_allowed                    0.511811   0.225102  2.273686 0.04906650
+state_go_vote                         0.727984   0.160110  4.546776 0.00139235
+high_state_tax_privilege             -0.106850   0.206922 -0.516379 0.61803660
+                                        
+(Intercept)                             
+city_go_vote                         ***
+ln_gdp                               .  
+ln_census_population                 *  
+ln_pers_inc                             
+ln_1p_county_nonmunicipal_total_debt    
+glm_proactive                        ** 
+state_ltgo_allowed                   *  
+state_go_vote                        ** 
+high_state_tax_privilege                
+---
+Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
+RMSE: 1.95919   Adj. R2: 0.154176
+OLS estimation, Dep. Var.: ln_1p_mergent_go_revenue_outstanding_debt
+Observations: 1,495
+Standard-errors: Clustered (state) 
+                                      Estimate Std. Error   t value   Pr(>|t|)
+(Intercept)                           6.185347   1.334880  4.633637 1.2303e-03
+city_go_vote                         -0.539869   0.673262 -0.801870 4.4328e-01
+ln_gdp                                3.828266   1.186757  3.225822 1.0392e-02
+ln_census_population                  1.065760   0.112468  9.476131 5.5896e-06
+ln_pers_inc                          -3.989149   1.147170 -3.477384 6.9672e-03
+ln_1p_county_nonmunicipal_total_debt -0.000058   0.289085 -0.000200 9.9984e-01
+glm_proactive                        -0.070493   0.335323 -0.210224 8.3818e-01
+state_ltgo_allowed                    0.517385   0.534335  0.968278 3.5820e-01
+state_go_vote                        -0.851529   0.286090 -2.976437 1.5539e-02
+high_state_tax_privilege             -1.753100   0.284357 -6.165128 1.6567e-04
+                                        
+(Intercept)                          ** 
+city_go_vote                            
+ln_gdp                               *  
+ln_census_population                 ***
+ln_pers_inc                          ** 
+ln_1p_county_nonmunicipal_total_debt    
+glm_proactive                           
+state_ltgo_allowed                      
+state_go_vote                        *  
+high_state_tax_privilege             ***
+---
+Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
+RMSE: 4.71681   Adj. R2: 0.153053
+OLS estimation, Dep. Var.: ln_1p_census_total_debt
+Observations: 2,434
+Standard-errors: Clustered (state) 
+                                      Estimate Std. Error   t value   Pr(>|t|)
+(Intercept)                          -0.959424   1.578237 -0.607909 5.4896e-01
+city_go_vote                         -1.669565   0.505191 -3.304817 2.9767e-03
+ln_gdp                                0.433570   0.347660  1.247110 2.2439e-01
+ln_census_population                  1.453623   0.118591 12.257409 8.0445e-12
+ln_pers_inc                          -0.359808   0.292166 -1.231517 2.3006e-01
+ln_1p_county_nonmunicipal_total_debt  0.094854   0.094603  1.002654 3.2603e-01
+glm_proactive                        -1.429274   0.231328 -6.178570 2.2000e-06
+state_ltgo_allowed                    0.736140   0.468184  1.572332 1.2897e-01
+state_go_vote                         1.292279   0.314178  4.113210 3.9566e-04
+high_state_tax_privilege              0.146116   0.236274  0.618416 5.4213e-01
+                                        
+(Intercept)                             
+city_go_vote                         ** 
+ln_gdp                                  
+ln_census_population                 ***
+ln_pers_inc                             
+ln_1p_county_nonmunicipal_total_debt    
+glm_proactive                        ***
+state_ltgo_allowed                      
+state_go_vote                        ***
+high_state_tax_privilege                
+---
+Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
+RMSE: 3.58158   Adj. R2: 0.331564
+OLS estimation, Dep. Var.: ln_1p_census_lt_debt
+Observations: 2,434
+Standard-errors: Clustered (state) 
+                                      Estimate Std. Error   t value   Pr(>|t|)
+(Intercept)                          -0.834940   1.579869 -0.528487 6.0201e-01
+city_go_vote                         -1.615805   0.536617 -3.011093 6.0442e-03
+ln_gdp                                0.423302   0.344255  1.229618 2.3076e-01
+ln_census_population                  1.459196   0.118604 12.303143 7.4440e-12
+ln_pers_inc                          -0.364740   0.286620 -1.272555 2.1537e-01
+ln_1p_county_nonmunicipal_total_debt  0.093448   0.094430  0.989599 3.3224e-01
+glm_proactive                        -1.477608   0.240684 -6.139204 2.4221e-06
+state_ltgo_allowed                    0.735881   0.491605  1.496894 1.4746e-01
+state_go_vote                         1.336188   0.331328  4.032822 4.8495e-04
+high_state_tax_privilege              0.102585   0.247975  0.413689 6.8278e-01
+                                        
+(Intercept)                             
+city_go_vote                         ** 
+ln_gdp                                  
+ln_census_population                 ***
+ln_pers_inc                             
+ln_1p_county_nonmunicipal_total_debt    
+glm_proactive                        ***
+state_ltgo_allowed                      
+state_go_vote                        ***
+high_state_tax_privilege                
+---
+Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
+RMSE: 3.64778   Adj. R2: 0.323402
+OLS estimation, Dep. Var.: ln_1p_census_total_debt_pc
+Observations: 2,434
+Standard-errors: Clustered (state) 
+                                      Estimate Std. Error   t value   Pr(>|t|)
+(Intercept)                           2.515401   0.863724  2.912275 7.6365e-03
+city_go_vote                         -0.987285   0.288005 -3.428015 2.2006e-03
+ln_gdp                                0.250947   0.196366  1.277951 2.1349e-01
+ln_census_population                  0.269052   0.073837  3.643871 1.2888e-03
+ln_pers_inc                          -0.205128   0.168480 -1.217520 2.3524e-01
+ln_1p_county_nonmunicipal_total_debt  0.054379   0.056498  0.962500 3.4540e-01
+glm_proactive                        -0.914655   0.123285 -7.419045 1.1671e-07
+state_ltgo_allowed                    0.417036   0.266536  1.564653 1.3076e-01
+state_go_vote                         0.693038   0.174426  3.973252 5.6374e-04
+high_state_tax_privilege              0.069792   0.128303  0.543963 5.9148e-01
+                                        
+(Intercept)                          ** 
+city_go_vote                         ** 
+ln_gdp                                  
+ln_census_population                 ** 
+ln_pers_inc                             
+ln_1p_county_nonmunicipal_total_debt    
+glm_proactive                        ***
+state_ltgo_allowed                      
+state_go_vote                        ***
+high_state_tax_privilege                
+---
+Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
+RMSE: 1.93248   Adj. R2: 0.125492
+OLS estimation, Dep. Var.: ln_1p_mergent_go_revenue_outstanding_debt
+Observations: 2,434
+Standard-errors: Clustered (state) 
+                                      Estimate Std. Error   t value   Pr(>|t|)
+(Intercept)                           8.609661   0.981721  8.769964 5.9761e-09
+city_go_vote                         -1.864333   0.938694 -1.986094 5.8559e-02
+ln_gdp                                3.779577   0.727488  5.195380 2.5359e-05
+ln_census_population                  1.129877   0.137948  8.190587 2.0752e-08
+ln_pers_inc                          -4.237481   0.794240 -5.335269 1.7825e-05
+ln_1p_county_nonmunicipal_total_debt  0.047898   0.134603  0.355847 7.2506e-01
+glm_proactive                        -0.154494   0.370963 -0.416468 6.8077e-01
+state_ltgo_allowed                    1.606521   0.758790  2.117214 4.4797e-02
+state_go_vote                        -0.340746   0.573846 -0.593794 5.5821e-01
+high_state_tax_privilege             -0.432142   0.478500 -0.903118 3.7544e-01
+                                        
+(Intercept)                          ***
+city_go_vote                         .  
+ln_gdp                               ***
+ln_census_population                 ***
+ln_pers_inc                          ***
+ln_1p_county_nonmunicipal_total_debt    
+glm_proactive                           
+state_ltgo_allowed                   *  
+state_go_vote                           
+high_state_tax_privilege                
+---
+Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
+RMSE: 5.20529   Adj. R2: 0.145334
+Poisson estimation, Dep. Var.: census_total_debt_mil
+Observations: 1,854
+Standard-errors: Clustered (state) 
+                                      Estimate Std. Error    z value  Pr(>|z|)
+(Intercept)                          -8.561378   0.520651 -16.443618 < 2.2e-16
+city_go_vote                          0.105919   0.172515   0.613972  0.539234
+ln_gdp                                0.465545   0.246607   1.887797  0.059053
+ln_census_population                  1.197184   0.043068  27.797518 < 2.2e-16
+ln_pers_inc                          -0.443812   0.250196  -1.773858  0.076087
+ln_1p_county_nonmunicipal_total_debt -0.007243   0.052518  -0.137912  0.890310
+glm_proactive                        -0.201006   0.115977  -1.733146  0.083070
+state_ltgo_allowed                   -0.063323   0.104544  -0.605703  0.544712
+state_go_vote                         0.007401   0.180074   0.041097  0.967218
+high_state_tax_privilege             -0.227621   0.105280  -2.162050  0.030614
+                                        
+(Intercept)                          ***
+city_go_vote                            
+ln_gdp                               .  
+ln_census_population                 ***
+ln_pers_inc                          .  
+ln_1p_county_nonmunicipal_total_debt    
+glm_proactive                        .  
+state_ltgo_allowed                      
+state_go_vote                           
+high_state_tax_privilege             *  
+---
+Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
+Log-Likelihood: -59,061.0   Adj. Pseudo R2: 0.890307
+           BIC: 118,197.3     Squared Cor.: 0.915965
+Poisson estimation, Dep. Var.: census_lt_debt_mil
+Observations: 1,854
+Standard-errors: Clustered (state) 
+                                      Estimate Std. Error    z value  Pr(>|z|)
+(Intercept)                          -8.552625   0.526466 -16.245353 < 2.2e-16
+city_go_vote                          0.167731   0.174780   0.959670  0.337221
+ln_gdp                                0.483548   0.245593   1.968896  0.048965
+ln_census_population                  1.200830   0.042363  28.345947 < 2.2e-16
+ln_pers_inc                          -0.475798   0.248456  -1.915017  0.055490
+ln_1p_county_nonmunicipal_total_debt -0.000887   0.053299  -0.016647  0.986718
+glm_proactive                        -0.246793   0.119390  -2.067125  0.038722
+state_ltgo_allowed                   -0.086260   0.103803  -0.831005  0.405971
+state_go_vote                        -0.008630   0.179644  -0.048041  0.961683
+high_state_tax_privilege             -0.235571   0.104621  -2.251664  0.024344
+                                        
+(Intercept)                          ***
+city_go_vote                            
+ln_gdp                               *  
+ln_census_population                 ***
+ln_pers_inc                          .  
+ln_1p_county_nonmunicipal_total_debt    
+glm_proactive                        *  
+state_ltgo_allowed                      
+state_go_vote                           
+high_state_tax_privilege             *  
+---
+Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
+Log-Likelihood: -57,834.8   Adj. Pseudo R2: 0.891626
+           BIC: 115,744.9     Squared Cor.: 0.916342
+Poisson estimation, Dep. Var.: census_total_debt_per_capita
+Observations: 1,854
+Standard-errors: Clustered (state) 
+                                      Estimate Std. Error   z value   Pr(>|z|)
+(Intercept)                           3.004711   1.749200  1.717763 8.5840e-02
+city_go_vote                         -0.108817   0.594703 -0.182978 8.5482e-01
+ln_gdp                                1.440639   0.872768  1.650655 9.8809e-02
+ln_census_population                 -0.782174   0.101585 -7.699716 1.3637e-14
+ln_pers_inc                          -0.981176   0.895706 -1.095423 2.7333e-01
+ln_1p_county_nonmunicipal_total_debt  0.211859   0.085439  2.479641 1.3151e-02
+glm_proactive                        -1.858110   0.605036 -3.071075 2.1329e-03
+state_ltgo_allowed                   -1.140553   0.586864 -1.943470 5.1959e-02
+state_go_vote                         0.540285   0.468875  1.152301 2.4920e-01
+high_state_tax_privilege              0.498618   0.483932  1.030348 3.0285e-01
+                                        
+(Intercept)                          .  
+city_go_vote                            
+ln_gdp                               .  
+ln_census_population                 ***
+ln_pers_inc                             
+ln_1p_county_nonmunicipal_total_debt *  
+glm_proactive                        ** 
+state_ltgo_allowed                   .  
+state_go_vote                           
+high_state_tax_privilege                
+---
+Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
+Log-Likelihood: -6,065,032.0   Adj. Pseudo R2: 0.884367
+           BIC: 12,130,139.3     Squared Cor.: 0.909317
+Poisson estimation, Dep. Var.: mergent_go_revenue_outstanding_debt_mil
+Observations: 1,854
+Standard-errors: Clustered (state) 
+                                      Estimate Std. Error   z value   Pr(>|z|)
+(Intercept)                          -8.219632   1.074481 -7.649859 2.0120e-14
+city_go_vote                          0.049256   0.305039  0.161474 8.7172e-01
+ln_gdp                                0.304039   0.338868  0.897219 3.6960e-01
+ln_census_population                  1.181369   0.081254 14.539276  < 2.2e-16
+ln_pers_inc                          -0.329319   0.314078 -1.048528 2.9440e-01
+ln_1p_county_nonmunicipal_total_debt -0.012952   0.060861 -0.212816 8.3147e-01
+glm_proactive                        -0.312145   0.234697 -1.329988 1.8352e-01
+state_ltgo_allowed                   -0.124788   0.179766 -0.694168 4.8758e-01
+state_go_vote                        -0.348946   0.284439 -1.226787 2.1990e-01
+high_state_tax_privilege             -0.163505   0.192435 -0.849664 3.9551e-01
+                                        
+(Intercept)                          ***
+city_go_vote                            
+ln_gdp                                  
+ln_census_population                 ***
+ln_pers_inc                             
+ln_1p_county_nonmunicipal_total_debt    
+glm_proactive                           
+state_ltgo_allowed                      
+state_go_vote                           
+high_state_tax_privilege                
+---
+Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
+Log-Likelihood: -36,534.1   Adj. Pseudo R2: 0.775886
+           BIC:  73,143.4     Squared Cor.: 0.713061
+Poisson estimation, Dep. Var.: census_total_debt_mil
+Observations: 1,495
+Standard-errors: Clustered (state) 
+                                      Estimate Std. Error    z value   Pr(>|z|)
+(Intercept)                          -8.173904   1.162481  -7.031430 2.0443e-12
+city_go_vote                          0.125787   0.125907   0.999046 3.1777e-01
+ln_gdp                                0.102996   0.221860   0.464242 6.4247e-01
+ln_census_population                  1.208661   0.080617  14.992692  < 2.2e-16
+ln_pers_inc                          -0.082176   0.241561  -0.340186 7.3372e-01
+ln_1p_county_nonmunicipal_total_debt -0.025927   0.032964  -0.786538 4.3155e-01
+glm_proactive                        -0.455708   0.043558 -10.462164  < 2.2e-16
+state_ltgo_allowed                   -0.000276   0.081012  -0.003407 9.9728e-01
+state_go_vote                         0.000276   0.058256   0.004734 9.9622e-01
+high_state_tax_privilege              0.091213   0.029804   3.060431 2.2102e-03
+                                        
+(Intercept)                          ***
+city_go_vote                            
+ln_gdp                                  
+ln_census_population                 ***
+ln_pers_inc                             
+ln_1p_county_nonmunicipal_total_debt    
+glm_proactive                        ***
+state_ltgo_allowed                      
+state_go_vote                           
+high_state_tax_privilege             ** 
+---
+Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
+Log-Likelihood: -23,384.2   Adj. Pseudo R2: 0.816134
+           BIC:  46,841.5     Squared Cor.: 0.80729 
+Poisson estimation, Dep. Var.: census_lt_debt_mil
+Observations: 1,495
+Standard-errors: Clustered (state) 
+                                      Estimate Std. Error   z value   Pr(>|z|)
+(Intercept)                          -8.173935   1.210426 -6.752942 1.4488e-11
+city_go_vote                          0.277456   0.134808  2.058164 3.9574e-02
+ln_gdp                                0.120091   0.207950  0.577499 5.6360e-01
+ln_census_population                  1.224252   0.081199 15.077167  < 2.2e-16
+ln_pers_inc                          -0.101996   0.231729 -0.440150 6.5983e-01
+ln_1p_county_nonmunicipal_total_debt -0.033564   0.034580 -0.970645 3.3173e-01
+glm_proactive                        -0.456580   0.046644 -9.788613  < 2.2e-16
+state_ltgo_allowed                   -0.076311   0.086489 -0.882327 3.7760e-01
+state_go_vote                        -0.048033   0.060686 -0.791495 4.2866e-01
+high_state_tax_privilege              0.010960   0.033174  0.330380 7.4111e-01
+                                        
+(Intercept)                          ***
+city_go_vote                         *  
+ln_gdp                                  
+ln_census_population                 ***
+ln_pers_inc                             
+ln_1p_county_nonmunicipal_total_debt    
+glm_proactive                        ***
+state_ltgo_allowed                      
+state_go_vote                           
+high_state_tax_privilege                
+---
+Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
+Log-Likelihood: -22,332.1   Adj. Pseudo R2: 0.822381
+           BIC:  44,737.4     Squared Cor.: 0.809898
+Poisson estimation, Dep. Var.: census_total_debt_per_capita
+Observations: 1,495
+Standard-errors: Clustered (state) 
+                                      Estimate Std. Error   z value   Pr(>|z|)
+(Intercept)                           8.647230   0.777650 11.119698  < 2.2e-16
+city_go_vote                         -0.616629   0.212600 -2.900423 3.7266e-03
+ln_gdp                                0.344917   0.128773  2.678483 7.3957e-03
+ln_census_population                 -0.029902   0.053164 -0.562445 5.7381e-01
+ln_pers_inc                          -0.433432   0.154644 -2.802771 5.0666e-03
+ln_1p_county_nonmunicipal_total_debt  0.027734   0.056783  0.488426 6.2525e-01
+glm_proactive                        -0.453003   0.108960 -4.157502 3.2175e-05
+state_ltgo_allowed                    0.374180   0.185776  2.014148 4.3994e-02
+state_go_vote                         0.184827   0.110587  1.671325 9.4658e-02
+high_state_tax_privilege              0.174133   0.115280  1.510521 1.3091e-01
+                                        
+(Intercept)                          ***
+city_go_vote                         ** 
+ln_gdp                               ** 
+ln_census_population                    
+ln_pers_inc                          ** 
+ln_1p_county_nonmunicipal_total_debt    
+glm_proactive                        ***
+state_ltgo_allowed                   *  
+state_go_vote                        .  
+high_state_tax_privilege                
+---
+Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
+Log-Likelihood: -1,391,539.4   Adj. Pseudo R2: 0.079285
+           BIC:  2,783,152.0     Squared Cor.: 0.04711 
+Poisson estimation, Dep. Var.: mergent_go_revenue_outstanding_debt_mil
+Observations: 1,495
+Standard-errors: Clustered (state) 
+                                      Estimate Std. Error    z value   Pr(>|z|)
+(Intercept)                          -9.538372   1.714158  -5.564464 2.6296e-08
+city_go_vote                          0.416217   0.260965   1.594918 1.1073e-01
+ln_gdp                                0.595133   0.266721   2.231300 2.5661e-02
+ln_census_population                  1.171120   0.147571   7.935951 2.0889e-15
+ln_pers_inc                          -0.533248   0.311303  -1.712955 8.6721e-02
+ln_1p_county_nonmunicipal_total_debt -0.016066   0.055367  -0.290179 7.7168e-01
+glm_proactive                         0.229246   0.074869   3.061968 2.1989e-03
+state_ltgo_allowed                   -0.267762   0.180158  -1.486262 1.3721e-01
+state_go_vote                        -0.482217   0.092096  -5.236027 1.6407e-07
+high_state_tax_privilege             -0.742425   0.065148 -11.396019  < 2.2e-16
+                                        
+(Intercept)                          ***
+city_go_vote                            
+ln_gdp                               *  
+ln_census_population                 ***
+ln_pers_inc                          .  
+ln_1p_county_nonmunicipal_total_debt    
+glm_proactive                        ** 
+state_ltgo_allowed                      
+state_go_vote                        ***
+high_state_tax_privilege             ***
+---
+Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
+Log-Likelihood: -19,008.8   Adj. Pseudo R2: 0.721494
+           BIC:  38,090.7     Squared Cor.: 0.639393
+Poisson estimation, Dep. Var.: census_total_debt_mil
+Observations: 2,434
+Standard-errors: Clustered (state) 
+                                      Estimate Std. Error    z value   Pr(>|z|)
+(Intercept)                          -8.691570   0.442992 -19.620128  < 2.2e-16
+city_go_vote                          0.069018   0.157284   0.438808 0.66080073
+ln_gdp                                0.468323   0.228990   2.045171 0.04083798
+ln_census_population                  1.228140   0.040318  30.461190  < 2.2e-16
+ln_pers_inc                          -0.459767   0.236150  -1.946930 0.05154317
+ln_1p_county_nonmunicipal_total_debt -0.007258   0.049282  -0.147280 0.88291084
+glm_proactive                        -0.240884   0.071915  -3.349569 0.00080937
+state_ltgo_allowed                   -0.040952   0.120175  -0.340770 0.73327704
+state_go_vote                        -0.036475   0.138148  -0.264026 0.79175980
+high_state_tax_privilege             -0.179452   0.111931  -1.603246 0.10888042
+                                        
+(Intercept)                          ***
+city_go_vote                            
+ln_gdp                               *  
+ln_census_population                 ***
+ln_pers_inc                          .  
+ln_1p_county_nonmunicipal_total_debt    
+glm_proactive                        ***
+state_ltgo_allowed                      
+state_go_vote                           
+high_state_tax_privilege                
+---
+Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
+Log-Likelihood: -69,693.3   Adj. Pseudo R2: 0.888827
+           BIC: 139,464.6     Squared Cor.: 0.914895
+Poisson estimation, Dep. Var.: census_lt_debt_mil
+Observations: 2,434
+Standard-errors: Clustered (state) 
+                                      Estimate Std. Error    z value   Pr(>|z|)
+(Intercept)                          -8.720095   0.453509 -19.228072  < 2.2e-16
+city_go_vote                          0.143426   0.157606   0.910028 0.36280784
+ln_gdp                                0.480592   0.225475   2.131466 0.03305074
+ln_census_population                  1.232121   0.040365  30.524849  < 2.2e-16
+ln_pers_inc                          -0.483731   0.231882  -2.086106 0.03696905
+ln_1p_county_nonmunicipal_total_debt -0.001199   0.049834  -0.024062 0.98080335
+glm_proactive                        -0.256204   0.068243  -3.754299 0.00017383
+state_ltgo_allowed                   -0.059680   0.118901  -0.501927 0.61571878
+state_go_vote                        -0.061817   0.137527  -0.449489 0.65307904
+high_state_tax_privilege             -0.195739   0.109718  -1.784021 0.07442028
+                                        
+(Intercept)                          ***
+city_go_vote                            
+ln_gdp                               *  
+ln_census_population                 ***
+ln_pers_inc                          *  
+ln_1p_county_nonmunicipal_total_debt    
+glm_proactive                        ***
+state_ltgo_allowed                      
+state_go_vote                           
+high_state_tax_privilege             .  
+---
+Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
+Log-Likelihood: -68,223.8   Adj. Pseudo R2: 0.890283
+           BIC: 136,525.5     Squared Cor.: 0.914937
+Poisson estimation, Dep. Var.: census_total_debt_per_capita
+Observations: 2,434
+Standard-errors: Clustered (state) 
+                                      Estimate Std. Error   z value  Pr(>|z|)
+(Intercept)                           3.678097   1.661813  2.213303 0.0268767
+city_go_vote                          0.374949   0.577526  0.649232 0.5161885
+ln_gdp                                1.345575   0.816484  1.648012 0.0993502
+ln_census_population                 -0.788734   0.095839 -8.229819 < 2.2e-16
+ln_pers_inc                          -0.927859   0.844647 -1.098518 0.2719785
+ln_1p_county_nonmunicipal_total_debt  0.213628   0.094571  2.258909 0.0238891
+glm_proactive                        -1.274051   0.435825 -2.923308 0.0034633
+state_ltgo_allowed                   -1.237104   0.528921 -2.338921 0.0193395
+state_go_vote                         0.304894   0.304431  1.001521 0.3165749
+high_state_tax_privilege              0.413154   0.376440  1.097529 0.2724101
+                                        
+(Intercept)                          *  
+city_go_vote                            
+ln_gdp                               .  
+ln_census_population                 ***
+ln_pers_inc                             
+ln_1p_county_nonmunicipal_total_debt *  
+glm_proactive                        ** 
+state_ltgo_allowed                   *  
+state_go_vote                           
+high_state_tax_privilege                
+---
+Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
+Log-Likelihood: -7,268,003.9   Adj. Pseudo R2: 0.866538
+           BIC: 14,536,085.7     Squared Cor.: 0.902229
+Poisson estimation, Dep. Var.: mergent_go_revenue_outstanding_debt_mil
+Observations: 2,434
+Standard-errors: Clustered (state) 
+                                      Estimate Std. Error   z value  Pr(>|z|)
+(Intercept)                          -9.124112   1.095398 -8.329492 < 2.2e-16
+city_go_vote                          0.106871   0.266751  0.400638  0.688686
+ln_gdp                                0.248898   0.291753  0.853113  0.393596
+ln_census_population                  1.230423   0.066957 18.376191 < 2.2e-16
+ln_pers_inc                          -0.266107   0.281962 -0.943767  0.345289
+ln_1p_county_nonmunicipal_total_debt -0.002708   0.054764 -0.049453  0.960558
+glm_proactive                         0.131395   0.178676  0.735380  0.462108
+state_ltgo_allowed                   -0.075931   0.209295 -0.362792  0.716760
+state_go_vote                        -0.432647   0.203272 -2.128408  0.033303
+high_state_tax_privilege             -0.330785   0.213699 -1.547903  0.121646
+                                        
+(Intercept)                          ***
+city_go_vote                            
+ln_gdp                                  
+ln_census_population                 ***
+ln_pers_inc                             
+ln_1p_county_nonmunicipal_total_debt    
+glm_proactive                           
+state_ltgo_allowed                      
+state_go_vote                        *  
+high_state_tax_privilege                
+---
+Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
+Log-Likelihood: -44,707.9   Adj. Pseudo R2: 0.783228
+           BIC:  89,493.8     Squared Cor.: 0.681576
+NOTE: 43 observations removed because of NA values (LHS: 43).
+NOTE: 43 observations removed because of NA values (LHS: 43).
+NOTE: 43 observations removed because of NA values (LHS: 43).
+NOTE: 121 observations removed because of NA values (LHS: 44, RHS: 121).
+NOTE: 392 observations removed because of NA values (LHS: 392).
+NOTE: 392 observations removed because of NA values (LHS: 392).
+NOTE: 392 observations removed because of NA values (LHS: 392).
+NOTE: 392 observations removed because of NA values (LHS: 392).
+NOTE: 392 observations removed because of NA values (LHS: 392).
+NOTE: 227 observations removed because of NA values (LHS: 227).
+NOTE: 227 observations removed because of NA values (LHS: 227).
+NOTE: 227 observations removed because of NA values (LHS: 227).
+NOTE: 227 observations removed because of NA values (LHS: 227).
+NOTE: 227 observations removed because of NA values (LHS: 227).
+NOTE: 473 observations removed because of NA values (LHS: 473).
+NOTE: 473 observations removed because of NA values (LHS: 473).
+NOTE: 473 observations removed because of NA values (LHS: 473).
+NOTE: 473 observations removed because of NA values (LHS: 473).
+NOTE: 473 observations removed because of NA values (LHS: 473).
+NOTE: 721 observations removed because of NA values (LHS: 398, RHS: 719).
+NOTE: 1,032 observations removed because of NA values (LHS: 773, RHS: 1,031).
+NOTE: 1,558 observations removed because of NA values (LHS: 1,530, RHS: 1,558).
+NOTE: 1,448 observations removed because of NA values (LHS: 1,298, RHS: 1,445).
+NOTE: 441 observations removed because of NA values (LHS: 241, RHS: 440).
+NOTE: 770 observations removed because of NA values (LHS: 606, RHS: 769).
+NOTE: 1,035 observations removed because of NA values (LHS: 967, RHS: 1,035).
+NOTE: 1,284 observations removed because of NA values (LHS: 1,206, RHS: 1,282).
+NOTE: 904 observations removed because of NA values (LHS: 492, RHS: 902).
+NOTE: 1,471 observations removed because of NA values (LHS: 1,149, RHS: 1,470).
+NOTE: 1,829 observations removed because of NA values (LHS: 1,741, RHS: 1,829).
+NOTE: 1,932 observations removed because of NA values (LHS: 1,758, RHS: 1,928).
+Poisson estimation, Dep. Var.: census_total_debt_mil
+Observations: 1,850
+Standard-errors: Clustered (state) 
+                                      Estimate Std. Error    z value  Pr(>|z|)
+(Intercept)                          -8.164097   0.593302 -13.760451 < 2.2e-16
+city_go_vote                          0.080733   0.235656   0.342588  0.731908
+ln_gdp                                0.400079   0.255763   1.564255  0.117758
+ln_census_population                  1.183415   0.046973  25.193516 < 2.2e-16
+ln_pers_inc                          -0.380801   0.254405  -1.496829  0.134438
+ln_1p_county_nonmunicipal_total_debt -0.013389   0.059197  -0.226169  0.821070
+glm_proactive                        -0.171471   0.175466  -0.977230  0.328455
+state_ltgo_allowed                   -0.118907   0.139671  -0.851335  0.394583
+state_go_vote                         0.063484   0.244638   0.259502  0.795248
+high_state_tax_privilege             -0.282476   0.152659  -1.850377  0.064259
+                                        
+(Intercept)                          ***
+city_go_vote                            
+ln_gdp                                  
+ln_census_population                 ***
+ln_pers_inc                             
+ln_1p_county_nonmunicipal_total_debt    
+glm_proactive                           
+state_ltgo_allowed                      
+state_go_vote                           
+high_state_tax_privilege             .  
+---
+Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
+Log-Likelihood: -54,185.3   Adj. Pseudo R2: 0.88936 
+           BIC: 108,445.8     Squared Cor.: 0.913319
+Poisson estimation, Dep. Var.: census_lt_debt_mil
+Observations: 1,850
+Standard-errors: Clustered (state) 
+                                      Estimate Std. Error    z value  Pr(>|z|)
+(Intercept)                          -8.113743   0.588127 -13.795903 < 2.2e-16
+city_go_vote                          0.153086   0.232630   0.658066   0.51050
+ln_gdp                                0.417425   0.259689   1.607406   0.10797
+ln_census_population                  1.188755   0.046882  25.356523 < 2.2e-16
+ln_pers_inc                          -0.409259   0.258336  -1.584210   0.11315
+ln_1p_county_nonmunicipal_total_debt -0.012108   0.059200  -0.204520   0.83795
+glm_proactive                        -0.239843   0.155882  -1.538624   0.12390
+state_ltgo_allowed                   -0.151034   0.138661  -1.089234   0.27605
+state_go_vote                         0.049225   0.242161   0.203272   0.83892
+high_state_tax_privilege             -0.297638   0.151879  -1.959705   0.05003
+                                        
+(Intercept)                          ***
+city_go_vote                            
+ln_gdp                                  
+ln_census_population                 ***
+ln_pers_inc                             
+ln_1p_county_nonmunicipal_total_debt    
+glm_proactive                           
+state_ltgo_allowed                      
+state_go_vote                           
+high_state_tax_privilege             .  
+---
+Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
+Log-Likelihood: -53,518.3   Adj. Pseudo R2: 0.890089
+           BIC: 107,111.9     Squared Cor.: 0.913131
+Poisson estimation, Dep. Var.: census_total_debt_per_capita
+Observations: 1,850
+Standard-errors: Clustered (state) 
+                                      Estimate Std. Error   z value   Pr(>|z|)
+(Intercept)                           3.066121   1.738539  1.763619 7.7796e-02
+city_go_vote                          0.081702   0.568304  0.143765 8.8569e-01
+ln_gdp                                0.985888   0.506185  1.947682 5.1453e-02
+ln_census_population                 -0.816524   0.118201 -6.907911 4.9184e-12
+ln_pers_inc                          -0.449960   0.521634 -0.862597 3.8836e-01
+ln_1p_county_nonmunicipal_total_debt  0.170867   0.079909  2.138277 3.2494e-02
+glm_proactive                        -1.772244   0.637338 -2.780695 5.4243e-03
+state_ltgo_allowed                   -1.276122   0.622685 -2.049387 4.0424e-02
+state_go_vote                         0.520223   0.522188  0.996237 3.1913e-01
+high_state_tax_privilege              0.389570   0.551254  0.706697 4.7975e-01
+                                        
+(Intercept)                          .  
+city_go_vote                            
+ln_gdp                               .  
+ln_census_population                 ***
+ln_pers_inc                             
+ln_1p_county_nonmunicipal_total_debt *  
+glm_proactive                        ** 
+state_ltgo_allowed                   *  
+state_go_vote                           
+high_state_tax_privilege                
+---
+Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
+Log-Likelihood: -5,779,166.8   Adj. Pseudo R2: 0.900253
+           BIC: 11,558,408.8     Squared Cor.: 0.985429
+Poisson estimation, Dep. Var.: mergent_go_revenue_outstanding_debt_mil
+Observations: 1,850
+Standard-errors: Clustered (state) 
+                                      Estimate Std. Error   z value  Pr(>|z|)
+(Intercept)                          -8.484044   0.987504 -8.591403 < 2.2e-16
+city_go_vote                          0.001502   0.327143  0.004592   0.99634
+ln_gdp                                0.470463   0.335861  1.400769   0.16128
+ln_census_population                  1.157943   0.063641 18.194835 < 2.2e-16
+ln_pers_inc                          -0.488151   0.328950 -1.483968   0.13782
+ln_1p_county_nonmunicipal_total_debt -0.004677   0.071515 -0.065400   0.94786
+glm_proactive                        -0.123282   0.192296 -0.641104   0.52146
+state_ltgo_allowed                   -0.083198   0.206400 -0.403091   0.68688
+state_go_vote                        -0.337657   0.303039 -1.114236   0.26518
+high_state_tax_privilege             -0.107610   0.218438 -0.492636   0.62227
+                                        
+(Intercept)                          ***
+city_go_vote                            
+ln_gdp                                  
+ln_census_population                 ***
+ln_pers_inc                             
+ln_1p_county_nonmunicipal_total_debt    
+glm_proactive                           
+state_ltgo_allowed                      
+state_go_vote                           
+high_state_tax_privilege                
+---
+Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
+Log-Likelihood: -31,095.7   Adj. Pseudo R2: 0.770476
+           BIC:  62,266.5     Squared Cor.: 0.713619
+Poisson estimation, Dep. Var.: census_total_debt_mil
+Observations: 1,494
+Standard-errors: Clustered (state) 
+                                      Estimate Std. Error    z value   Pr(>|z|)
+(Intercept)                          -9.198824   1.337268  -6.878817 6.0351e-12
+city_go_vote                          0.058800   0.090050   0.652974 5.1377e-01
+ln_gdp                               -0.028961   0.221321  -0.130857 8.9589e-01
+ln_census_population                  1.272962   0.100773  12.631921  < 2.2e-16
+ln_pers_inc                           0.092505   0.246127   0.375842 7.0703e-01
+ln_1p_county_nonmunicipal_total_debt -0.039464   0.035394  -1.114989 2.6486e-01
+glm_proactive                         0.143684   0.035998   3.991474 6.5664e-05
+state_ltgo_allowed                   -0.225890   0.093479  -2.416487 1.5671e-02
+state_go_vote                         0.054888   0.080371   0.682934 4.9465e-01
+high_state_tax_privilege             -0.393860   0.030420 -12.947202  < 2.2e-16
+                                        
+(Intercept)                          ***
+city_go_vote                            
+ln_gdp                                  
+ln_census_population                 ***
+ln_pers_inc                             
+ln_1p_county_nonmunicipal_total_debt    
+glm_proactive                        ***
+state_ltgo_allowed                   *  
+state_go_vote                           
+high_state_tax_privilege             ***
+---
+Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
+Log-Likelihood: -24,574.9   Adj. Pseudo R2: 0.826876
+           BIC:  49,222.9     Squared Cor.: 0.745459
+Poisson estimation, Dep. Var.: census_lt_debt_mil
+Observations: 1,494
+Standard-errors: Clustered (state) 
+                                      Estimate Std. Error    z value   Pr(>|z|)
+(Intercept)                          -9.177003   1.385204  -6.625018 3.4720e-11
+city_go_vote                          0.199763   0.097202   2.055136 3.9866e-02
+ln_gdp                               -0.024596   0.201773  -0.121897 9.0298e-01
+ln_census_population                  1.289868   0.100009  12.897518  < 2.2e-16
+ln_pers_inc                           0.083983   0.227136   0.369748 7.1157e-01
+ln_1p_county_nonmunicipal_total_debt -0.047500   0.038477  -1.234509 2.1701e-01
+glm_proactive                         0.133993   0.040426   3.314496 9.1808e-04
+state_ltgo_allowed                   -0.301470   0.102666  -2.936403 3.3204e-03
+state_go_vote                         0.019104   0.085775   0.222718 8.2376e-01
+high_state_tax_privilege             -0.485099   0.034368 -14.114695  < 2.2e-16
+                                        
+(Intercept)                          ***
+city_go_vote                         *  
+ln_gdp                                  
+ln_census_population                 ***
+ln_pers_inc                             
+ln_1p_county_nonmunicipal_total_debt    
+glm_proactive                        ***
+state_ltgo_allowed                   ** 
+state_go_vote                           
+high_state_tax_privilege             ***
+---
+Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
+Log-Likelihood: -24,064.1   Adj. Pseudo R2: 0.828267
+           BIC:  48,201.3     Squared Cor.: 0.748624
+Poisson estimation, Dep. Var.: census_total_debt_per_capita
+Observations: 1,494
+Standard-errors: Clustered (state) 
+                                      Estimate Std. Error   z value   Pr(>|z|)
+(Intercept)                           8.234817   0.874120  9.420699  < 2.2e-16
+city_go_vote                         -0.727798   0.107562 -6.766296 1.3212e-11
+ln_gdp                                0.438278   0.121621  3.603648 3.1378e-04
+ln_census_population                 -0.002767   0.053668 -0.051559 9.5888e-01
+ln_pers_inc                          -0.496746   0.116307 -4.270987 1.9461e-05
+ln_1p_county_nonmunicipal_total_debt  0.010434   0.029070  0.358934 7.1964e-01
+glm_proactive                        -0.225839   0.123378 -1.830466 6.7180e-02
+state_ltgo_allowed                    0.290726   0.109760  2.648752 8.0790e-03
+state_go_vote                         0.234627   0.122717  1.911936 5.5884e-02
+high_state_tax_privilege              0.007630   0.123361  0.061853 9.5068e-01
+                                        
+(Intercept)                          ***
+city_go_vote                         ***
+ln_gdp                               ***
+ln_census_population                    
+ln_pers_inc                          ***
+ln_1p_county_nonmunicipal_total_debt    
+glm_proactive                        .  
+state_ltgo_allowed                   ** 
+state_go_vote                        .  
+high_state_tax_privilege                
+---
+Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
+Log-Likelihood: -1,202,497.5   Adj. Pseudo R2: 0.091405
+           BIC:  2,405,068.2     Squared Cor.: 0.057381
+Poisson estimation, Dep. Var.: mergent_go_revenue_outstanding_debt_mil
+Observations: 1,494
+Standard-errors: Clustered (state) 
+                                      Estimate Std. Error   z value   Pr(>|z|)
+(Intercept)                          -9.472658   1.562091  -6.06409 1.3270e-09
+city_go_vote                          0.406511   0.158489   2.56492 1.0320e-02
+ln_gdp                                0.613131   0.281405   2.17882 2.9345e-02
+ln_census_population                  1.195867   0.135952   8.79623  < 2.2e-16
+ln_pers_inc                          -0.442403   0.326220  -1.35615 1.7505e-01
+ln_1p_county_nonmunicipal_total_debt -0.132475   0.045244  -2.92800 3.4115e-03
+glm_proactive                         0.383742   0.054697   7.01580 2.2863e-12
+state_ltgo_allowed                   -0.416567   0.144911  -2.87464 4.0448e-03
+state_go_vote                        -0.136036   0.103831  -1.31016 1.9014e-01
+high_state_tax_privilege             -0.744951   0.050650 -14.70767  < 2.2e-16
+                                        
+(Intercept)                          ***
+city_go_vote                         *  
+ln_gdp                               *  
+ln_census_population                 ***
+ln_pers_inc                             
+ln_1p_county_nonmunicipal_total_debt ** 
+glm_proactive                        ***
+state_ltgo_allowed                   ** 
+state_go_vote                           
+high_state_tax_privilege             ***
+---
+Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
+Log-Likelihood: -17,154.4   Adj. Pseudo R2: 0.715931
+           BIC:  34,382.0     Squared Cor.: 0.653053
+Poisson estimation, Dep. Var.: census_total_debt_mil
+Observations: 2,430
+Standard-errors: Clustered (state) 
+                                      Estimate Std. Error    z value  Pr(>|z|)
+(Intercept)                          -8.595887   0.562653 -15.277409 < 2.2e-16
+city_go_vote                          0.073436   0.201058   0.365247  0.714927
+ln_gdp                                0.339139   0.235419   1.440576  0.149704
+ln_census_population                  1.230619   0.052160  23.593297 < 2.2e-16
+ln_pers_inc                          -0.318784   0.237763  -1.340766  0.179997
+ln_1p_county_nonmunicipal_total_debt -0.018155   0.054821  -0.331171  0.740516
+glm_proactive                        -0.032998   0.102673  -0.321384  0.747919
+state_ltgo_allowed                   -0.116772   0.158449  -0.736971  0.461140
+state_go_vote                         0.015502   0.180809   0.085738  0.931675
+high_state_tax_privilege             -0.329058   0.150208  -2.190683  0.028475
+                                        
+(Intercept)                          ***
+city_go_vote                            
+ln_gdp                                  
+ln_census_population                 ***
+ln_pers_inc                             
+ln_1p_county_nonmunicipal_total_debt    
+glm_proactive                           
+state_ltgo_allowed                      
+state_go_vote                           
+high_state_tax_privilege             *  
+---
+Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
+Log-Likelihood: -67,712.1   Adj. Pseudo R2: 0.884636
+           BIC: 135,502.2     Squared Cor.: 0.893205
+Poisson estimation, Dep. Var.: census_lt_debt_mil
+Observations: 2,430
+Standard-errors: Clustered (state) 
+                                      Estimate Std. Error    z value  Pr(>|z|)
+(Intercept)                          -8.594483   0.568173 -15.126522 < 2.2e-16
+city_go_vote                          0.160009   0.197830   0.808824  0.418616
+ln_gdp                                0.346013   0.235215   1.471052  0.141277
+ln_census_population                  1.235824   0.052895  23.363775 < 2.2e-16
+ln_pers_inc                          -0.333582   0.237323  -1.405605  0.159842
+ln_1p_county_nonmunicipal_total_debt -0.016957   0.054909  -0.308818  0.757460
+glm_proactive                        -0.059447   0.110268  -0.539113  0.589809
+state_ltgo_allowed                   -0.146320   0.156242  -0.936502  0.349015
+state_go_vote                        -0.006905   0.179377  -0.038493  0.969295
+high_state_tax_privilege             -0.358234   0.151666  -2.361990  0.018177
+                                        
+(Intercept)                          ***
+city_go_vote                            
+ln_gdp                                  
+ln_census_population                 ***
+ln_pers_inc                             
+ln_1p_county_nonmunicipal_total_debt    
+glm_proactive                           
+state_ltgo_allowed                      
+state_go_vote                           
+high_state_tax_privilege             *  
+---
+Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
+Log-Likelihood: -66,972.7   Adj. Pseudo R2: 0.885197
+           BIC: 134,023.4     Squared Cor.: 0.892162
+Poisson estimation, Dep. Var.: census_total_debt_per_capita
+Observations: 2,430
+Standard-errors: Clustered (state) 
+                                      Estimate Std. Error   z value   Pr(>|z|)
+(Intercept)                           3.533051   1.575588  2.242370 2.4937e-02
+city_go_vote                          0.474034   0.556341  0.852057 3.9418e-01
+ln_gdp                                0.956931   0.470553  2.033632 4.1989e-02
+ln_census_population                 -0.810880   0.108647 -7.463404 8.4315e-14
+ln_pers_inc                          -0.466332   0.500852 -0.931078 3.5181e-01
+ln_1p_county_nonmunicipal_total_debt  0.179744   0.096557  1.861537 6.2668e-02
+glm_proactive                        -1.322536   0.392514 -3.369400 7.5332e-04
+state_ltgo_allowed                   -1.345440   0.535296 -2.513449 1.1956e-02
+state_go_vote                         0.279083   0.304101  0.917733 3.5876e-01
+high_state_tax_privilege              0.400479   0.376767  1.062934 2.8781e-01
+                                        
+(Intercept)                          *  
+city_go_vote                            
+ln_gdp                               *  
+ln_census_population                 ***
+ln_pers_inc                             
+ln_1p_county_nonmunicipal_total_debt .  
+glm_proactive                        ***
+state_ltgo_allowed                   *  
+state_go_vote                           
+high_state_tax_privilege                
+---
+Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
+Log-Likelihood: -6,915,692.1   Adj. Pseudo R2: 0.884926
+           BIC: 13,831,462.1     Squared Cor.: 0.985189
+Poisson estimation, Dep. Var.: mergent_go_revenue_outstanding_debt_mil
+Observations: 2,430
+Standard-errors: Clustered (state) 
+                                      Estimate Std. Error   z value  Pr(>|z|)
+(Intercept)                          -9.256448   1.007263 -9.189701 < 2.2e-16
+city_go_vote                          0.054503   0.269688  0.202096   0.83984
+ln_gdp                                0.406125   0.301241  1.348173   0.17760
+ln_census_population                  1.209488   0.058024 20.844539 < 2.2e-16
+ln_pers_inc                          -0.396820   0.307334 -1.291166   0.19665
+ln_1p_county_nonmunicipal_total_debt -0.016878   0.062321 -0.270820   0.78653
+glm_proactive                         0.251795   0.215124  1.170462   0.24182
+state_ltgo_allowed                   -0.102717   0.240553 -0.427004   0.66938
+state_go_vote                        -0.312767   0.223178 -1.401423   0.16109
+high_state_tax_privilege             -0.360895   0.255012 -1.415205   0.15701
+                                        
+(Intercept)                          ***
+city_go_vote                            
+ln_gdp                                  
+ln_census_population                 ***
+ln_pers_inc                             
+ln_1p_county_nonmunicipal_total_debt    
+glm_proactive                           
+state_ltgo_allowed                      
+state_go_vote                           
+high_state_tax_privilege                
+---
+Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
+Log-Likelihood: -39,304.2   Adj. Pseudo R2: 0.77372 
+           BIC:  78,686.4     Squared Cor.: 0.664649
+NOTE: 61 observations removed because of NA values (LHS: 61).
+NOTE: 61 observations removed because of NA values (LHS: 61).
+NOTE: 61 observations removed because of NA values (LHS: 61).
+NOTE: 106 observations removed because of NA values (LHS: 61, RHS: 106).

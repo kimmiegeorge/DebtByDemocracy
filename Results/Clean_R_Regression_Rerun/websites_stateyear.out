@@ -1,0 +1,20 @@
+/Volumes/Temp/tmp/RtmpKxlZl3/R.INSTALL104a432591603/arrow/tools/cpp/src/arrow/util/cpu_info.cc:239: IOError: sysctlbyname failed for 'hw.l1dcachesize'. Detail: [errno 1] Operation not permitted
+/Volumes/Temp/tmp/RtmpKxlZl3/R.INSTALL104a432591603/arrow/tools/cpp/src/arrow/util/cpu_info.cc:239: IOError: sysctlbyname failed for 'hw.l2cachesize'. Detail: [errno 1] Operation not permitted
+/Volumes/Temp/tmp/RtmpKxlZl3/R.INSTALL104a432591603/arrow/tools/cpp/src/arrow/util/cpu_info.cc:239: IOError: sysctlbyname failed for 'hw.l3cachesize'. Detail: [errno 1] Operation not permitted
+/Volumes/Temp/tmp/RtmpKxlZl3/R.INSTALL104a432591603/arrow/tools/cpp/src/arrow/util/cpu_info.cc:239: IOError: sysctlbyname failed for 'hw.optional.neon'. Detail: [errno 1] Operation not permitted
+             variable mean_0 mean_1        diff_fmt
+               <char>  <num>  <num>          <char>
+1: cum_num_issues_all   4.25   2.85 -1.39*** (5.39)
+2:           bond_url   0.20   0.53  0.33*** (3.00)
+3:         bond_count   3.53   6.09  2.56*** (2.99)
+4:         fiscal_url   0.30   0.62   0.32** (2.20)
+5:       fiscal_count  10.40  15.99   5.59** (2.39)
+6: financial_pdf_urls   1.44   2.42  0.98*** (3.23)
+NOTE: 4/0 fixed-effects (96 observations) removed because of only 0 outcomes or singletons.
+NOTE: 2/0 fixed-effects (204 observations) removed because of only 0 outcomes or singletons.
+NOTE: 1/0 fixed-effect (29 observations) removed because of only 0 outcomes or singletons.
+NOTE: 23/0 fixed-effect singletons were removed (23 observations).
+NOTE: 23/0 fixed-effect singletons were removed (23 observations).
+NOTE: 11/0 fixed-effect singletons were removed (11 observations).
+The variable 'state_monitor' has been removed because of collinearity (see
+$collin.var).

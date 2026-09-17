@@ -1,0 +1,17 @@
+group,state1,state2,category,include_in_paper,include_debt_yield,include_point_2017
+Ohio/Kentucky,OH,KY,green striped,1,1,1
+West Virginia/Kentucky,WV,KY,green,1,1,1
+Missouri/Kentucky,MO,KY,green,1,0,0
+Michigan/Wisconsin,MI,WI,green striped,1,1,1
+North Carolina/Tennessee,NC,TN,green,1,1,1
+Arkansas/Tennesee,AR,TN,grey,1,0,0
+Georgia/Tennessee,GA,TN,green,1,1,1
+Alabama/Tennessee,AL,TN,grey,1,0,0
+Missouri/Tennessee,MO,TN,green,1,0,0
+Alabama/Mississippi,AL,MS,grey,1,0,0
+Arkansas/Mississippi,AR,MS,grey,1,0,0
+Louisiana/Mississippi,LA,MS,green,1,1,1
+Rhode Island/Massachusetts,RI,MA,grey,0,0,0
+Vermont/Massachusetts,VT,MA,grey,1,0,0
+Vermont/New Hampshire,VT,NH,grey,1,0,0
+Maine/New Hampshire,ME,NH,grey,0,0,0

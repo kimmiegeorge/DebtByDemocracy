@@ -8,11 +8,11 @@
  & Bond URLs & Bond Count & Fiscal URLs & Fiscal Count & Financial Docs\\
  & (1) & (2) & (3) & (4) & (5)\\
    \midrule 
-Vote & 1.271$^{***}$ & 0.967$^{**}$ & 2.334$^{**}$ & 1.069 & 0.494\\
- & $[p=0.010]$ & $[p=0.015]$ & $[p=0.030]$ & $[p=0.128]$ & $[p=0.122]$\\
+Vote & 1.283$^{***}$ & 0.974$^{**}$ & 2.352$^{**}$ & 1.060 & 0.494\\
+ & $[p=0.010]$ & $[p=0.015]$ & $[p=0.029]$ & $[p=0.136]$ & $[p=0.122]$\\
    \hline
-N & 1,328 & 1,424 & 1,220 & 1,424 & 1,395\\
-Pseudo R$^2$ & 0.144 & 0.192 & 0.249 & 0.263 & 0.142\\
+N & 1,328 & 1,412 & 1,208 & 1,412 & 1,383\\
+Pseudo R$^2$ & 0.145 & 0.193 & 0.249 & 0.260 & 0.140\\
 Controls & Yes & Yes & Yes & Yes & Yes\\
 State-Border FE & Yes & Yes & Yes & Yes & Yes\\
 Year FE & Yes & Yes & Yes & Yes & Yes\\
@@ -34,11 +34,11 @@ Cluster & State & State & State & State & State\\
    \cmidrule(lr){2-3}
  & (1) & (2)\\
    \midrule 
-Vote & 0.664$^{**}$ & 0.706$^{*}$\\
- & $[p=0.032]$ & $[p=0.058]$\\
+Vote & 0.567$^{*}$ & 0.566$^{*}$\\
+ & $[p=0.054]$ & $[p=0.098]$\\
    \hline
-N & 478 & 478\\
-Pseudo R$^2$ & 0.544 & 0.552\\
+N & 430 & 430\\
+Pseudo R$^2$ & 0.535 & 0.542\\
 County Controls & No & Yes\\
 Year-Month FE & Yes & Yes\\
 Purpose FE & Yes & Yes\\
@@ -52,8 +52,35 @@ Cluster & State & State\\
 
 \begingroup
 \centering
+\begin{tabular*}{\textwidth}{@{\extracolsep{\fill}}lccc}
+\multicolumn{4}{l}{\textbf{Panel C: Secondary-market trade before maturity}}\\
+
+\addlinespace
+   \toprule
+ & Trade & Retail Trade & Inst. Trade\\
+ & (1) & (2) & (3)\\
+   \midrule 
+Vote & 0.065 & 0.087$^{**}$ & 0.004\\
+ & $[p=0.108]$ & $[p=0.036]$ & $[p=0.923]$\\
+   \hline
+N & 11,385 & 11,385 & 11,385\\
+Adj. R$^2$ & 0.252 & 0.249 & 0.225\\
+Bond and County Controls & Yes & Yes & Yes\\
+Year FE & Yes & Yes & Yes\\
+Purpose FE & Yes & Yes & Yes\\
+State-Border FE & Yes & Yes & Yes\\
+Rating FE & Yes & Yes & Yes\\
+Cluster & State & State & State\\
+   \bottomrule
+\end{tabular*}
+\par\endgroup
+
+\vspace{0.75em}
+
+\begingroup
+\centering
 \begin{tabular*}{\textwidth}{@{\extracolsep{\fill}}lcc}
-\multicolumn{3}{l}{\textbf{Panel C: Debt choice and aggregate yield spread}}\\
+\multicolumn{3}{l}{\textbf{Panel D: Debt choice and aggregate yield spread}}\\
 
 \addlinespace
    \toprule

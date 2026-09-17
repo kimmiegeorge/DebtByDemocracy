@@ -22,3 +22,6 @@ Python/**/reports/
 Python/**/*.json
 Python/Border Matches*.csv
 Python/.gitignore
+
+# Downloaded Census cartographic boundary cache
+Python/Map/cb_2023_us_state_20m/

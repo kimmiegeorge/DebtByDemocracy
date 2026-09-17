@@ -16,10 +16,8 @@ Missouri/Tennessee
 Alabama/Mississippi
 Louisiana/Mississippi
 Arkansas/Mississippi
-Rhode Island/Massachusetts
 Vermont/Massachusetts
 Vermont/New Hampshire
-Maine/New Hampshire
 '''
 #%%
 
@@ -58,31 +56,27 @@ BUFFER_DISTANCE = 100000  # Default: 42000 meters (~26 miles)
 import geopandas as gp
 import pandas as pd
 import polars as pl
+from pathlib import Path
 import matplotlib.pyplot as plt
 import seaborn as sns
 import requests
 from pygris import tracts
 
 data_dir = '~/Dropbox/Voting on Bonds/Data'
-states_list = ['AL', 'AR', 'GA', 'KY', 'LA', 'MA', 'ME', 'MI', 'MO', 'MS', 'NC', 'NH', 'OH', 'RI', 'TN', 'VT', 'WI', 'WV']
-
-# pairs
-state_pairs = {'Ohio/Kentucky': ['OH', 'KY', 'green striped'],
-                'West Virginia/Kentucky': ['WV', 'KY', 'green'],
-                'Missouri/Kentucky': ['MO', 'KY', 'green'],
-               'Michigan/Wisconsin': ['MI', 'WI', 'green striped'],
-                'North Carolina/Tennessee': ['NC', "TN", 'green'],
-                'Arkansas/Tennesee': ['AR', 'TN', 'grey'],
-                'Georgia/Tennessee': ['GA', 'TN', 'green'],
-               'Alabama/Tennessee': ['AL', 'TN', 'grey'],
-                'Missouri/Tennessee': ['MO', 'TN', 'green'],
-                'Alabama/Mississippi': ['AL', 'MS', 'grey'],
-               'Arkansas/Mississippi': ['AR', 'MS', 'grey'],
-                'Louisiana/Mississippi': ['LA', 'MS', 'green'],
-               'Rhode Island/Massachusetts': ['RI', 'MA', 'grey'],
-               'Vermont/Massachusetts': ['VT', 'MA', 'grey'],
-               'Vermont/New Hampshire': ['VT', 'NH', 'grey'],
-                'Maine/New Hampshire': ['ME', 'NH', 'grey']}
+# Use the same canonical pair universe as the paper regressions.
+project_root = next(
+    parent for parent in Path(__file__).resolve().parents
+    if (parent / 'Code/Config/border_state_pairs.csv').exists()
+)
+pair_config = (
+    pl.read_csv(project_root / 'Code/Config/border_state_pairs.csv')
+    .filter(pl.col('include_in_paper') == 1)
+)
+state_pairs = {
+    row['group']: [row['state1'], row['state2'], row['category']]
+    for row in pair_config.iter_rows(named=True)
+}
+states_list = sorted(set(pair_config['state1']) | set(pair_config['state2']))
 
 
 

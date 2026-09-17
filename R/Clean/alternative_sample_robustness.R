@@ -313,7 +313,10 @@ aggregate_yield_model <- feols(
 
 write_robustness_panel(
   list(point_yield_model, aggregate_yield_model),
-  headers = c('2012 Point in Time', 'Full Sample Aggregate'),
+  headers = list(
+    '^ ' = list('Wtd. Avg. Yield Spread' = 2),
+    '- ' = c('2012 Point in Time', 'Full Sample Aggregate')
+  ),
   panel_title = 'Panel C: Weighted average yield spread',
   output_file = 'alternative_sample_robustness_panel_c_yield_spread.tex',
   treatment_label = 'Vote'
@@ -366,7 +369,10 @@ purpose_2012_models <- lapply(purpose_categories, function(category) {
 
 write_robustness_panel(
   purpose_2012_models,
-  headers = purpose_headers,
+  headers = list(
+    '^ ' = list('Pct Revenue' = 5),
+    '- ' = purpose_headers
+  ),
   panel_title = 'Panel D: Purpose substitution, 2012 point in time',
   output_file = 'alternative_sample_robustness_panel_d_purpose_2012.tex',
   treatment_label = 'Vote',
@@ -457,7 +463,10 @@ aggregate_purpose_models <- lapply(purpose_categories, function(category) {
 
 write_robustness_panel(
   aggregate_purpose_models,
-  headers = purpose_headers,
+  headers = list(
+    '^ ' = list('Pct Revenue' = 5),
+    '- ' = purpose_headers
+  ),
   panel_title = 'Panel E: Purpose substitution, full sample aggregate',
   output_file = 'alternative_sample_robustness_panel_e_purpose_aggregate.tex',
   treatment_label = 'Vote',

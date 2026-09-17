@@ -1,7 +1,8 @@
 '''
 Create file with bond-level trade-before-maturity indicators and continuing
-disclosure data. Preserve the original markup-sample indicators and add
-separate raw customer-trade indicators without the same-day interdealer rule.
+disclosure data. Preserve the original markup-sample indicators and add a
+same-day-match sensitivity that retains negative markups, plus raw customer-
+trade indicators including buy-only and nonmissing-yield variants.
 '''
 
 #%%
@@ -52,13 +53,62 @@ daily_liquidity = (liquidity
                         pl.col('institutional').sum().alias('institutional_trades')))
 del liquidity
 
+# Recreate the same-day interdealer match used by the legacy markup sample, but
+# retain all finite computed markups rather than dropping negative markups.
+interdealer_prices = (pl
+    .scan_parquet(raw_trade_files)
+    .select(['cusip', 'trade_date', 'trade_type_indicator', 'dollar_price'])
+    .filter(pl.col('trade_type_indicator').eq('D'))
+    .filter(pl.col('dollar_price').gt(0))
+    .group_by(['cusip', 'trade_date'])
+    .agg(pl.col('dollar_price').mean().alias('avg_interdealer_price'))
+)
+same_day_match_indicators = (pl
+    .scan_parquet(raw_trade_files)
+    .select([
+        'cusip', 'trade_date', 'trade_type_indicator', 'dollar_price',
+        'par_traded'
+    ])
+    .filter(pl.col('trade_type_indicator').is_in(['P', 'S']))
+    .filter(pl.col('dollar_price').is_not_null())
+    .with_columns(
+        pl.when(pl.col('trade_type_indicator').eq('S'))
+        .then(1).otherwise(-1).alias('trade_sign'),
+        pl.col('par_traded')
+        .replace('1MM+', '1000000')
+        .cast(pl.Float64, strict=False)
+    )
+    .join(interdealer_prices, on=['cusip', 'trade_date'], how='inner')
+    .with_columns(
+        (
+            pl.col('trade_sign') * 10000
+            * (pl.col('dollar_price') / pl.col('avg_interdealer_price')).log()
+        ).alias('markup')
+    )
+    .filter(pl.col('markup').is_finite())
+    .join(issuances.lazy(), on='cusip', how='inner')
+    .filter(pl.col('trade_date') >= pl.col('offering_date') + pl.duration(days=30))
+    .filter(pl.col('trade_date') <= pl.col('maturity_date'))
+    .group_by('cusip')
+    .agg(
+        pl.len().gt(0).cast(pl.Int8)
+        .alias('traded_before_maturity_same_day_match'),
+        pl.col('par_traded').lt(100000).fill_null(False).any().cast(pl.Int8)
+        .alias('retail_traded_before_maturity_same_day_match'),
+        pl.col('par_traded').ge(100000).fill_null(False).any().cast(pl.Int8)
+        .alias('institutional_traded_before_maturity_same_day_match'),
+    )
+    .collect()
+)
+
 # Create separate trade-presence indicators directly from all raw customer
-# transactions (P and S). These intentionally do not require a same-day
-# interdealer trade or a nonnegative computed markup. The original indicators
-# above remain based on the markup sample and are preserved unchanged.
+# transactions (P and S), plus buy-only indicators using S (dealer sale to a
+# customer). These intentionally do not require a same-day interdealer trade or
+# a nonnegative computed markup. The original indicators above remain based on
+# the markup sample and are preserved unchanged.
 raw_customer_trade_indicators = (pl
     .scan_parquet(raw_trade_files)
-    .select(['cusip', 'trade_date', 'trade_type_indicator', 'par_traded'])
+    .select(['cusip', 'trade_date', 'trade_type_indicator', 'par_traded', 'yield'])
     .filter(pl.col('trade_type_indicator').is_in(['P', 'S']))
     .with_columns(
         pl.col('par_traded')
@@ -75,6 +125,35 @@ raw_customer_trade_indicators = (pl
         .alias('retail_traded_before_maturity_raw'),
         pl.col('par_traded').ge(100000).fill_null(False).any().cast(pl.Int8)
         .alias('institutional_traded_before_maturity_raw'),
+        (
+            pl.col('yield').is_not_null() & pl.col('yield').is_not_nan()
+        ).any().cast(pl.Int8).alias('traded_before_maturity_raw_yield'),
+        (
+            pl.col('yield').is_not_null()
+            & pl.col('yield').is_not_nan()
+            & pl.col('par_traded').lt(100000).fill_null(False)
+        ).any().cast(pl.Int8).alias('retail_traded_before_maturity_raw_yield'),
+        (
+            pl.col('yield').is_not_null()
+            & pl.col('yield').is_not_nan()
+            & pl.col('par_traded').ge(100000).fill_null(False)
+        ).any().cast(pl.Int8).alias('institutional_traded_before_maturity_raw_yield'),
+        pl.col('par_traded').gt(100000).fill_null(False).any().cast(pl.Int8)
+        .alias('institutional_traded_before_maturity_raw_gt_100k'),
+        pl.col('trade_type_indicator').eq('S').any().cast(pl.Int8)
+        .alias('traded_before_maturity_raw_buys'),
+        (
+            pl.col('trade_type_indicator').eq('S')
+            & pl.col('par_traded').lt(100000).fill_null(False)
+        ).any().cast(pl.Int8).alias('retail_traded_before_maturity_raw_buys'),
+        (
+            pl.col('trade_type_indicator').eq('S')
+            & pl.col('par_traded').ge(100000).fill_null(False)
+        ).any().cast(pl.Int8).alias('institutional_traded_before_maturity_raw_buys'),
+        (
+            pl.col('trade_type_indicator').eq('S')
+            & pl.col('par_traded').gt(100000).fill_null(False)
+        ).any().cast(pl.Int8).alias('institutional_traded_before_maturity_raw_buys_gt_100k'),
     )
     .collect()
 )
@@ -167,10 +246,22 @@ bond_agg = (bond_agg
                             .then(1).otherwise(0).alias('institutional_traded_before_maturity'),
                           pl.col('total_disclosures_before_maturity').truediv(pl.col('pre_maturity_years')).alias('avg_disclosures_per_year_before_maturity'))
             .join(raw_customer_trade_indicators, on='cusip', how='left')
+            .join(same_day_match_indicators, on='cusip', how='left')
             .with_columns(
                 pl.col('traded_before_maturity_raw').fill_null(0),
                 pl.col('retail_traded_before_maturity_raw').fill_null(0),
                 pl.col('institutional_traded_before_maturity_raw').fill_null(0),
+                pl.col('traded_before_maturity_raw_yield').fill_null(0),
+                pl.col('retail_traded_before_maturity_raw_yield').fill_null(0),
+                pl.col('institutional_traded_before_maturity_raw_yield').fill_null(0),
+                pl.col('institutional_traded_before_maturity_raw_gt_100k').fill_null(0),
+                pl.col('traded_before_maturity_raw_buys').fill_null(0),
+                pl.col('retail_traded_before_maturity_raw_buys').fill_null(0),
+                pl.col('institutional_traded_before_maturity_raw_buys').fill_null(0),
+                pl.col('institutional_traded_before_maturity_raw_buys_gt_100k').fill_null(0),
+                pl.col('traded_before_maturity_same_day_match').fill_null(0),
+                pl.col('retail_traded_before_maturity_same_day_match').fill_null(0),
+                pl.col('institutional_traded_before_maturity_same_day_match').fill_null(0),
             )
             )
 

@@ -1,0 +1,13 @@
+measure,value
+News sample start,2001-01-01
+News sample end,2020-12-01
+Event-time radius (months),18
+Cities in news panel,122
+Regression-eligible issuers before event-window restriction,122
+Article-count winsorization percentile,0.99
+Article-count winsorization cap,9
+Bond election: proposition observations,682
+Bond election: city-month events,241
+Bond election: unique cities,119
+GO bond issuance: city-month events,346
+GO bond issuance: unique cities,101

@@ -220,6 +220,10 @@ def fetch(url: str) -> str:
             raise
         except Exception as e:
             last = repr(e)
+            # A redirect loop (curl 47 / TooManyRedirects) is a permanently bad URL, not a
+            # rate block -- retrying never helps. Treat as DeadLink so callers skip it.
+            if "curl: (47)" in last or "TooManyRedirects" in last or "redirects followed" in last:
+                raise DeadLink(url, "redirect-loop(curl47)")
         if time.time() - t0 >= CHALLENGE_WAIT_S:
             raise Blocked(url, last or "unknown")
         wait = min(60, BACKOFF[min(i, len(BACKOFF) - 1)]) + random.uniform(0, 5)

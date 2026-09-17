@@ -571,3 +571,99 @@ label var seed_issuer "Unique issuer name"
 
 *save version at bond-level
 save "$MERGENT\Clean\241112_citycountyschool_cusiplevel.dta", replace
+
+*drop counties and schools to see mix of city debt
+use "$MERGENT\Clean\241112_citycountyschool_cusiplevel.dta", clear
+keep if city == 1
+count if go_unlim == 0 & go_lim == 0 & rev == 0
+*6,640
+gen temp1 = 1 if rev == 1 & strpos(issue_description,"SALE") > 0 & strpos(issue_description,"TAX") > 0
+replace temp1 = 1 if rev == 1 & strpos(issue_description,"EXCISE") > 0 & strpos(issue_description,"TAX") > 0
+replace temp1 = 1 if rev == 1 & security_code != "G"
+replace temp1 = 1 if rev == 1 & source_of_repayment != "G"
+replace temp1 = 0 if rev == 1 & security_code == "G" & source_of_repayment == ""
+replace rev = 0 if temp1 == 1
+count if go_unlim == 0 & go_lim == 0 & rev == 0
+*22,682 are not classified
+*334,728 bonds in total (new money, not a weird interest rate)
+*So not GO or rev is ~15.6% of city bonds
+
+tab go_unlim
+*202,433
+tab go_lim
+*42,704
+tab rev
+*66,909
+*other = 22,682
+/*Proportion by cusip:
+- UTGO: 60.5%
+- LTGO: 12.8%
+- Rev: 20.0%
+- Other: 6.8%
+*/
+
+
+*Check proportion by par
+preserve
+keep if go_unlim == 1
+keep amount
+gcollapse (sum)amount
+*1.496565e+11
+*149,656,500,000
+list
+restore
+
+preserve
+keep if go_lim == 1
+keep amount
+gcollapse (sum)amount
+*2.85858e+10
+*28,585,800,000
+list
+restore
+
+preserve
+keep if rev == 1
+keep amount
+gcollapse (sum)amount
+*1.28348e+11 
+*128,348,000,000
+list
+restore
+
+preserve
+keep if go_unlim == 0 & go_lim == 0 & rev == 0
+keep amount
+gcollapse (sum)amount
+*3.60232e+10
+*36,023,200,000
+list
+restore
+
+*Total is 347,090,800,000
+/*Proportion by par:
+- UTGO: 43.7%
+- LTGO: 8.3%
+- Rev: 37.5%
+- Other: 10.5%
+*/
+
+/*For Excel backup:
+By par:
+utgo	149,656,500,000	43.7%
+ltgo	28,585,800,000	8.3%
+rev	128,348,000,000	37.5%
+other	36,023,200,000	10.5%
+	342,613,500,000	
+
+		
+By cusip:		
+utgo	202,433	60.5%
+ltgo	42,704	12.8%
+rev	66,909	20.0%
+other	22,682	6.8%
+	334,728	
+
+
+*/
+

@@ -58,18 +58,23 @@ dpc_base_sample <- issuance_lvl[
     dpc_lifetime_article_count > 0
 ]
 
-dpc_base_sample[, dpc_log_lifetime_articles := log(1 + dpc_lifetime_article_count)]
-
+# Use observed order statistics for the count-variable caps so winsorization
+# preserves integer-valued article counts.
+dpc_article_caps <- quantile(
+  dpc_base_sample$dpc_total_articles_12_0,
+  probs = c(0.01, 0.99),
+  na.rm = TRUE,
+  type = 1
+)
 dpc_base_sample[, dpc_total_articles_12_0_win := Winsorize(
   dpc_total_articles_12_0,
-  val = quantile(dpc_total_articles_12_0, probs = c(0.01, 0.99), na.rm = TRUE)
+  val = dpc_article_caps
 )]
 
 model_vars <- c(
   'dpc_total_articles_12_0_win',
   'city_go_vote',
   'bond_prior_12',
-  'dpc_log_lifetime_articles',
   'ln_amount',
   'ln_gdp',
   'ln_pop',
@@ -89,8 +94,8 @@ regression_sample[, row_id := .I]
 # ===============================================================================
 
 r1 <- fixest::fepois(
-  dpc_total_articles_12_0_win ~ city_go_vote + bond_prior_12 + dpc_log_lifetime_articles +
-    ln_amount | issuance_year_month_id + purp_broad,
+  dpc_total_articles_12_0_win ~ city_go_vote + bond_prior_12 + ln_amount |
+    issuance_year_month_id + purp_broad,
   data = regression_sample,
   vcov = vcov_cluster(~state),
   glm.iter = poisson_glm_iter,
@@ -98,8 +103,8 @@ r1 <- fixest::fepois(
 )
 
 r2 <- fixest::fepois(
-  dpc_total_articles_12_0_win ~ city_go_vote + bond_prior_12 + dpc_log_lifetime_articles +
-    ln_amount + ln_gdp + ln_pop + ln_pers_inc |
+  dpc_total_articles_12_0_win ~ city_go_vote + bond_prior_12 + ln_amount +
+    ln_gdp + ln_pop + ln_pers_inc |
     issuance_year_month_id + purp_broad,
   data = regression_sample,
   vcov = vcov_cluster(~state),
@@ -123,9 +128,9 @@ desc_col <- desc[, lapply(.SD, function(col) {
     Mean = mean(col, na.rm = TRUE),
     Std = sd(col, na.rm = TRUE),
     Min = min(col, na.rm = TRUE),
-    P1 = quantile(col, probs = 0.01, na.rm = TRUE),
+    P1 = quantile(col, probs = 0.01, na.rm = TRUE, type = 1),
     Median = median(col, na.rm = TRUE),
-    P99 = quantile(col, probs = 0.99, na.rm = TRUE),
+    P99 = quantile(col, probs = 0.99, na.rm = TRUE, type = 1),
     Max = max(col, na.rm = TRUE),
     N = sum(!is.na(col))
   )
@@ -283,7 +288,6 @@ table_call <- etable(
   dict = c(
     dpc_total_articles_12_0_win = 'Total Articles (DPC) - 12mo',
     city_go_vote = 'Vote',
-    dpc_log_lifetime_articles = 'Total DPC Coverage',
     bond_prior_12 = 'Bond Issuance - 12mo',
     ln_amount = 'Amount',
     ln_gdp = 'County ln(GDP)',

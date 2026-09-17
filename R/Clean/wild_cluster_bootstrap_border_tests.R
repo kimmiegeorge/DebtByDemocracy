@@ -1,11 +1,11 @@
 # Wild-cluster bootstrap inference for the border-state tests reported in the paper
 #
-# This script reproduces the current website, border-state media-coverage, and 2017
-# point-in-time border specifications. Inference is based on a null-imposed
-# wild-cluster score bootstrap by state. With at most 15 states in these samples,
-# all distinct two-sided Rademacher sign assignments are enumerated rather than
-# simulated. Controls and fixed effects are included in estimation but suppressed
-# in the output table.
+# This script reproduces the current website, border-state media-coverage, 2017
+# point-in-time, and secondary-market trading border specifications. Inference is
+# based on a null-imposed wild-cluster score bootstrap by state. With at most 15
+# states in these samples, all distinct two-sided Rademacher sign assignments are
+# enumerated rather than simulated. Controls and fixed effects are included in
+# estimation but suppressed in the output table.
 
 rm(list = ls())
 
@@ -30,6 +30,7 @@ dir.create(output_dir, recursive = TRUE, showWarnings = FALSE)
 dir.create(processed_output_dir, recursive = TRUE, showWarnings = FALSE)
 
 source(file.path(root, 'Code/R/Clean/tax_privilege_definitions.R'))
+source(file.path(root, 'Code/R/Clean/border_pair_definitions.R'))
 
 output_csv <- file.path(output_dir, 'wild_cluster_bootstrap_border_tests.csv')
 output_tex <- file.path(output_dir, 'wild_cluster_bootstrap_border_tests.tex')
@@ -285,9 +286,9 @@ website_data <- fread(file.path(
   root,
   'Data/Clean_Intermediate/Websites/border_state_website_data_with_recovered.csv'
 ))
+website_data <- filter_paper_border_pairs(website_data)
 website_data <- website_data[
-  group != 'Rhode Island/Massachusetts' &
-    !is.na(total_subs) &
+  !is.na(total_subs) &
     !is.na(city_go_vote) &
     total_subs == 50 &
     seed_issuer != 'BONDUEL WIS'
@@ -333,12 +334,19 @@ website_data[, state_monitor := as.integer(
 website_data[, group := factor(group)]
 website_data[, year := factor(year_int)]
 
+# Use observed order statistics for the count-variable caps so winsorization
+# matches the main website analysis and preserves integer-valued counts.
 for (variable in c(
   'fiscal_url', 'fiscal_count', 'bond_url', 'bond_count', 'financial_pdf_urls'
 )) {
   website_data[, (variable) := DescTools::Winsorize(
     get(variable),
-    val = quantile(get(variable), probs = c(0.01, 0.99), na.rm = TRUE)
+    val = quantile(
+      get(variable),
+      probs = c(0.01, 0.99),
+      na.rm = TRUE,
+      type = 1
+    )
   )]
 }
 
@@ -391,11 +399,34 @@ media_data[, bond_prior_12 := fifelse(
   1,
   0
 )]
-media_data <- media_data[group != 'Rhode Island/Massachusetts']
+media_data <- filter_paper_border_pairs(media_data)
 media_data[, log_sources := log1p(unique_sources_12)]
+
+# Match the media table's outcome definition: calculate the empirical 1st and
+# 99th percentile caps in the full media analysis sample, then apply those same
+# caps to the border-state sample. The RI treatment recode and the employment
+# and analysis-sample screens mirror media_coverage.r; the issuer merge in that
+# script adds labels only and does not affect the percentile calculation.
+media_cap_data <- fread(file.path(
+  root,
+  'Data/Clean_Intermediate/News/Issuance_Lvl_News_With_Lagged_News.csv'
+))
+media_cap_data[state == 'RI', city_go_vote := NA_real_]
+media_cap_data <- media_cap_data[
+  !is.na(city_go_vote) &
+    !is.na(ln_employment) &
+    go_unlim_bond_issuance == 1 &
+    rolling_sum_monthly_article_count_12 > 0
+]
+media_article_caps <- quantile(
+  media_cap_data$total_rp_articles_12_0,
+  probs = c(0.01, 0.99),
+  na.rm = TRUE,
+  type = 1
+)
 media_data[, total_articles_12_0_win := DescTools::Winsorize(
   total_rp_articles_12_0,
-  val = quantile(total_rp_articles_12_0, probs = c(0.01, 0.99), na.rm = TRUE)
+  val = media_article_caps
 )]
 media_data[, state_year := interaction(state, year, drop = TRUE)]
 media_data <- media_data[
@@ -440,7 +471,7 @@ media_results <- rbindlist(list(
 
 
 # ==============================================================================
-# Panel C: 2017 point-in-time fraction UTGO and aggregate yield
+# Panel D: 2017 point-in-time fraction UTGO and aggregate yield
 # ==============================================================================
 
 point_data <- fread(file.path(
@@ -465,10 +496,9 @@ point_data[mergent_go_revenue_outstanding_debt <= 0, frac_utgo_outstanding := NA
 point_data[, ln_census_population := log(census_population)]
 point_data[, state_year := interaction(state, year, drop = TRUE)]
 
+point_data <- filter_debt_yield_border_pairs(point_data, 'border_group')
 point_data <- point_data[
-  !is.na(border_group) &
-    !(border_group %in% c('Rhode Island/Massachusetts', 'Maine/New Hampshire')) &
-    !is.na(ln_gdp) &
+  !is.na(ln_gdp) &
     !is.na(ln_census_population) &
     !is.na(ln_pers_inc) &
     !is.na(ln_1p_county_nonmunicipal_total_debt) &
@@ -502,7 +532,7 @@ point_yield_controls <- c(
 point_results <- rbindlist(list(
   estimate_specification(
     data = point_data,
-    panel = 'C',
+    panel = 'D',
     column = 1L,
     outcome_label = 'Pct UTGO',
     outcome = 'frac_utgo_outstanding',
@@ -513,7 +543,7 @@ point_results <- rbindlist(list(
   ),
   estimate_specification(
     data = point_data,
-    panel = 'C',
+    panel = 'D',
     column = 2L,
     outcome_label = 'Wtd. Avg. Yield Spread',
     outcome = 'mergent_wavg_yield_spread_go_revenue',
@@ -526,10 +556,96 @@ point_results <- rbindlist(list(
 
 
 # ==============================================================================
-# Results and compact three-panel LaTeX table
+# Panel C: Secondary-market trading before maturity
 # ==============================================================================
 
-results <- rbindlist(list(website_results, media_results, point_results), fill = TRUE)
+trade_data <- fread(file.path(
+  root,
+  paste0(
+    'Data/Clean_Intermediate/MSRB/Processed/',
+    'Bond_Level_Any_Trade_Before_Maturity_with_CD_Data.csv'
+  )
+))
+trade_data[, seed_issuer_id := round(as.numeric(seed_issuer_id), 1)]
+trade_data[state == 'MO', city_rev_vote := 1]
+trade_data[state == 'RI', city_go_vote := NA_real_]
+trade_data <- trade_data[
+  city == 1 & !is.na(city_go_vote) & go_unlim == 1 & !is.na(callable)
+]
+add_low_state_tax_privilege(trade_data)
+trade_data[, disclosure_control := disclosed_before_maturity]
+
+required_trade_fields <- c(
+  'traded_before_maturity_raw',
+  'retail_traded_before_maturity_raw',
+  'institutional_traded_before_maturity_raw',
+  'rating_fe'
+)
+missing_trade_fields <- setdiff(required_trade_fields, names(trade_data))
+if (length(missing_trade_fields) > 0L) {
+  stop('Missing official trade fields: ', paste(missing_trade_fields, collapse = ', '))
+}
+if (trade_data[, anyNA(rating_fe)]) {
+  stop('rating_fe contains missing values in the trade-before-maturity data.')
+}
+
+trade_border_matches <- fread(file.path(
+  root,
+  paste0(
+    'Data/Clean_Intermediate/Border States/',
+    'Border Matches All Mergent Data Expanded Set Buffer 100000.csv'
+  )
+))
+trade_border_matches <- filter_paper_border_pairs(trade_border_matches)
+trade_border_matches <- trade_border_matches[go_unlim == 1]
+trade_border_matches <- unique(
+  trade_border_matches[, .(state, seed_issuer, group)]
+)
+trade_border_data <- trade_data[
+  trade_border_matches,
+  on = .(state, seed_issuer)
+]
+trade_border_data <- trade_border_data[!is.na(cusip) & year > 2004]
+trade_border_data[, state_year := interaction(state, year, drop = TRUE)]
+
+trade_controls <- c(
+  'low_state_tax_privilege', 'disclosure_control',
+  'ln_amount', 'ln_maturity_mths', 'callable', 'sinkable', 'insured',
+  'ln_gdp', 'ln_pop', 'ln_pers_inc'
+)
+trade_outcomes <- data.table(
+  column = 1:3,
+  outcome = c('Trade', 'Retail Trade', 'Inst. Trade'),
+  variable = c(
+    'traded_before_maturity_raw',
+    'retail_traded_before_maturity_raw',
+    'institutional_traded_before_maturity_raw'
+  )
+)
+
+trade_results <- rbindlist(lapply(seq_len(nrow(trade_outcomes)), function(i) {
+  estimate_specification(
+    data = trade_border_data,
+    panel = 'C',
+    column = trade_outcomes$column[i],
+    outcome_label = trade_outcomes$outcome[i],
+    outcome = trade_outcomes$variable[i],
+    controls = trade_controls,
+    fixed_effects = c('year', 'purp_broad', 'group', 'rating_fe'),
+    family = 'linear',
+    baseline_cluster = 'state_year'
+  )
+}))
+
+
+# ==============================================================================
+# Results and compact four-panel LaTeX table
+# ==============================================================================
+
+results <- rbindlist(
+  list(website_results, media_results, point_results, trade_results),
+  fill = TRUE
+)
 setorder(results, panel, column)
 fwrite(results, output_csv)
 
@@ -630,7 +746,8 @@ panel_table_lines <- function(panel_data, panel_title, header_lines,
 
 website_panel <- results[panel == 'A']
 media_panel <- results[panel == 'B']
-point_panel <- results[panel == 'C']
+trade_panel <- results[panel == 'C']
+point_panel <- results[panel == 'D']
 
 raw_latex_lines <- c(
   panel_table_lines(
@@ -657,8 +774,18 @@ raw_latex_lines <- c(
   '\\vspace{0.75em}',
   '',
   panel_table_lines(
+    trade_panel,
+    'Panel C: Secondary-market trade before maturity',
+    latex_row('', c('Trade', 'Retail Trade', 'Inst. Trade')),
+    c('Year FE', 'Purpose FE', 'State-Border FE', 'Rating FE'),
+    controls_label = 'Bond and County Controls'
+  ),
+  '',
+  '\\vspace{0.75em}',
+  '',
+  panel_table_lines(
     point_panel,
-    'Panel C: Debt choice and aggregate yield spread',
+    'Panel D: Debt choice and aggregate yield spread',
     latex_row('', c('Pct UTGO', 'Wtd. Avg. Yield Spread')),
     'State-Border FE'
   )
@@ -669,6 +796,8 @@ table_note <- paste0(
   'Panel A reports fixed-effects Poisson estimates of website disclosure, Panel B ',
   'reports the border-state fixed-effects Poisson estimates from columns 3--4 of ',
   'the media-coverage table, and Panel C reports linear state-border fixed-effects ',
+  'estimates for the three raw customer-trade-before-maturity outcomes, with ',
+  'rating-category fixed effects. Panel D reports linear state-border fixed-effects ',
   'estimates for the 2017 point-in-time outcomes. Square brackets contain two-sided ',
   'p-values from null-imposed wild-cluster score tests by state using Rademacher ',
   'weights. Because each panel contains at most 15 state clusters, the tests ',

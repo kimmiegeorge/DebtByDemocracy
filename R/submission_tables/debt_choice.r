@@ -5,6 +5,7 @@ p_load(data.table, dplyr, stargazer, DescTools, arrow, glue, lfe, ggplot2, gridE
 # Load custom etable rounding functions
 source('/Users/kmunevar/Dropbox/Voting on Bonds/Code/R/submission_tables/modify_etable_rounding.R')
 source('/Users/kmunevar/Dropbox/Voting on Bonds/Code/R/submission_tables/robustness_helpers.R')
+source('/Users/kmunevar/Dropbox/Voting on Bonds/Code/R/Clean/border_pair_definitions.R')
 tbl_dir <- '/Users/kmunevar/Dropbox/Apps/Overleaf/Voting on bonds/tables/revision_tables'
 
 super_majority_states <- c('CA', 'ID', 'MO','ND','SD', 'WA')
@@ -30,6 +31,7 @@ full_sample <- data
 full_sample <- full_sample[insample == 1]
 # load border state issuers 
 border_state = fread('~/Dropbox/Voting on Bonds/Data/Border States/Border Matches All Mergent Data Expanded Set Buffer 100000 20260611.csv')
+border_state = filter_debt_yield_border_pairs(border_state)
 border_state = unique(border_state[, .(seed_issuer_id, group, category)])
 # only look at no revenue vote matches
 #border_state <- border_state[category != 'grey']
@@ -37,8 +39,8 @@ border_state[, border_sample := 1]
 data <- border_state[data, on = .(seed_issuer_id)]
 #data[state == 'LA', state_ltgo_allowed := 0]
 issuer_lvl_all <- data[border_sample == 1]
-#issuer_lvl_all <- issuer_lvl_all[group %in% all_border_states]
-issuer_lvl_all <- issuer_lvl_all[!is.na(group) & group != 'Rhode Island/Massachusetts']
+issuer_lvl_all <- issuer_lvl_all[!is.na(group)]
+assert_debt_yield_border_pairs(issuer_lvl_all)
 
 #----------------------------
 # Descriptives - full sample
@@ -440,7 +442,7 @@ writeLines(modified_output, paste0(tbl_dir, '/yield_spread_utgo_only.tex'))
 # Regressions - border state
 #----------------------------
 
-fixed_border <- issuer_lvl_all[!(group %in% c('Ohio/Kentucky', 'Michigan/Wisconsin'))]
+fixed_border <- issuer_lvl_all
 
 
 

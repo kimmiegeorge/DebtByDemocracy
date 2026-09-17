@@ -3,7 +3,6 @@
 rm(list = ls())
 
 library(data.table)
-library(DescTools)
 library(fixest)
 library(haven)
 
@@ -13,6 +12,7 @@ clean_data_dir <- file.path(data_dir, "Clean_Intermediate")
 table_dir <- file.path(project_dir, "Code", "R", "Clean", "output", "revision_tables")
 
 source(file.path(project_dir, "Code", "R", "Clean", "modify_etable_rounding.R"))
+source(file.path(project_dir, "Code", "R", "Clean", "border_pair_definitions.R"))
 
 output_file <- file.path(table_dir, "media_coverage_panel_b_ols.tex")
 
@@ -75,7 +75,7 @@ border_articles <- fread(file.path(
 issuance_lvl[, city_go_vote := fifelse(state == "RI", NA_real_, city_go_vote)]
 issuance_lvl <- issuance_lvl[!is.na(city_go_vote) & !is.na(ln_employment)]
 border_articles <- border_articles[!is.na(ln_employment)]
-border_articles <- border_articles[!(group %in% "Rhode Island/Massachusetts")]
+border_articles <- filter_paper_border_pairs(border_articles)
 border_articles[, state_year := interaction(state, year, drop = TRUE)]
 
 add_media_variables <- function(dt) {
@@ -88,11 +88,7 @@ add_media_variables <- function(dt) {
     0
   )]
   dt[, log_sources := log1p(unique_sources_12)]
-  dt[, total_articles_12_0_win := Winsorize(
-    total_rp_articles_12_0,
-    val = quantile(total_rp_articles_12_0, probs = c(0.01, 0.99), na.rm = TRUE)
-  )]
-  dt[, log_total_articles_12_0_win := log1p(total_articles_12_0_win)]
+  dt[, log_total_articles_12_0 := log1p(total_rp_articles_12_0)]
   invisible(dt)
 }
 
@@ -112,14 +108,14 @@ border_sample <- border_articles[
 # -----------------------------------------------------------------------------
 
 r1 <- feols(
-  log_total_articles_12_0_win ~ city_go_vote + bond_prior_12 + log_sources +
+  log_total_articles_12_0 ~ city_go_vote + bond_prior_12 + log_sources +
     ln_amount | issuance_year_month_id + purp_broad,
   data = full_sample,
   vcov = vcov_cluster(~state)
 )
 
 r1b <- feols(
-  log_total_articles_12_0_win ~ city_go_vote + bond_prior_12 + log_sources +
+  log_total_articles_12_0 ~ city_go_vote + bond_prior_12 + log_sources +
     ln_amount + ln_gdp + ln_pop + ln_pers_inc |
     issuance_year_month_id + purp_broad,
   data = full_sample,
@@ -127,14 +123,14 @@ r1b <- feols(
 )
 
 r2 <- feols(
-  log_total_articles_12_0_win ~ city_go_vote + bond_prior_12 + log_sources +
+  log_total_articles_12_0 ~ city_go_vote + bond_prior_12 + log_sources +
     ln_amount | issuance_year_month_id + group + purp_broad,
   data = border_sample,
   vcov = vcov_cluster(~state_year)
 )
 
 r2b <- feols(
-  log_total_articles_12_0_win ~ city_go_vote + bond_prior_12 + log_sources +
+  log_total_articles_12_0 ~ city_go_vote + bond_prior_12 + log_sources +
     ln_amount + ln_gdp + ln_pop + ln_pers_inc |
     issuance_year_month_id + group + purp_broad,
   data = border_sample,
@@ -158,7 +154,7 @@ table_call <- etable(
   signif.code = c("***" = 0.01, "**" = 0.05, "*" = 0.10),
   tex = TRUE,
   dict = c(
-    log_total_articles_12_0_win = outcome_label,
+    log_total_articles_12_0 = outcome_label,
     city_go_vote = "Vote",
     bond_prior_12 = "Bond Issuance - 12mo",
     log_sources = "Num Sources",

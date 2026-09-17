@@ -70,13 +70,15 @@ CAT_COLORS = {
     'depends':    C_GRAY,
 }
 
-# ─── Download / cache Census TIGER state shapefile ───────────────────────────
-SHP_DIR  = os.path.join(CACHE_DIR, 'tl_2023_us_state')
-SHP_PATH = os.path.join(SHP_DIR, 'tl_2023_us_state.shp')
+# ─── Download / cache Census cartographic boundary file (clipped to shoreline) ───
+# Using cb_ (cartographic boundary) instead of tl_ (TIGER/Line) so that
+# Michigan and other lake-border states are not inflated by Great Lakes water area.
+SHP_DIR  = os.path.join(CACHE_DIR, 'cb_2023_us_state_20m')
+SHP_PATH = os.path.join(SHP_DIR, 'cb_2023_us_state_20m.shp')
 
 if not os.path.exists(SHP_PATH):
-    url = 'https://www2.census.gov/geo/tiger/TIGER2023/STATE/tl_2023_us_state.zip'
-    print('Downloading Census TIGER state boundaries …')
+    url = 'https://www2.census.gov/geo/tiger/GENZ2023/shp/cb_2023_us_state_20m.zip'
+    print('Downloading Census cartographic boundary file …')
     with urllib.request.urlopen(url) as resp:
         with zipfile.ZipFile(io.BytesIO(resp.read())) as z:
             z.extractall(SHP_DIR)
@@ -125,8 +127,8 @@ ax = fig.add_axes([0.01, 0.16, 0.88, 0.83])
 draw_states(ax, conus)
 ax.set_axis_off()
 
-# Alaska inset (lower-left, overlaid on blank CONUS space)
-ax_ak = fig.add_axes([0.02, 0.14, 0.17, 0.15])
+# Alaska inset (lower-left, overlaid on blank CONUS space) — slightly larger
+ax_ak = fig.add_axes([0.01, 0.11, 0.21, 0.19])
 draw_states(ax_ak, ak, lw=0.4)
 ax_ak.set_axis_off()
 ax_ak.set_aspect('equal')
@@ -144,12 +146,13 @@ conus['ry'] = conus.geometry.representative_point().y
 # Positive dx → east; positive dy → north
 OFFSETS: dict = {
     'ID': ( +53_000, -234_000),  # panhandle → lower body centre
-    'MI': (      0,  -330_000),  # Upper Peninsula → Lower Peninsula centre
-    'LA': ( -55_000, +160_000),  # coastal marshes → northern body
+    'MI': (+241_000, -365_000),  # cb rp in UP → LP palm centre (~950k, 2250k)
+    'LA': ( -20_000,  +70_000),  # slightly south-east
     'FL': ( -54_000, +190_000),  # southern tip → mid-peninsula
-    'NY': (-148_000,  -34_000),  # eastern bias → western main body
-    'VA': (-124_000,  -10_000),  # Chesapeake notch → central body
-    'WV': (      0,   -40_000),  # minor south adjustment
+    'NY': ( -80_000,  -34_000),  # more east (was -148k)
+    'VA': ( -50_000,  -10_000),  # more east (was -124k)
+    'WV': ( -40_000,  -40_000),  # half of previous west move
+    'KY': ( -40_000,       0),   # half of previous west move
     'ME': ( -30_000,  -30_000),  # minor adjustment
     'WA': (      0,   -30_000),  # minor south adjustment
 }
@@ -160,12 +163,12 @@ OFFMAP = frozenset({'NH', 'MA', 'RI', 'CT', 'NJ', 'DE', 'MD'})
 # ── Alaska label ──────────────────────────────────────────────────────────────
 ak_rp = ak.geometry.representative_point().iloc[0]
 ax_ak.text(ak_rp.x, ak_rp.y, 'AK',
-           fontsize=7.5, fontfamily='Arial',
+           fontsize=9.5, fontfamily='Arial',
            color=lbl_color('only_go'),
            ha='center', va='center', zorder=10)
 
 # ── On-map labels ─────────────────────────────────────────────────────────────
-LBL_KW = dict(fontsize=9, fontfamily='Arial', ha='center', va='center', zorder=10)
+LBL_KW = dict(fontsize=11, fontfamily='Arial', ha='center', va='center', zorder=10)
 
 for _, row in conus.iterrows():
     abbr = row['STUSPS']
@@ -197,7 +200,7 @@ for i, (_, row) in enumerate(off_gdf.iterrows()):
     # Off-map label is always black (floats on white background)
     ax.text(lx + 3_000, ly, row['STUSPS'],
             color='#000000', ha='left',
-            fontsize=9, fontfamily='Arial', va='center', zorder=10)
+            fontsize=11, fontfamily='Arial', va='center', zorder=10)
 
 # Fix axes limits to show full CONUS + off-map labels
 ax.set_xlim(xmin - 200_000, COL_X + 220_000)
@@ -222,7 +225,7 @@ fig.legend(
     loc='lower center',
     bbox_to_anchor=(0.43, 0.015),
     ncol=1,
-    fontsize=8.5,
+    fontsize=11,
     frameon=False,
     handleheight=1.4,
     handlelength=2.2,

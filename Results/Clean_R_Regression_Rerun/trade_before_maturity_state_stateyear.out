@@ -1,0 +1,382 @@
+/Volumes/Temp/tmp/RtmpKxlZl3/R.INSTALL104a432591603/arrow/tools/cpp/src/arrow/util/cpu_info.cc:239: IOError: sysctlbyname failed for 'hw.l1dcachesize'. Detail: [errno 1] Operation not permitted
+/Volumes/Temp/tmp/RtmpKxlZl3/R.INSTALL104a432591603/arrow/tools/cpp/src/arrow/util/cpu_info.cc:239: IOError: sysctlbyname failed for 'hw.l2cachesize'. Detail: [errno 1] Operation not permitted
+/Volumes/Temp/tmp/RtmpKxlZl3/R.INSTALL104a432591603/arrow/tools/cpp/src/arrow/util/cpu_info.cc:239: IOError: sysctlbyname failed for 'hw.l3cachesize'. Detail: [errno 1] Operation not permitted
+/Volumes/Temp/tmp/RtmpKxlZl3/R.INSTALL104a432591603/arrow/tools/cpp/src/arrow/util/cpu_info.cc:239: IOError: sysctlbyname failed for 'hw.optional.neon'. Detail: [errno 1] Operation not permitted
+OLS estimation, Dep. Var.: traded_before_maturity
+Observations: 49,096
+Fixed-effects: year: 16,  purp_broad: 14
+Standard-errors: Clustered (state) 
+                           Estimate Std. Error    t value   Pr(>|t|)    
+city_go_vote               0.042331   0.035778   1.183169 2.4574e-01    
+disclosed_before_maturity  0.154112   0.035530   4.337480 1.4184e-04 ***
+ln_amount                  0.112733   0.009731  11.585367 8.5309e-13 ***
+ln_maturity_mths           0.151804   0.012346  12.295414 1.8580e-13 ***
+callable                  -0.118550   0.011236 -10.551359 8.7591e-12 ***
+sinkable                  -0.129306   0.024455  -5.287559 9.4156e-06 ***
+insured                    0.081846   0.018837   4.344983 1.3887e-04 ***
+rating_num                 0.001484   0.000995   1.491306 1.4599e-01    
+ln_gdp                    -0.025576   0.028873  -0.885804 3.8254e-01    
+ln_pop                    -0.046809   0.041502  -1.127892 2.6802e-01    
+ln_pers_inc                0.104654   0.059380   1.762432 8.7855e-02 .  
+---
+Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
+RMSE: 0.432977     Adj. R2: 0.245245
+                 Within R2: 0.231756
+OLS estimation, Dep. Var.: traded_before_maturity
+Observations: 49,096
+Fixed-effects: year: 16,  purp_broad: 14
+Standard-errors: Clustered (state) 
+                           Estimate Std. Error    t value   Pr(>|t|)    
+city_go_vote               0.018275   0.025204   0.725073 4.7385e-01    
+high_state_tax_privilege   0.089616   0.022154   4.045221 3.2210e-04 ***
+disclosed_before_maturity  0.157881   0.035767   4.414105 1.1421e-04 ***
+ln_amount                  0.114074   0.009029  12.633741 9.1744e-14 ***
+ln_maturity_mths           0.151921   0.012658  12.001637 3.4658e-13 ***
+callable                  -0.120535   0.011973 -10.067006 2.7317e-11 ***
+sinkable                  -0.126043   0.022642  -5.566876 4.2274e-06 ***
+insured                    0.074063   0.020833   3.555134 1.2357e-03 ** 
+rating_num                 0.001658   0.000870   1.904383 6.6177e-02 .  
+ln_gdp                    -0.029698   0.024805  -1.197295 2.4027e-01    
+ln_pop                    -0.004367   0.047704  -0.091535 9.2766e-01    
+ln_pers_inc                0.068964   0.057424   1.200974 2.3886e-01    
+---
+Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
+RMSE: 0.431374     Adj. R2: 0.250808
+                 Within R2: 0.237434
+OLS estimation, Dep. Var.: traded_before_maturity
+Observations: 12,617
+Fixed-effects: year: 16,  purp_broad: 11,  group: 15
+Standard-errors: Clustered (state_year) 
+                           Estimate Std. Error   t value   Pr(>|t|)    
+city_go_vote               0.093449   0.027359  3.415617 8.3773e-04 ***
+disclosed_before_maturity  0.132294   0.029478  4.487902 1.5108e-05 ***
+ln_amount                  0.131147   0.008590 15.267927  < 2.2e-16 ***
+ln_maturity_mths           0.145021   0.014363 10.097025  < 2.2e-16 ***
+callable                  -0.106491   0.021251 -5.011072 1.6419e-06 ***
+sinkable                  -0.164015   0.032609 -5.029729 1.5126e-06 ***
+insured                    0.109152   0.023164  4.712099 5.9506e-06 ***
+rating_num                -0.000444   0.001350 -0.328739 7.4286e-01    
+ln_gdp                    -0.003375   0.050354 -0.067027 9.4666e-01    
+ln_pop                    -0.138154   0.077568 -1.781078 7.7116e-02 .  
+ln_pers_inc                0.153355   0.081582  1.879769 6.2263e-02 .  
+---
+Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
+RMSE: 0.428025     Adj. R2: 0.256357
+                 Within R2: 0.160457
+OLS estimation, Dep. Var.: traded_before_maturity
+Observations: 12,617
+Fixed-effects: year: 16,  purp_broad: 11,  group: 15
+Standard-errors: Clustered (state_year) 
+                           Estimate Std. Error   t value   Pr(>|t|)    
+city_go_vote               0.122213   0.044628  2.738501 6.9927e-03 ** 
+high_state_tax_privilege  -0.043991   0.057777 -0.761393 4.4773e-01    
+disclosed_before_maturity  0.133082   0.029576  4.499609 1.4401e-05 ***
+ln_amount                  0.130873   0.008583 15.247763  < 2.2e-16 ***
+ln_maturity_mths           0.144779   0.014298 10.125491  < 2.2e-16 ***
+callable                  -0.106141   0.021182 -5.010918 1.6430e-06 ***
+sinkable                  -0.164547   0.032604 -5.046776 1.4032e-06 ***
+insured                    0.107959   0.023098  4.673993 6.9863e-06 ***
+rating_num                -0.000412   0.001347 -0.306023 7.6005e-01    
+ln_gdp                     0.002339   0.052196  0.044816 9.6432e-01    
+ln_pop                    -0.139208   0.077481 -1.796673 7.4591e-02 .  
+ln_pers_inc                0.148238   0.082174  1.803957 7.3435e-02 .  
+---
+Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
+RMSE: 0.427991     Adj. R2: 0.256415
+                 Within R2: 0.160589
+OLS estimation, Dep. Var.: retail_traded_before_maturity
+Observations: 49,096
+Fixed-effects: year: 16,  purp_broad: 14
+Standard-errors: Clustered (state) 
+                           Estimate Std. Error    t value   Pr(>|t|)    
+city_go_vote               0.067350   0.045157   1.491467 1.4595e-01    
+disclosed_before_maturity  0.107561   0.032895   3.269845 2.6376e-03 ** 
+ln_amount                  0.105715   0.008469  12.482628 1.2553e-13 ***
+ln_maturity_mths           0.153218   0.018165   8.434974 1.5802e-09 ***
+callable                  -0.135539   0.011756 -11.529777 9.6365e-13 ***
+sinkable                  -0.158504   0.024078  -6.582978 2.3633e-07 ***
+insured                    0.073709   0.020094   3.668228 9.0992e-04 ***
+rating_num                 0.001435   0.001021   1.405334 1.6986e-01    
+ln_gdp                    -0.012818   0.034888  -0.367403 7.1581e-01    
+ln_pop                    -0.060517   0.042341  -1.429285 1.6292e-01    
+ln_pers_inc                0.105504   0.062650   1.684035 1.0222e-01    
+---
+Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
+RMSE: 0.42784     Adj. R2: 0.229413
+                Within R2: 0.216072
+OLS estimation, Dep. Var.: retail_traded_before_maturity
+Observations: 49,096
+Fixed-effects: year: 16,  purp_broad: 14
+Standard-errors: Clustered (state) 
+                           Estimate Std. Error    t value   Pr(>|t|)    
+city_go_vote               0.037973   0.031105   1.220803 2.3137e-01    
+high_state_tax_privilege   0.109436   0.026590   4.115673 2.6459e-04 ***
+disclosed_before_maturity  0.112164   0.032879   3.411411 1.8153e-03 ** 
+ln_amount                  0.107353   0.007730  13.888131 7.4799e-15 ***
+ln_maturity_mths           0.153360   0.018598   8.245921 2.5858e-09 ***
+callable                  -0.137964   0.011522 -11.974353 3.6742e-13 ***
+sinkable                  -0.154519   0.020685  -7.470164 2.0438e-08 ***
+insured                    0.064205   0.020731   3.097052 4.1289e-03 ** 
+rating_num                 0.001646   0.000856   1.923505 6.3642e-02 .  
+ln_gdp                    -0.017852   0.028145  -0.634281 5.3055e-01    
+ln_pop                    -0.008688   0.053954  -0.161031 8.7311e-01    
+ln_pers_inc                0.061922   0.058663   1.055568 2.9932e-01    
+---
+Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
+RMSE: 0.425419     Adj. R2: 0.238097
+                 Within R2: 0.224922
+OLS estimation, Dep. Var.: retail_traded_before_maturity
+Observations: 12,617
+Fixed-effects: year: 16,  purp_broad: 11,  group: 15
+Standard-errors: Clustered (state_year) 
+                           Estimate Std. Error   t value   Pr(>|t|)    
+city_go_vote               0.083612   0.028970  2.886138 4.5327e-03 ** 
+disclosed_before_maturity  0.101715   0.028360  3.586538 4.6520e-04 ***
+ln_amount                  0.119106   0.008858 13.446476  < 2.2e-16 ***
+ln_maturity_mths           0.143525   0.014048 10.216734  < 2.2e-16 ***
+callable                  -0.123058   0.019504 -6.309345 3.6132e-09 ***
+sinkable                  -0.184814   0.030267 -6.106112 9.9073e-09 ***
+insured                    0.093781   0.023115  4.057147 8.3022e-05 ***
+rating_num                -0.000064   0.001487 -0.042785 9.6594e-01    
+ln_gdp                     0.071594   0.053154  1.346930 1.8023e-01    
+ln_pop                    -0.206098   0.086244 -2.389695 1.8224e-02 *  
+ln_pers_inc                0.131793   0.091091  1.446834 1.5023e-01    
+---
+Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
+RMSE: 0.416671     Adj. R2: 0.254363
+                 Within R2: 0.145413
+OLS estimation, Dep. Var.: retail_traded_before_maturity
+Observations: 12,617
+Fixed-effects: year: 16,  purp_broad: 11,  group: 15
+Standard-errors: Clustered (state_year) 
+                             Estimate Std. Error   t value   Pr(>|t|)    
+city_go_vote               0.13965193   0.052815  2.644193 9.1441e-03 ** 
+high_state_tax_privilege  -0.08570678   0.064587 -1.326995 1.8672e-01    
+disclosed_before_maturity  0.10325132   0.028558  3.615547 4.2014e-04 ***
+ln_amount                  0.11857053   0.008869 13.369329  < 2.2e-16 ***
+ln_maturity_mths           0.14305347   0.013971 10.239057  < 2.2e-16 ***
+callable                  -0.12237554   0.019448 -6.292576 3.9293e-09 ***
+sinkable                  -0.18585137   0.030282 -6.137272 8.4971e-09 ***
+insured                    0.09145721   0.022771  4.016344 9.6968e-05 ***
+rating_num                -0.00000183   0.001481 -0.001237 9.9901e-01    
+ln_gdp                     0.08272743   0.055275  1.496665 1.3678e-01    
+ln_pop                    -0.20814940   0.086106 -2.417350 1.6949e-02 *  
+ln_pers_inc                0.12182348   0.091677  1.328828 1.8611e-01    
+---
+Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
+RMSE: 0.41654     Adj. R2: 0.254773
+                Within R2: 0.145951
+OLS estimation, Dep. Var.: institutional_traded_before_maturity
+Observations: 49,096
+Fixed-effects: year: 16,  purp_broad: 14
+Standard-errors: Clustered (state) 
+                           Estimate Std. Error   t value   Pr(>|t|)    
+city_go_vote               0.019665   0.012921  1.521912 1.3817e-01    
+disclosed_before_maturity  0.056816   0.023733  2.394027 2.2901e-02 *  
+ln_amount                  0.135808   0.007850 17.300984  < 2.2e-16 ***
+ln_maturity_mths           0.083191   0.007518 11.065584 2.7054e-12 ***
+callable                  -0.031996   0.008040 -3.979563 3.8665e-04 ***
+sinkable                  -0.049971   0.018171 -2.749984 9.8560e-03 ** 
+insured                    0.025050   0.010449  2.397431 2.2723e-02 *  
+rating_num                -0.001240   0.000677 -1.832028 7.6571e-02 .  
+ln_gdp                    -0.000323   0.018218 -0.017744 9.8596e-01    
+ln_pop                     0.002321   0.020236  0.114682 9.0944e-01    
+ln_pers_inc                0.005882   0.025514  0.230548 8.1918e-01    
+---
+Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
+RMSE: 0.399631     Adj. R2: 0.204346
+                 Within R2: 0.19474 
+OLS estimation, Dep. Var.: institutional_traded_before_maturity
+Observations: 49,096
+Fixed-effects: year: 16,  purp_broad: 14
+Standard-errors: Clustered (state) 
+                           Estimate Std. Error   t value   Pr(>|t|)    
+city_go_vote               0.009559   0.010328  0.925507 3.6185e-01    
+high_state_tax_privilege   0.037647   0.010432  3.608843 1.0689e-03 ** 
+disclosed_before_maturity  0.058400   0.024109  2.422305 2.1461e-02 *  
+ln_amount                  0.136372   0.007603 17.936531  < 2.2e-16 ***
+ln_maturity_mths           0.083240   0.007659 10.868760 4.2249e-12 ***
+callable                  -0.032830   0.008549 -3.840360 5.6815e-04 ***
+sinkable                  -0.048600   0.017788 -2.732243 1.0292e-02 *  
+insured                    0.021780   0.010150  2.145730 3.9836e-02 *  
+rating_num                -0.001167   0.000607 -1.924175 6.3555e-02 .  
+ln_gdp                    -0.002055   0.016700 -0.123047 9.0286e-01    
+ln_pop                     0.020151   0.022233  0.906321 3.7176e-01    
+ln_pers_inc               -0.009111   0.024877 -0.366224 7.1669e-01    
+---
+Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
+RMSE: 0.399325     Adj. R2: 0.205548
+                 Within R2: 0.195973
+OLS estimation, Dep. Var.: institutional_traded_before_maturity
+Observations: 12,617
+Fixed-effects: year: 16,  purp_broad: 11,  group: 15
+Standard-errors: Clustered (state_year) 
+                           Estimate Std. Error   t value   Pr(>|t|)    
+city_go_vote               0.048314   0.023854  2.025395 4.4769e-02 *  
+disclosed_before_maturity  0.052983   0.020793  2.548178 1.1932e-02 *  
+ln_amount                  0.152580   0.006615 23.066034  < 2.2e-16 ***
+ln_maturity_mths           0.073983   0.011131  6.646739 6.5309e-10 ***
+callable                  -0.025903   0.016418 -1.577683 1.1694e-01    
+sinkable                  -0.082595   0.026708 -3.092473 2.4058e-03 ** 
+insured                    0.051841   0.019412  2.670616 8.4879e-03 ** 
+rating_num                -0.000475   0.001126 -0.421975 6.7370e-01    
+ln_gdp                    -0.070282   0.032692 -2.149808 3.3327e-02 *  
+ln_pop                     0.018912   0.062186  0.304115 7.6150e-01    
+ln_pers_inc                0.062520   0.062378  1.002266 3.1798e-01    
+---
+Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
+RMSE: 0.394043     Adj. R2: 0.181211
+                 Within R2: 0.14387 
+OLS estimation, Dep. Var.: institutional_traded_before_maturity
+Observations: 12,617
+Fixed-effects: year: 16,  purp_broad: 11,  group: 15
+Standard-errors: Clustered (state_year) 
+                           Estimate Std. Error   t value   Pr(>|t|)    
+city_go_vote               0.015279   0.029275  0.521916 6.0257e-01    
+high_state_tax_privilege   0.050523   0.043473  1.162169 2.4719e-01    
+disclosed_before_maturity  0.052078   0.020622  2.525326 1.2698e-02 *  
+ln_amount                  0.152896   0.006593 23.189529  < 2.2e-16 ***
+ln_maturity_mths           0.074261   0.011143  6.664312 5.9672e-10 ***
+callable                  -0.026305   0.016415 -1.602479 1.1135e-01    
+sinkable                  -0.081983   0.026664 -3.074682 2.5440e-03 ** 
+insured                    0.053211   0.019428  2.738943 6.9838e-03 ** 
+rating_num                -0.000511   0.001127 -0.453573 6.5085e-01    
+ln_gdp                    -0.076844   0.033970 -2.262102 2.5265e-02 *  
+ln_pop                     0.020121   0.062047  0.324286 7.4622e-01    
+ln_pers_inc                0.068397   0.063287  1.080737 2.8171e-01    
+---
+Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
+RMSE: 0.393995     Adj. R2: 0.181346
+                 Within R2: 0.14408 
+OLS estimation, Dep. Var.: traded_before_maturity
+Observations: 3,110
+Fixed-effects: year: 6,  purp_broad: 10,  group: 15
+Standard-errors: Clustered (state_year) 
+                              Estimate Std. Error   t value   Pr(>|t|)    
+city_go_vote                  0.327835   0.042564  7.702178 1.4640e-09 ***
+high_bond_count               0.116209   0.032524  3.573018 9.0223e-04 ***
+disclosed_before_maturity     0.198258   0.052321  3.789291 4.7578e-04 ***
+ln_amount                     0.163519   0.019514  8.379379 1.6637e-10 ***
+ln_maturity_mths              0.112433   0.029818  3.770655 5.0305e-04 ***
+callable                     -0.140377   0.043049 -3.260823 2.2078e-03 ** 
+sinkable                     -0.218597   0.041362 -5.284952 4.2018e-06 ***
+insured                       0.238403   0.071128  3.351763 1.7076e-03 ** 
+rating_num                   -0.004026   0.002466 -1.632556 1.1004e-01    
+ln_gdp                       -0.014225   0.140668 -0.101125 9.1993e-01    
+ln_pop                       -0.531217   0.143058 -3.713304 5.9675e-04 ***
+ln_pers_inc                   0.502514   0.130925  3.838185 4.1085e-04 ***
+city_go_vote:high_bond_count -0.236187   0.068668 -3.439567 1.3285e-03 ** 
+---
+Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
+RMSE: 0.429247     Adj. R2: 0.252717
+                 Within R2: 0.155713
+OLS estimation, Dep. Var.: retail_traded_before_maturity
+Observations: 3,110
+Fixed-effects: year: 6,  purp_broad: 10,  group: 15
+Standard-errors: Clustered (state_year) 
+                              Estimate Std. Error   t value   Pr(>|t|)    
+city_go_vote                  0.270537   0.082093  3.295480 2.0027e-03 ** 
+high_bond_count               0.144521   0.030533  4.733253 2.5189e-05 ***
+disclosed_before_maturity     0.176609   0.041782  4.226873 1.2499e-04 ***
+ln_amount                     0.147697   0.023170  6.374409 1.1486e-07 ***
+ln_maturity_mths              0.131109   0.030099  4.355895 8.3512e-05 ***
+callable                     -0.166577   0.039589 -4.207663 1.3268e-04 ***
+sinkable                     -0.226019   0.031707 -7.128334 9.5315e-09 ***
+insured                       0.164712   0.076756  2.145899 3.7706e-02 *  
+rating_num                   -0.003968   0.002747 -1.444621 1.5598e-01    
+ln_gdp                       -0.005430   0.127938 -0.042443 9.6635e-01    
+ln_pop                       -0.636079   0.140818 -4.517028 5.0221e-05 ***
+ln_pers_inc                   0.573510   0.129564  4.426471 6.6880e-05 ***
+city_go_vote:high_bond_count -0.228831   0.097071 -2.357364 2.3141e-02 *  
+---
+Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
+RMSE: 0.42661     Adj. R2: 0.24413 
+                Within R2: 0.150297
+OLS estimation, Dep. Var.: institutional_traded_before_maturity
+Observations: 3,110
+Fixed-effects: year: 6,  purp_broad: 10,  group: 15
+Standard-errors: Clustered (state_year) 
+                              Estimate Std. Error   t value  Pr(>|t|)    
+city_go_vote                  0.225904   0.082927  2.724131 0.0093549 ** 
+high_bond_count               0.021761   0.030099  0.722978 0.4737002    
+disclosed_before_maturity     0.092423   0.046558  1.985132 0.0536857 .  
+ln_amount                     0.186880   0.012863 14.528622 < 2.2e-16 ***
+ln_maturity_mths              0.047869   0.023240  2.059749 0.0456553 *  
+callable                     -0.024064   0.027783 -0.866146 0.3913310    
+sinkable                     -0.114743   0.052618 -2.180674 0.0348595 *  
+insured                       0.129582   0.045250  2.863706 0.0065084 ** 
+rating_num                   -0.000437   0.002507 -0.174166 0.8625717    
+ln_gdp                       -0.011284   0.074348 -0.151777 0.8800892    
+ln_pop                       -0.084681   0.092899 -0.911531 0.3672181    
+ln_pers_inc                   0.082613   0.100449  0.822434 0.4154750    
+city_go_vote:high_bond_count -0.137107   0.109083 -1.256906 0.2157329    
+---
+Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
+RMSE: 0.406502     Adj. R2: 0.165975
+                 Within R2: 0.131693
+OLS estimation, Dep. Var.: traded_before_maturity
+Observations: 36,522
+Fixed-effects: year: 16,  purp_broad: 14
+Standard-errors: Clustered (state) 
+                                 Estimate Std. Error   t value   Pr(>|t|)    
+city_go_vote                     0.026629   0.036650  0.726558 4.7295e-01    
+high_articles_12_0               0.025154   0.010373  2.424890 2.1333e-02 *  
+disclosed_before_maturity        0.162322   0.032601  4.979120 2.2802e-05 ***
+ln_amount                        0.113039   0.009697 11.657108 7.2935e-13 ***
+ln_maturity_mths                 0.145563   0.012364 11.772736 5.6729e-13 ***
+callable                        -0.109383   0.011867 -9.217320 2.1628e-10 ***
+sinkable                        -0.122103   0.025490 -4.790263 3.9148e-05 ***
+insured                          0.093348   0.022621  4.126607 2.5662e-04 ***
+rating_num                       0.001383   0.001009  1.370301 1.8044e-01    
+ln_gdp                          -0.003245   0.031548 -0.102857 9.1874e-01    
+ln_pop                          -0.014137   0.045383 -0.311499 7.5751e-01    
+ln_pers_inc                      0.052147   0.064284  0.811199 4.2344e-01    
+city_go_vote:high_articles_12_0  0.027273   0.018203  1.498290 1.4417e-01    
+---
+Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
+RMSE: 0.434818     Adj. R2: 0.232659
+                 Within R2: 0.221221
+OLS estimation, Dep. Var.: retail_traded_before_maturity
+Observations: 36,522
+Fixed-effects: year: 16,  purp_broad: 14
+Standard-errors: Clustered (state) 
+                                 Estimate Std. Error    t value   Pr(>|t|)    
+city_go_vote                     0.053294   0.044217   1.205268 2.3722e-01    
+high_articles_12_0               0.037373   0.010243   3.648694 9.5951e-04 ***
+disclosed_before_maturity        0.114187   0.030700   3.719409 7.9150e-04 ***
+ln_amount                        0.105774   0.008452  12.515018 1.1735e-13 ***
+ln_maturity_mths                 0.142523   0.018519   7.695989 1.1113e-08 ***
+callable                        -0.127599   0.012692 -10.053109 2.8235e-11 ***
+sinkable                        -0.149284   0.024640  -6.058654 1.0386e-06 ***
+insured                          0.081654   0.025001   3.266045 2.6640e-03 ** 
+rating_num                       0.001224   0.001132   1.081539 2.8780e-01    
+ln_gdp                           0.014648   0.035998   0.406927 6.8686e-01    
+ln_pop                          -0.029710   0.052314  -0.567927 5.7418e-01    
+ln_pers_inc                      0.047820   0.068385   0.699284 4.8959e-01    
+city_go_vote:high_articles_12_0  0.016568   0.018255   0.907602 3.7109e-01    
+---
+Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
+RMSE: 0.425995     Adj. R2: 0.216717
+                 Within R2: 0.204606
+OLS estimation, Dep. Var.: institutional_traded_before_maturity
+Observations: 36,522
+Fixed-effects: year: 16,  purp_broad: 14
+Standard-errors: Clustered (state) 
+                                 Estimate Std. Error   t value   Pr(>|t|)    
+city_go_vote                     0.009667   0.013337  0.724854 4.7398e-01    
+high_articles_12_0               0.007208   0.010842  0.664825 5.1108e-01    
+disclosed_before_maturity        0.067510   0.020487  3.295327 2.4671e-03 ** 
+ln_amount                        0.134922   0.007398 18.237856  < 2.2e-16 ***
+ln_maturity_mths                 0.075317   0.008273  9.103939 2.8710e-10 ***
+callable                        -0.023547   0.007617 -3.091249 4.1909e-03 ** 
+sinkable                        -0.043746   0.016570 -2.640053 1.2861e-02 *  
+insured                          0.029385   0.012261  2.396518 2.2770e-02 *  
+rating_num                      -0.001483   0.000890 -1.667137 1.0556e-01    
+ln_gdp                           0.021864   0.018672  1.170996 2.5052e-01    
+ln_pop                           0.012064   0.018782  0.642297 5.2540e-01    
+ln_pers_inc                     -0.025491   0.026933 -0.946471 3.5123e-01    
+city_go_vote:high_articles_12_0  0.011605   0.019351  0.599705 5.5306e-01    
+---
+Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
+RMSE: 0.39497     Adj. R2: 0.189336
+                Within R2: 0.181104

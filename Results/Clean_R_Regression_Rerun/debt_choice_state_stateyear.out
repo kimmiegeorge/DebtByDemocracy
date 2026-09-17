@@ -1,0 +1,567 @@
+/Volumes/Temp/tmp/RtmpKxlZl3/R.INSTALL104a432591603/arrow/tools/cpp/src/arrow/util/cpu_info.cc:239: IOError: sysctlbyname failed for 'hw.l1dcachesize'. Detail: [errno 1] Operation not permitted
+/Volumes/Temp/tmp/RtmpKxlZl3/R.INSTALL104a432591603/arrow/tools/cpp/src/arrow/util/cpu_info.cc:239: IOError: sysctlbyname failed for 'hw.l2cachesize'. Detail: [errno 1] Operation not permitted
+/Volumes/Temp/tmp/RtmpKxlZl3/R.INSTALL104a432591603/arrow/tools/cpp/src/arrow/util/cpu_info.cc:239: IOError: sysctlbyname failed for 'hw.l3cachesize'. Detail: [errno 1] Operation not permitted
+/Volumes/Temp/tmp/RtmpKxlZl3/R.INSTALL104a432591603/arrow/tools/cpp/src/arrow/util/cpu_info.cc:239: IOError: sysctlbyname failed for 'hw.optional.neon'. Detail: [errno 1] Operation not permitted
+OLS estimation, Dep. Var.: frac_utgo
+Observations: 2,018
+Standard-errors: Clustered (state) 
+              Estimate Std. Error  t value   Pr(>|t|)    
+(Intercept)   0.764709   0.091931  8.31834 4.3807e-08 ***
+city_go_vote -0.368701   0.136736 -2.69644 1.3516e-02 *  
+---
+Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
+RMSE: 0.400811   Adj. R2: 0.174186
+OLS estimation, Dep. Var.: frac_utgo
+Observations: 2,018
+Standard-errors: Clustered (state) 
+                      Estimate Std. Error   t value  Pr(>|t|)    
+(Intercept)           0.359973   0.341832  1.053068 0.3042765    
+city_go_vote         -0.349694   0.100112 -3.493027 0.0021677 ** 
+ln_gdp                0.104646   0.043724  2.393336 0.0261162 *  
+ln_pop               -0.404812   0.128602 -3.147783 0.0048568 ** 
+ln_pers_inc           0.227138   0.127692  1.778792 0.0897550 .  
+ln_county_debt_other  0.005291   0.008735  0.605737 0.5511810    
+---
+Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
+RMSE: 0.390493   Adj. R2: 0.214598
+OLS estimation, Dep. Var.: frac_utgo
+Observations: 2,018
+Standard-errors: Clustered (state) 
+                          Estimate Std. Error   t value   Pr(>|t|)    
+(Intercept)               0.642863   0.267952  2.399174 0.02579384 *  
+city_go_vote             -0.267720   0.058760 -4.556187 0.00017195 ***
+ln_gdp                    0.032737   0.039756  0.823441 0.41951073    
+ln_pop                   -0.253771   0.116858 -2.171611 0.04148803 *  
+ln_pers_inc               0.163623   0.101763  1.607877 0.12279420    
+ln_county_debt_other      0.004354   0.006611  0.658570 0.51732805    
+glm_proactive             0.162182   0.109900  1.475718 0.15485719    
+state_ltgo_allowed       -0.107940   0.063383 -1.702981 0.10332820    
+state_go_vote            -0.102764   0.048437 -2.121575 0.04593930 *  
+high_state_tax_privilege  0.187881   0.108143  1.737341 0.09697302 .  
+---
+Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
+RMSE: 0.367223   Adj. R2: 0.304033
+OLS estimation, Dep. Var.: frac_ltgo
+Observations: 2,018
+Standard-errors: Clustered (state) 
+                          Estimate Std. Error   t value   Pr(>|t|)    
+(Intercept)              -0.587216   0.193568 -3.033633 6.3164e-03 ** 
+city_go_vote             -0.038298   0.066573 -0.575287 5.7121e-01    
+ln_gdp                   -0.030296   0.029935 -1.012059 3.2303e-01    
+ln_pop                   -0.048189   0.042925 -1.122639 2.7426e-01    
+ln_pers_inc               0.103992   0.049144  2.116074 4.6454e-02 *  
+ln_county_debt_other      0.005141   0.004200  1.223995 2.3451e-01    
+glm_proactive             0.032469   0.086967  0.373347 7.1263e-01    
+state_ltgo_allowed        0.273928   0.053966  5.075919 5.0111e-05 ***
+state_go_vote             0.068395   0.078294  0.873564 3.9224e-01    
+high_state_tax_privilege -0.193350   0.116387 -1.661271 1.1152e-01    
+---
+Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
+RMSE: 0.250816   Adj. R2: 0.32136
+OLS estimation, Dep. Var.: frac_rev
+Observations: 2,018
+Standard-errors: Clustered (state) 
+                          Estimate Std. Error   t value   Pr(>|t|)    
+(Intercept)               0.944353   0.296295  3.187207 0.00443312 ** 
+city_go_vote              0.306018   0.061263  4.995133 0.00006063 ***
+ln_gdp                   -0.002441   0.037566 -0.064968 0.94881418    
+ln_pop                    0.301960   0.119969  2.516994 0.02002835 *  
+ln_pers_inc              -0.267615   0.103717 -2.580229 0.01745471 *  
+ln_county_debt_other     -0.009495   0.006242 -1.521013 0.14317203    
+glm_proactive            -0.194651   0.091462 -2.128213 0.04532496 *  
+state_ltgo_allowed       -0.165989   0.047914 -3.464303 0.00231949 ** 
+state_go_vote             0.034369   0.062759  0.547631 0.58971878    
+high_state_tax_privilege  0.005469   0.112209  0.048742 0.96158517    
+---
+Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
+RMSE: 0.349121   Adj. R2: 0.240875
+OLS estimation, Dep. Var.: frac_utgo
+Observations: 1,705
+Standard-errors: Clustered (state) 
+              Estimate Std. Error  t value   Pr(>|t|)    
+(Intercept)   0.764709   0.094680  8.07681 2.0506e-05 ***
+city_go_vote -0.477509   0.108205 -4.41300 1.6882e-03 ** 
+---
+Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
+RMSE: 0.370842   Adj. R2: 0.284625
+OLS estimation, Dep. Var.: frac_utgo
+Observations: 1,705
+Standard-errors: Clustered (state) 
+                      Estimate Std. Error   t value   Pr(>|t|)    
+(Intercept)           0.501855   0.449448  1.116603 0.29308626    
+city_go_vote         -0.467607   0.096886 -4.826384 0.00093861 ***
+ln_gdp                0.056948   0.066952  0.850574 0.41706035    
+ln_pop               -0.194196   0.075295 -2.579141 0.02973850 *  
+ln_pers_inc           0.092983   0.149274  0.622899 0.54880707    
+ln_county_debt_other  0.013545   0.009801  1.381954 0.20031847    
+---
+Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
+RMSE: 0.367782   Adj. R2: 0.294725
+OLS estimation, Dep. Var.: frac_utgo
+Observations: 1,705
+Standard-errors: Clustered (state) 
+                          Estimate Std. Error    t value   Pr(>|t|)    
+(Intercept)               0.446239   0.205649   2.169906 5.8122e-02 .  
+city_go_vote             -0.392105   0.032302 -12.138559 6.9821e-07 ***
+ln_gdp                    0.013529   0.030897   0.437856 6.7181e-01    
+ln_pop                   -0.109425   0.069173  -1.581907 1.4813e-01    
+ln_pers_inc               0.076032   0.069842   1.088634 3.0461e-01    
+ln_county_debt_other      0.013360   0.010269   1.300937 2.2560e-01    
+glm_proactive             0.222342   0.036379   6.111753 1.7671e-04 ***
+state_ltgo_allowed       -0.275047   0.022669 -12.133182 7.0086e-07 ***
+state_go_vote             0.037862   0.032697   1.157968 2.7668e-01    
+high_state_tax_privilege -0.090236   0.024021  -3.756599 4.5086e-03 ** 
+---
+Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
+RMSE: 0.341558   Adj. R2: 0.390282
+OLS estimation, Dep. Var.: frac_ltgo
+Observations: 1,705
+Standard-errors: Clustered (state) 
+                          Estimate Std. Error   t value   Pr(>|t|)    
+(Intercept)               0.091635   0.147813  0.619940 5.5067e-01    
+city_go_vote              0.094703   0.024987  3.790054 4.2823e-03 ** 
+ln_gdp                   -0.019128   0.028443 -0.672509 5.1815e-01    
+ln_pop                    0.098369   0.052272  1.881869 9.2530e-02 .  
+ln_pers_inc              -0.061365   0.058781 -1.043964 3.2373e-01    
+ln_county_debt_other     -0.000739   0.002169 -0.340670 7.4117e-01    
+glm_proactive             0.018985   0.021518  0.882296 4.0057e-01    
+state_ltgo_allowed        0.453362   0.018764 24.161748 1.7042e-09 ***
+state_go_vote            -0.070311   0.017648 -3.984095 3.1860e-03 ** 
+high_state_tax_privilege  0.058352   0.013839  4.216611 2.2507e-03 ** 
+---
+Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
+RMSE: 0.307945   Adj. R2: 0.42864
+OLS estimation, Dep. Var.: frac_rev
+Observations: 1,705
+Standard-errors: Clustered (state) 
+                          Estimate Std. Error    t value   Pr(>|t|)    
+(Intercept)               0.462126   0.113627   4.067026 2.8122e-03 ** 
+city_go_vote              0.297402   0.017276  17.214633 3.3933e-08 ***
+ln_gdp                    0.005600   0.038929   0.143845 8.8879e-01    
+ln_pop                    0.011057   0.047999   0.230351 8.2297e-01    
+ln_pers_inc              -0.014667   0.040161  -0.365211 7.2339e-01    
+ln_county_debt_other     -0.012621   0.008846  -1.426758 1.8741e-01    
+glm_proactive            -0.241327   0.015922 -15.156715 1.0307e-07 ***
+state_ltgo_allowed       -0.178315   0.020442  -8.723136 1.1017e-05 ***
+state_go_vote             0.032449   0.017466   1.857832 9.6145e-02 .  
+high_state_tax_privilege  0.031884   0.013523   2.357852 4.2752e-02 *  
+---
+Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
+RMSE: 0.266301   Adj. R2: 0.143104
+NOTE: 12 observations removed because of NA values (LHS: 12).
+OLS estimation, Dep. Var.: issuer_spread
+Observations: 2,006
+Standard-errors: Clustered (state) 
+              Estimate Std. Error  t value Pr(>|t|)    
+(Intercept)  -0.238336   0.087296 -2.73020 0.012540 *  
+city_go_vote  0.272208   0.102038  2.66772 0.014403 *  
+---
+Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
+RMSE: 0.5535   Adj. R2: 0.056538
+NOTE: 12 observations removed because of NA values (LHS: 12).
+OLS estimation, Dep. Var.: issuer_spread
+Observations: 2,006
+Standard-errors: Clustered (state) 
+                      Estimate Std. Error   t value  Pr(>|t|)    
+(Intercept)           1.033671   0.381544  2.709182 0.0131395 *  
+city_go_vote          0.214590   0.065833  3.259609 0.0037466 ** 
+ln_gdp                0.039365   0.044128  0.892074 0.3824616    
+ln_pop                0.243493   0.144301  1.687398 0.1063256    
+ln_pers_inc          -0.298543   0.123486 -2.417626 0.0247991 *  
+ln_county_debt_other -0.009388   0.006571 -1.428739 0.1677854    
+---
+Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
+RMSE: 0.543106   Adj. R2: 0.089821
+NOTE: 12 observations removed because of NA values (LHS: 12).
+OLS estimation, Dep. Var.: issuer_spread
+Observations: 2,006
+Standard-errors: Clustered (state) 
+                          Estimate Std. Error   t value   Pr(>|t|)    
+(Intercept)               0.737591   0.333432  2.212117 0.03817526 *  
+city_go_vote              0.130888   0.059188  2.211396 0.03823208 *  
+ln_gdp                    0.020725   0.033663  0.615659 0.54473488    
+ln_pop                    0.197442   0.125606  1.571912 0.13091715    
+ln_pers_inc              -0.220859   0.119918 -1.841759 0.07967939 .  
+ln_county_debt_other     -0.007666   0.004241 -1.807478 0.08503564 .  
+glm_proactive            -0.427075   0.090966 -4.694888 0.00012356 ***
+state_ltgo_allowed       -0.144385   0.051940 -2.779826 0.01122556 *  
+state_go_vote             0.080487   0.061424  1.310362 0.20422529    
+high_state_tax_privilege  0.123235   0.063743  1.933307 0.06679342 .  
+---
+Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
+RMSE: 0.534208   Adj. R2: 0.117637
+NOTE: 367 observations removed because of NA values (LHS: 12, RHS: 361).
+OLS estimation, Dep. Var.: issuer_spread
+Observations: 1,651
+Standard-errors: Clustered (state) 
+                          Estimate Std. Error   t value   Pr(>|t|)    
+(Intercept)               0.538015   0.292909  1.836798 8.0436e-02 .  
+city_go_vote              0.069913   0.045360  1.541279 1.3818e-01    
+ln_gdp                    0.056385   0.039046  1.444076 1.6347e-01    
+ln_pop                    0.139156   0.109173  1.274632 2.1636e-01    
+ln_pers_inc              -0.206948   0.102949 -2.010200 5.7429e-02 .  
+ln_county_debt_other     -0.003988   0.003705 -1.076435 2.9394e-01    
+glm_proactive            -0.136414   0.095803 -1.423901 1.6916e-01    
+state_ltgo_allowed       -0.093913   0.049921 -1.881242 7.3877e-02 .  
+state_go_vote             0.056461   0.055668  1.014253 3.2201e-01    
+high_state_tax_privilege -0.048970   0.062118 -0.788344 4.3930e-01    
+issuer_mat                0.002118   0.000607  3.487502 2.1961e-03 ** 
+issuer_rating_go         -0.021723   0.003858 -5.630362 1.3755e-05 ***
+---
+Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
+RMSE: 0.425649   Adj. R2: 0.215457
+NOTE: 368 observations removed because of NA values (LHS: 368, RHS: 361).
+OLS estimation, Dep. Var.: issuer_spread_go
+Observations: 1,650
+Standard-errors: Clustered (state) 
+                          Estimate Std. Error   t value   Pr(>|t|)    
+(Intercept)               0.427591   0.266890  1.602125 1.2406e-01    
+city_go_vote              0.082930   0.041221  2.011821 5.7245e-02 .  
+ln_gdp                    0.037786   0.041263  0.915739 3.7020e-01    
+ln_pop                    0.130992   0.103772  1.262307 2.2068e-01    
+ln_pers_inc              -0.175689   0.085872 -2.045943 5.3489e-02 .  
+ln_county_debt_other     -0.001892   0.003364 -0.562443 5.7977e-01    
+glm_proactive            -0.086813   0.084583 -1.026368 3.1640e-01    
+state_ltgo_allowed       -0.078904   0.043088 -1.831252 8.1289e-02 .  
+state_go_vote             0.056911   0.057322  0.992821 3.3210e-01    
+high_state_tax_privilege -0.088938   0.063181 -1.407662 1.7386e-01    
+issuer_mat_go             0.001943   0.000549  3.539952 1.9405e-03 ** 
+issuer_rating_go         -0.023984   0.004066 -5.898176 7.4476e-06 ***
+---
+Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
+RMSE: 0.422471   Adj. R2: 0.202454
+NOTE: 1,222 observations removed because of NA values (LHS: 1,222, RHS: 1,211).
+OLS estimation, Dep. Var.: issuer_spread_rev
+Observations: 796
+Standard-errors: Clustered (state) 
+                          Estimate Std. Error   t value   Pr(>|t|)    
+(Intercept)              -0.391275   0.464748 -0.841909 0.40932456    
+city_go_vote              0.093977   0.078019  1.204542 0.24178086    
+ln_gdp                    0.015948   0.068730  0.232036 0.81875633    
+ln_pop                   -0.024658   0.205726 -0.119860 0.90573337    
+ln_pers_inc               0.041209   0.189110  0.217910 0.82960288    
+ln_county_debt_other     -0.018182   0.006044 -3.008110 0.00669651 ** 
+glm_proactive            -0.052933   0.114274 -0.463211 0.64797757    
+state_ltgo_allowed       -0.061945   0.054533 -1.135932 0.26878310    
+state_go_vote            -0.048312   0.097599 -0.495005 0.62573632    
+high_state_tax_privilege  0.058608   0.121539  0.482219 0.63463833    
+issuer_mat_rev            0.002962   0.000654  4.529335 0.00018332 ***
+issuer_rating_rev        -0.036416   0.010535 -3.456617 0.00236184 ** 
+---
+Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
+RMSE: 0.642186   Adj. R2: 0.158272
+NOTE: 18 observations removed because of NA values (LHS: 18).
+OLS estimation, Dep. Var.: issuer_yield_spread
+Observations: 1,687
+Standard-errors: Clustered (state) 
+              Estimate Std. Error  t value Pr(>|t|)    
+(Intercept)  -0.238336   0.089907 -2.65092 0.026436 *  
+city_go_vote  0.183892   0.102470  1.79459 0.106297    
+---
+Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
+RMSE: 0.533152   Adj. R2: 0.027131
+NOTE: 18 observations removed because of NA values (LHS: 18).
+OLS estimation, Dep. Var.: issuer_yield_spread
+Observations: 1,687
+Standard-errors: Clustered (state) 
+                      Estimate Std. Error  t value   Pr(>|t|)    
+(Intercept)           1.484184   0.281897  5.26499 5.1729e-04 ***
+city_go_vote          0.150400   0.063075  2.38448 4.0926e-02 *  
+ln_gdp                0.157631   0.048233  3.26811 9.7121e-03 ** 
+ln_pop                0.267101   0.094872  2.81537 2.0199e-02 *  
+ln_pers_inc          -0.468650   0.063613 -7.36723 4.2487e-05 ***
+ln_county_debt_other -0.007289   0.005794 -1.25790 2.4008e-01    
+---
+Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
+RMSE: 0.515782   Adj. R2: 0.087322
+NOTE: 18 observations removed because of NA values (LHS: 18).
+OLS estimation, Dep. Var.: issuer_yield_spread
+Observations: 1,687
+Standard-errors: Clustered (state) 
+                          Estimate Std. Error   t value   Pr(>|t|)    
+(Intercept)               1.305176   0.182736  7.142411 5.4108e-05 ***
+city_go_vote              0.280526   0.026997 10.390826 2.5983e-06 ***
+ln_gdp                    0.125344   0.043551  2.878116 1.8234e-02 *  
+ln_pop                    0.204643   0.077176  2.651655 2.6404e-02 *  
+ln_pers_inc              -0.373895   0.042195 -8.861042 9.6953e-06 ***
+ln_county_debt_other     -0.006746   0.004577 -1.473685 1.7466e-01    
+glm_proactive            -0.243742   0.029266 -8.328443 1.6027e-05 ***
+state_go_vote             0.000055   0.037108  0.001493 9.9884e-01    
+high_state_tax_privilege  0.107919   0.034098  3.164941 1.1459e-02 *  
+---
+Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
+RMSE: 0.510647   Adj. R2: 0.103807
+NOTE: 112 observations removed because of NA values (LHS: 18, RHS: 97).
+OLS estimation, Dep. Var.: issuer_spread
+Observations: 1,593
+Standard-errors: Clustered (state) 
+                          Estimate Std. Error   t value   Pr(>|t|)    
+(Intercept)               0.787520   0.349684  2.252088 0.05082954 .  
+city_go_vote              0.290823   0.050330  5.778338 0.00026662 ***
+ln_gdp                    0.082725   0.029825  2.773672 0.02162331 *  
+ln_pop                    0.188299   0.097396  1.933328 0.08521647 .  
+ln_pers_inc              -0.276216   0.080148 -3.446317 0.00731715 ** 
+ln_county_debt_other     -0.005081   0.006519 -0.779477 0.45570610    
+glm_proactive            -0.189916   0.034242 -5.546275 0.00035814 ***
+state_ltgo_allowed       -0.137873   0.047549 -2.899596 0.01760694 *  
+state_go_vote             0.016615   0.032242  0.515323 0.61874531    
+high_state_tax_privilege  0.034162   0.032579  1.048572 0.32171617    
+issuer_mat                0.001246   0.000673  1.851942 0.09705065 .  
+issuer_rating_go         -0.025433   0.003935 -6.463145 0.00011634 ***
+---
+Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
+RMSE: 0.478967   Adj. R2: 0.180601
+NOTE: 112 observations removed because of NA values (LHS: 112, RHS: 97).
+OLS estimation, Dep. Var.: issuer_spread_go
+Observations: 1,593
+Standard-errors: Clustered (state) 
+                          Estimate Std. Error   t value   Pr(>|t|)    
+(Intercept)               0.766010   0.374514  2.045342 0.07114779 .  
+city_go_vote              0.254951   0.047827  5.330717 0.00047424 ***
+ln_gdp                    0.046162   0.034150  1.351752 0.20944615    
+ln_pop                    0.173965   0.103227  1.685273 0.12621763    
+ln_pers_inc              -0.224852   0.085144 -2.640846 0.02687648 *  
+ln_county_debt_other     -0.005436   0.004918 -1.105478 0.29762677    
+glm_proactive            -0.119425   0.025743 -4.639190 0.00122066 ** 
+state_ltgo_allowed       -0.118225   0.054728 -2.160248 0.05904361 .  
+state_go_vote            -0.020778   0.032715 -0.635134 0.54114997    
+high_state_tax_privilege  0.011904   0.035112  0.339022 0.74236936    
+issuer_mat_go             0.000861   0.000622  1.383803 0.19977094    
+issuer_rating_go         -0.025041   0.003869 -6.472565 0.00011507 ***
+---
+Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
+RMSE: 0.478817   Adj. R2: 0.158794
+NOTE: 1,302 observations removed because of NA values (LHS: 1,302, RHS: 1,290).
+OLS estimation, Dep. Var.: issuer_spread_rev
+Observations: 403
+Standard-errors: Clustered (state) 
+                          Estimate Std. Error   t value   Pr(>|t|)    
+(Intercept)               0.428145   0.336606  1.271946 2.3527e-01    
+city_go_vote              0.292013   0.121206  2.409241 3.9298e-02 *  
+ln_gdp                    0.153259   0.149714  1.023682 3.3271e-01    
+ln_pop                    0.163841   0.136797  1.197701 2.6162e-01    
+ln_pers_inc              -0.320901   0.125727 -2.552364 3.1074e-02 *  
+ln_county_debt_other     -0.006414   0.007312 -0.877278 4.0315e-01    
+glm_proactive            -0.406837   0.040972 -9.929684 3.7946e-06 ***
+state_ltgo_allowed       -0.025561   0.112517 -0.227175 8.2536e-01    
+state_go_vote             0.012498   0.088244  0.141625 8.9050e-01    
+high_state_tax_privilege  0.439149   0.083382  5.266730 5.1610e-04 ***
+issuer_mat_rev            0.003214   0.001313  2.446996 3.6938e-02 *  
+issuer_rating_rev        -0.030502   0.011246 -2.712256 2.3909e-02 *  
+---
+Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
+RMSE: 0.546936   Adj. R2: 0.191108
+OLS estimation, Dep. Var.: frac_utgo
+Observations: 354
+Fixed-effects: group: 13
+Standard-errors: Clustered (state_year) 
+                          Estimate Std. Error   t value  Pr(>|t|)    
+city_go_vote             -0.335073   0.083818 -3.997622 0.0025280 ** 
+ln_gdp                    0.128799   0.267655  0.481215 0.6407197    
+ln_pop                    0.256805   0.233833  1.098239 0.2978389    
+ln_pers_inc              -0.410269   0.452759 -0.906152 0.3861685    
+ln_county_debt_other      0.005658   0.005555  1.018495 0.3324506    
+state_go_vote             0.262596   0.088460  2.968542 0.0140809 *  
+high_state_tax_privilege  0.122337   0.033368  3.666328 0.0043434 ** 
+---
+Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
+RMSE: 0.364127     Adj. R2: 0.128792
+                 Within R2: 0.071681
+OLS estimation, Dep. Var.: frac_ltgo
+Observations: 354
+Fixed-effects: group: 13
+Standard-errors: Clustered (state_year) 
+                          Estimate Std. Error  t value Pr(>|t|)    
+city_go_vote              0.007141   0.006321  1.12972 0.284962    
+ln_gdp                   -0.040362   0.029729 -1.35764 0.204423    
+ln_pop                   -0.281764   0.151208 -1.86342 0.091996 .  
+ln_pers_inc               0.312451   0.175212  1.78327 0.104869    
+ln_county_debt_other     -0.001188   0.000779 -1.52488 0.158272    
+state_go_vote             0.016918   0.015360  1.10145 0.296505    
+high_state_tax_privilege -0.047311   0.027840 -1.69939 0.120087    
+---
+Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
+RMSE: 0.222245     Adj. R2: 0.455115
+                 Within R2: 0.026887
+OLS estimation, Dep. Var.: frac_rev
+Observations: 354
+Fixed-effects: group: 13
+Standard-errors: Clustered (state_year) 
+                          Estimate Std. Error   t value  Pr(>|t|)    
+city_go_vote              0.327932   0.088285  3.714467 0.0040117 ** 
+ln_gdp                   -0.088438   0.260858 -0.339027 0.7416013    
+ln_pop                    0.024959   0.206331  0.120967 0.9061134    
+ln_pers_inc               0.097818   0.447611  0.218533 0.8314089    
+ln_county_debt_other     -0.004470   0.005806 -0.769805 0.4592138    
+state_go_vote            -0.279514   0.093216 -2.998551 0.0133767 *  
+high_state_tax_privilege -0.075026   0.041964 -1.787875 0.1040861    
+---
+Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
+RMSE: 0.29243     Adj. R2: 0.298351
+                Within R2: 0.082863
+NOTE: 2 observations removed because of NA values (LHS: 2).
+OLS estimation, Dep. Var.: issuer_yield_spread
+Observations: 352
+Fixed-effects: group: 13
+Standard-errors: Clustered (state_year) 
+                          Estimate Std. Error   t value Pr(>|t|)    
+city_go_vote              0.300172   0.114723  2.616493 0.025752 *  
+ln_gdp                    0.082002   0.214772  0.381809 0.710591    
+ln_pop                   -0.209300   0.318842 -0.656436 0.526360    
+ln_pers_inc               0.060189   0.405447  0.148451 0.884938    
+ln_county_debt_other      0.004462   0.010721  0.416217 0.686043    
+state_go_vote             0.228336   0.250955  0.909869 0.384298    
+high_state_tax_privilege -0.461454   0.265086 -1.740774 0.112344    
+---
+Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
+RMSE: 0.513835     Adj. R2: 0.21546 
+                 Within R2: 0.038417
+The variable 'city_go_vote:super_majority' has been removed because of
+collinearity (see $collin.var).
+OLS estimation, Dep. Var.: frac_utgo
+Observations: 2,704
+Standard-errors: Clustered (state) 
+                Estimate Std. Error   t value   Pr(>|t|)    
+(Intercept)     0.764709   0.091680  8.341052 1.4955e-08 ***
+city_go_vote   -0.403414   0.116933 -3.449956 2.0848e-03 ** 
+super_majority -0.076543   0.107365 -0.712918 4.8277e-01    
+... 1 variable was removed because of collinearity
+(city_go_vote:super_majority)
+---
+Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
+RMSE: 0.40233   Adj. R2: 0.199359
+The variable 'city_go_vote:super_majority' has been removed because of
+collinearity (see $collin.var).
+OLS estimation, Dep. Var.: frac_utgo
+Observations: 2,704
+Standard-errors: Clustered (state) 
+                      Estimate Std. Error   t value  Pr(>|t|)    
+(Intercept)           0.358947   0.277793  1.292137 0.2086138    
+city_go_vote         -0.378523   0.091388 -4.141917 0.0003679 ***
+super_majority       -0.051968   0.099665 -0.521433 0.6068443    
+ln_gdp                0.086321   0.039636  2.177829 0.0394761 *  
+ln_pop               -0.391486   0.122080 -3.206806 0.0037779 ** 
+ln_pers_inc           0.235959   0.113843  2.072674 0.0491082 *  
+ln_county_debt_other  0.004946   0.008486  0.582853 0.5654287    
+... 1 variable was removed because of collinearity
+(city_go_vote:super_majority)
+---
+Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
+RMSE: 0.394099   Adj. R2: 0.230646
+The variable 'city_go_vote:super_majority' has been removed because of
+collinearity (see $collin.var).
+OLS estimation, Dep. Var.: frac_utgo
+Observations: 2,704
+Standard-errors: Clustered (state) 
+                          Estimate Std. Error   t value   Pr(>|t|)    
+(Intercept)               0.433883   0.213869  2.028732 5.3720e-02 .  
+city_go_vote             -0.322937   0.053024 -6.090403 2.7293e-06 ***
+super_majority           -0.123330   0.071745 -1.719000 9.8489e-02 .  
+ln_gdp                    0.033603   0.036290  0.925950 3.6369e-01    
+ln_pop                   -0.299577   0.099173 -3.020747 5.9069e-03 ** 
+ln_pers_inc               0.209840   0.086793  2.417700 2.3577e-02 *  
+ln_county_debt_other      0.006795   0.008730  0.778348 4.4397e-01    
+glm_proactive             0.013936   0.083366  0.167161 8.6864e-01    
+state_ltgo_allowed       -0.174366   0.055957 -3.116084 4.7024e-03 ** 
+state_go_vote             0.077609   0.072265  1.073949 2.9353e-01    
+high_state_tax_privilege  0.113512   0.084516  1.343092 1.9181e-01    
+... 1 variable was removed because of collinearity
+(city_go_vote:super_majority)
+---
+Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
+RMSE: 0.378929   Adj. R2: 0.28768
+NOTE: 27 observations removed because of NA values (LHS: 27).
+The variable 'city_go_vote:super_majority' has been removed because of
+collinearity (see $collin.var).
+OLS estimation, Dep. Var.: issuer_yield_spread
+Observations: 2,677
+Standard-errors: Clustered (state) 
+                Estimate Std. Error  t value Pr(>|t|)    
+(Intercept)    -0.238336   0.087059 -2.73765 0.011470 *  
+city_go_vote    0.223684   0.097549  2.29304 0.030909 *  
+super_majority  0.101609   0.046500  2.18512 0.038876 *  
+... 1 variable was removed because of collinearity
+(city_go_vote:super_majority)
+---
+Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
+RMSE: 0.566639   Adj. R2: 0.040727
+NOTE: 27 observations removed because of NA values (LHS: 27).
+The variable 'city_go_vote:super_majority' has been removed because of
+collinearity (see $collin.var).
+OLS estimation, Dep. Var.: issuer_yield_spread
+Observations: 2,677
+Standard-errors: Clustered (state) 
+                      Estimate Std. Error  t value  Pr(>|t|)    
+(Intercept)           1.150277   0.323721  3.55329 0.0016145 ** 
+city_go_vote          0.164981   0.057504  2.86903 0.0084527 ** 
+super_majority        0.196030   0.056612  3.46272 0.0020201 ** 
+ln_gdp                0.058666   0.039205  1.49637 0.1475931    
+ln_pop                0.228936   0.116873  1.95884 0.0618492 .  
+ln_pers_inc          -0.314179   0.106230 -2.95753 0.0068631 ** 
+ln_county_debt_other -0.009486   0.005714 -1.66014 0.1098981    
+... 1 variable was removed because of collinearity
+(city_go_vote:super_majority)
+---
+Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
+RMSE: 0.555442   Adj. R2: 0.076881
+NOTE: 27 observations removed because of NA values (LHS: 27).
+The variable 'city_go_vote:super_majority' has been removed because of
+collinearity (see $collin.var).
+OLS estimation, Dep. Var.: issuer_yield_spread
+Observations: 2,677
+Standard-errors: Clustered (state) 
+                          Estimate Std. Error   t value   Pr(>|t|)    
+(Intercept)               0.949843   0.267735  3.547698 0.00163705 ** 
+city_go_vote              0.238640   0.063142  3.779408 0.00091829 ***
+super_majority            0.120063   0.047157  2.546005 0.01773443 *  
+ln_gdp                    0.033934   0.030748  1.103595 0.28071194    
+ln_pop                    0.203173   0.107827  1.884245 0.07170097 .  
+ln_pers_inc              -0.253434   0.099303 -2.552129 0.01749246 *  
+ln_county_debt_other     -0.008869   0.005751 -1.542257 0.13609491    
+glm_proactive            -0.127820   0.039838 -3.208525 0.00376220 ** 
+state_ltgo_allowed       -0.060945   0.060507 -1.007242 0.32386626    
+state_go_vote            -0.045679   0.049363 -0.925359 0.36399093    
+high_state_tax_privilege  0.044707   0.037399  1.195406 0.24360695    
+... 1 variable was removed because of collinearity
+(city_go_vote:super_majority)
+---
+Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
+RMSE: 0.552051   Adj. R2: 0.086751
+OLS estimation, Dep. Var.: frac_utgo
+Observations: 1,685
+Standard-errors: Clustered (state) 
+                Estimate Std. Error   t value   Pr(>|t|)    
+(Intercept)     0.361295   0.073171  4.937653 0.00012487 ***
+super_majority -0.076543   0.108238 -0.707170 0.48904203    
+---
+Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
+RMSE: 0.430987   Adj. R2: 0.002851
+OLS estimation, Dep. Var.: frac_utgo
+Observations: 1,685
+Standard-errors: Clustered (state) 
+                      Estimate Std. Error   t value  Pr(>|t|)    
+(Intercept)          -0.161472   0.227596 -0.709466 0.4876529    
+super_majority       -0.048794   0.094028 -0.518937 0.6104944    
+ln_gdp                0.079625   0.051255  1.553502 0.1387211    
+ln_pop               -0.486694   0.133229 -3.653076 0.0019685 ** 
+ln_pers_inc           0.339298   0.105855  3.205307 0.0051880 ** 
+ln_county_debt_other -0.005176   0.008150 -0.635077 0.5338334    
+---
+Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
+RMSE: 0.418144   Adj. R2: 0.059161
+OLS estimation, Dep. Var.: frac_utgo
+Observations: 1,685
+Standard-errors: Clustered (state) 
+                      Estimate Std. Error   t value  Pr(>|t|)    
+(Intercept)          -0.046659   0.205820 -0.226697 0.8233625    
+super_majority       -0.104998   0.080215 -1.308959 0.2079667    
+ln_gdp                0.062515   0.051182  1.221422 0.2385949    
+ln_pop               -0.477738   0.134695 -3.546808 0.0024792 ** 
+ln_pers_inc           0.345766   0.108448  3.188304 0.0053813 ** 
+ln_county_debt_other -0.002821   0.007111 -0.396774 0.6964705    
+glm_proactive        -0.006406   0.078336 -0.081776 0.9357801    
+state_ltgo_allowed   -0.140332   0.062691 -2.238481 0.0388594 *  
+state_go_vote         0.037868   0.072427  0.522834 0.6078372    
+---
+Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
+RMSE: 0.415146   Adj. R2: 0.070941

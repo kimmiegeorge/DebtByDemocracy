@@ -6,11 +6,12 @@ p_load(data.table, dplyr, stargazer, DescTools, arrow, glue, lfe, ggplot2, gridE
 tables_wd <- "~/Dropbox/Apps/Overleaf/Voting on bonds/tables/revision_tables"
 source('/Users/kmunevar/Dropbox/Voting on Bonds/Code/R/submission_tables/modify_etable_rounding.R')
 source('/Users/kmunevar/Dropbox/Voting on Bonds/Code/R/submission_tables/robustness_helpers.R')
+source('/Users/kmunevar/Dropbox/Voting on Bonds/Code/R/Clean/border_pair_definitions.R')
 tbl_dir <- "~/Dropbox/Apps/Overleaf/Voting on bonds/tables/revision_tables"
 
 #---------------------------------------
 data <- fread('~/Dropbox/Voting on Bonds/Data/Websites/border_state_website_data_260611_with_recovered.csv')
-data <- data[!(group %in% c('Rhode Island/Massachusetts'))]
+data <- filter_paper_border_pairs(data)
 
 data <- data[!is.na(total_subs)]
 data <- data[!is.na(city_go_vote)]
@@ -24,7 +25,6 @@ data[, year_int := year]
 data[, year := as.factor(year)]
 
 
-#data <- data[!(group %in% c('Rhode Island/Massachusetts', 'Missouri/Kentucky', 'Missouri/Tennessee'))]
 state_policy <- fread('/Users/kmunevar/Dropbox/Voting on Bonds/Data/State Monitoring Policy/state_enforcement_adoption_years.csv')
 state_policy[, AdoptionYear := ifelse(AdoptionYear == 'before_sample', 2009, AdoptionYear )]
 setnames(state_policy, 'Abbreviation', 'state')

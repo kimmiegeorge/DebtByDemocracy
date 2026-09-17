@@ -1,0 +1,61 @@
+table,outcome,term,cluster,estimate,se,t,p,stars,n,states,state_years,groups
+issuer border debt/yield,Pct UTGO,city_go_vote,state-year,-0.328,0.092,-3.57,0.005,***,354,11,11,13
+issuer border debt/yield,Pct UTGO,city_go_vote,state,-0.328,0.092,-3.57,0.005,***,354,11,11,13
+issuer border debt/yield,Yield spread,city_go_vote,state-year,0.262,0.108,2.43,0.035,**,352,11,11,13
+issuer border debt/yield,Yield spread,city_go_vote,state,0.262,0.108,2.43,0.035,**,352,11,11,13
+point-in-time border 2017,Pct UTGO,city_go_vote,state-year,-0.341,0.031,-11.12,0,***,397,14,14,14
+point-in-time border 2017,Pct UTGO,city_go_vote,state,-0.341,0.031,-11.12,0,***,397,14,14,14
+point-in-time border 2017,Pct Revenue,city_go_vote,state-year,0.135,0.065,2.08,0.058,*,397,14,14,14
+point-in-time border 2017,Pct Revenue,city_go_vote,state,0.135,0.065,2.08,0.058,*,397,14,14,14
+point-in-time border 2017,Yield spread,city_go_vote,state-year,0.297,0.094,3.17,0.007,***,319,14,14,14
+point-in-time border 2017,Yield spread,city_go_vote,state,0.297,0.094,3.17,0.007,***,319,14,14,14
+point-in-time border 2017,Census total debt,city_go_vote,state-year,-1.88,0.276,-6.8,0,***,440,14,14,14
+point-in-time border 2017,Census total debt,city_go_vote,state,-1.88,0.276,-6.8,0,***,440,14,14,14
+point-in-time border 2012,Pct UTGO,city_go_vote,state-year,-0.329,0.124,-2.65,0.024,**,265,11,11,13
+point-in-time border 2012,Pct UTGO,city_go_vote,state,-0.329,0.124,-2.65,0.024,**,265,11,11,13
+point-in-time border 2012,Pct Revenue,city_go_vote,state-year,0.315,0.109,2.9,0.016,**,265,11,11,13
+point-in-time border 2012,Pct Revenue,city_go_vote,state,0.315,0.109,2.9,0.016,**,265,11,11,13
+point-in-time border 2012,Yield spread,city_go_vote,state-year,0.286,0.184,1.55,0.151,"",220,11,11,13
+point-in-time border 2012,Yield spread,city_go_vote,state,0.286,0.184,1.55,0.151,"",220,11,11,13
+point-in-time border 2012,Census total debt,city_go_vote,state-year,-1.028,0.471,-2.19,0.054,*,326,11,11,13
+point-in-time border 2012,Census total debt,city_go_vote,state,-1.028,0.471,-2.19,0.054,*,326,11,11,13
+trade before maturity border,Any trade,city_go_vote,state-year,0.088,0.03,2.91,0.004,***,12617,13,138,15
+trade before maturity border,Any trade,city_go_vote,state,0.088,0.022,3.93,0.002,***,12617,13,138,15
+trade before maturity border,Retail trade,city_go_vote,state-year,0.081,0.033,2.48,0.014,**,12617,13,138,15
+trade before maturity border,Retail trade,city_go_vote,state,0.081,0.031,2.64,0.021,**,12617,13,138,15
+trade before maturity border,Institutional trade,city_go_vote,state-year,0.033,0.027,1.24,0.218,"",12617,13,138,15
+trade before maturity border,Institutional trade,city_go_vote,state,0.033,0.01,3.22,0.007,***,12617,13,138,15
+trade website heterogeneity border,Any trade,city_go_vote,state-year,0.328,0.043,7.7,0,***,3110,10,43,15
+trade website heterogeneity border,Any trade,city_go_vote,state,0.328,0.057,5.7,0,***,3110,10,43,15
+trade website heterogeneity border,Any trade,city_go_vote:high_bond_count,state-year,-0.236,0.069,-3.44,0.001,***,3110,10,43,15
+trade website heterogeneity border,Any trade,city_go_vote:high_bond_count,state,-0.236,0.064,-3.68,0.005,***,3110,10,43,15
+trade website heterogeneity border,Retail trade,city_go_vote,state-year,0.271,0.082,3.3,0.002,***,3110,10,43,15
+trade website heterogeneity border,Retail trade,city_go_vote,state,0.271,0.09,3.01,0.015,**,3110,10,43,15
+trade website heterogeneity border,Retail trade,city_go_vote:high_bond_count,state-year,-0.229,0.097,-2.36,0.023,**,3110,10,43,15
+trade website heterogeneity border,Retail trade,city_go_vote:high_bond_count,state,-0.229,0.092,-2.49,0.034,**,3110,10,43,15
+trade website heterogeneity border,Institutional trade,city_go_vote,state-year,0.226,0.083,2.72,0.009,***,3110,10,43,15
+trade website heterogeneity border,Institutional trade,city_go_vote,state,0.226,0.074,3.04,0.014,**,3110,10,43,15
+trade website heterogeneity border,Institutional trade,city_go_vote:high_bond_count,state-year,-0.137,0.109,-1.26,0.216,"",3110,10,43,15
+trade website heterogeneity border,Institutional trade,city_go_vote:high_bond_count,state,-0.137,0.126,-1.09,0.305,"",3110,10,43,15
+websites border,Bond URLs,city_go_vote,state-year,1.226,0.224,5.48,0,***,1328,14,82,15
+websites border,Bond URLs,city_go_vote,state,1.226,0.259,4.72,0,***,1328,14,82,15
+websites border,Bond Count,city_go_vote,state-year,1.062,0.215,4.94,0,***,1424,14,82,15
+websites border,Bond Count,city_go_vote,state,1.062,0.376,2.82,0.005,***,1424,14,82,15
+websites border,Fiscal URLs,city_go_vote,state-year,2.419,0.452,5.36,0,***,1220,14,82,15
+websites border,Fiscal URLs,city_go_vote,state,2.419,0.635,3.81,0,***,1220,14,82,15
+websites border,Fiscal Count,city_go_vote,state-year,1.108,0.33,3.36,0.001,***,1424,14,82,15
+websites border,Fiscal Count,city_go_vote,state,1.108,0.783,1.42,0.157,"",1424,14,82,15
+websites border,Financial Docs,city_go_vote,state-year,0.535,0.179,2.99,0.003,***,1395,14,82,15
+websites border,Financial Docs,city_go_vote,state,0.535,0.337,1.59,0.112,"",1395,14,82,15
+website issuance time-series border,Increase in bond text,issuance_window_go,state-year,0.056,0.041,1.36,0.179,"",1076,14,68,15
+website issuance time-series border,Increase in bond text,issuance_window_go,state,0.056,0.033,1.68,0.116,"",1076,14,68,15
+website issuance time-series border,Increase in bond text + interaction,issuance_window_go,state-year,0.051,0.045,1.14,0.259,"",1076,14,68,15
+website issuance time-series border,Increase in bond text + interaction,issuance_window_go,state,0.051,0.036,1.4,0.186,"",1076,14,68,15
+website issuance time-series border,Increase in bond text + interaction,issuance_window_go:city_go_vote,state-year,0.053,0.119,0.44,0.66,"",1076,14,68,15
+website issuance time-series border,Increase in bond text + interaction,issuance_window_go:city_go_vote,state,0.053,0.074,0.71,0.493,"",1076,14,68,15
+website issuance time-series border,Vote cities only,issuance_window_go,state-year,0.078,0.103,0.76,0.453,"",339,8,38,9
+website issuance time-series border,Vote cities only,issuance_window_go,state,0.078,0.078,0.99,0.353,"",339,8,38,9
+media coverage border,"Total articles, no demographics",city_go_vote,state-year,1.666,0.618,2.7,0.008,***,803,15,180,15
+media coverage border,"Total articles, no demographics",city_go_vote,state,1.666,0.675,2.47,0.028,**,803,15,180,15
+media coverage border,"Total articles, demographics",city_go_vote,state-year,1.539,0.613,2.51,0.013,**,803,15,180,15
+media coverage border,"Total articles, demographics",city_go_vote,state,1.539,0.669,2.3,0.039,**,803,15,180,15

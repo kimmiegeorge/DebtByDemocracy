@@ -30,11 +30,15 @@ dest_dir <- normalizePath(get_arg('--dest=', default_dest), mustWork = FALSE)
 apply_changes <- has_flag('--apply')
 overwrite <- has_flag('--overwrite')
 recursive <- has_flag('--recursive')
+files_arg <- get_arg('--files=', '')
 
 if (has_flag('--help') || has_flag('-h')) {
   cat(
     'Usage:\n',
-    '  Rscript R/Clean/promote_tables_to_overleaf.R [--apply] [--overwrite] [--recursive]\n\n',
+    paste0(
+      '  Rscript R/Clean/promote_tables_to_overleaf.R [--apply] [--overwrite] ',
+      '[--recursive] [--files=file1.tex,file2.tex]\n\n'
+    ),
     'Defaults:\n',
     paste0('  --source=', default_source, '\n'),
     paste0('  --dest=', default_dest, '\n\n'),
@@ -53,6 +57,16 @@ if (!dir.exists(source_dir)) {
 table_files <- list.files(source_dir, pattern = '\\.tex$', recursive = recursive, full.names = TRUE)
 table_files <- table_files[!grepl('/robustness/', table_files, fixed = TRUE)]
 table_files <- sort(table_files)
+
+if (nzchar(files_arg)) {
+  requested_files <- trimws(strsplit(files_arg, ',', fixed = TRUE)[[1]])
+  relative_paths <- substring(table_files, nchar(source_dir) + 2)
+  missing_files <- setdiff(requested_files, relative_paths)
+  if (length(missing_files) > 0) {
+    stop('Requested files not found in source: ', paste(missing_files, collapse = ', '))
+  }
+  table_files <- table_files[relative_paths %in% requested_files]
+}
 
 if (length(table_files) == 0) {
   stop('No .tex files found in source directory: ', source_dir)

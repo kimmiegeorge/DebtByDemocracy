@@ -4,6 +4,7 @@ p_load(data.table, dplyr, stargazer, DescTools, arrow, glue, lfe, ggplot2, gridE
 source('/Users/kmunevar/Dropbox/Voting on Bonds/Code/R/Clean/modify_etable_rounding.R')
 source('/Users/kmunevar/Dropbox/Voting on Bonds/Code/R/Clean/tax_privilege_definitions.R')
 source('/Users/kmunevar/Dropbox/Voting on Bonds/Code/R/Clean/state_policy_definitions.R')
+source('/Users/kmunevar/Dropbox/Voting on Bonds/Code/R/Clean/border_pair_definitions.R')
 tables_wd <- "/Users/kmunevar/Dropbox/Voting on Bonds/Code/R/Clean/output/revision_tables/"
 
 #----------------------------------
@@ -17,44 +18,109 @@ data[state == 'RI', city_go_vote := NA]
 data <- data[city == 1 & !is.na(city_go_vote)  & go_unlim == 1 & !is.na(callable)]
 add_low_state_tax_privilege(data)
 
-# Default to the original markup-sample outcomes. Set
-# TRADE_BEFORE_MATURITY_OUTCOMES=raw to generate separate tables using all raw
-# customer trades without overwriting the legacy table files.
-outcome_variant <- tolower(Sys.getenv('TRADE_BEFORE_MATURITY_OUTCOMES', unset = 'legacy'))
-if (!outcome_variant %in% c('legacy', 'raw')) {
-  stop('TRADE_BEFORE_MATURITY_OUTCOMES must be either legacy or raw')
+# The official specification uses all raw customer trades and rating-category
+# fixed effects. Environment variables retain the audited sensitivity variants.
+# raw_yield additionally requires a reported trade yield; raw_buys keeps customer
+# buys only; same_day_match retains the legacy interdealer match but permits
+# negative finite markups; and the gt_100k variants use a strict institutional
+# cutoff.
+outcome_variant <- tolower(Sys.getenv('TRADE_BEFORE_MATURITY_OUTCOMES', unset = 'raw'))
+if (!outcome_variant %in% c('legacy', 'same_day_match', 'raw', 'raw_yield', 'raw_buys', 'raw_gt_100k', 'raw_buys_gt_100k')) {
+  stop('TRADE_BEFORE_MATURITY_OUTCOMES must be legacy, same_day_match, raw, raw_yield, raw_buys, raw_gt_100k, or raw_buys_gt_100k')
 }
-rating_variant <- tolower(Sys.getenv('TRADE_BEFORE_MATURITY_RATING', unset = 'legacy'))
-if (!rating_variant %in% c('legacy', 'unrated_indicator')) {
-  stop('TRADE_BEFORE_MATURITY_RATING must be either legacy or unrated_indicator')
+disclosure_variant <- tolower(Sys.getenv('TRADE_BEFORE_MATURITY_DISCLOSURE', unset = 'indicator'))
+if (!disclosure_variant %in% c('indicator', 'amount')) {
+  stop('TRADE_BEFORE_MATURITY_DISCLOSURE must be indicator or amount')
 }
-output_suffix <- paste0(
-  ifelse(outcome_variant == 'raw', '_raw', ''),
-  ifelse(rating_variant == 'unrated_indicator', '_unrated_indicator', '')
+rating_variant <- tolower(Sys.getenv('TRADE_BEFORE_MATURITY_RATING', unset = 'rating_fe'))
+if (!rating_variant %in% c('legacy', 'unrated_indicator', 'rating_fe')) {
+  stop('TRADE_BEFORE_MATURITY_RATING must be legacy, unrated_indicator, or rating_fe')
+}
+official_spec <- outcome_variant == 'raw' &
+  disclosure_variant == 'indicator' & rating_variant == 'rating_fe'
+sensitivity_suffix <- paste0(
+  switch(
+    outcome_variant,
+    legacy = '', same_day_match = '_same_day_match', raw = '_raw',
+    raw_yield = '_raw_yield', raw_buys = '_raw_buys',
+    raw_gt_100k = '_raw_gt_100k', raw_buys_gt_100k = '_raw_buys_gt_100k'
+  ),
+  ifelse(disclosure_variant == 'amount', '_cd_amount', ''),
+  switch(
+    rating_variant,
+    legacy = '', unrated_indicator = '_unrated_indicator', rating_fe = '_rating_fe'
+  )
 )
-panel_details <- c(
-  if (outcome_variant == 'raw') 'raw customer trades',
-  if (rating_variant == 'unrated_indicator') 'unrated indicator'
-)
+output_suffix <- if (official_spec) {
+  ''
+} else if (nzchar(sensitivity_suffix)) {
+  sensitivity_suffix
+} else {
+  '_legacy_numeric_rating'
+}
+panel_details <- if (official_spec) character(0) else {
+  c(
+    if (outcome_variant == 'same_day_match') 'same-day match; any finite markup',
+    if (outcome_variant == 'raw') 'raw customer trades',
+    if (outcome_variant == 'raw_yield') 'raw customer trades; nonmissing yield',
+    if (outcome_variant == 'raw_buys') 'raw customer buys',
+    if (outcome_variant == 'raw_gt_100k') 'raw customer trades; institutional > $100,000',
+    if (outcome_variant == 'raw_buys_gt_100k') 'raw customer buys; institutional > $100,000',
+    if (disclosure_variant == 'amount') 'CD per year',
+    if (rating_variant == 'unrated_indicator') 'unrated indicator',
+    if (rating_variant == 'rating_fe') 'rating FE'
+  )
+}
 panel_suffix <- if (length(panel_details) > 0) {
   paste0(' (', paste(panel_details, collapse = '; '), ')')
 } else {
   ''
 }
-if (outcome_variant == 'raw') {
-  required_raw_outcomes <- c(
-    'traded_before_maturity_raw',
-    'retail_traded_before_maturity_raw',
-    'institutional_traded_before_maturity_raw'
+if (outcome_variant != 'legacy') {
+  outcome_sources <- switch(
+    outcome_variant,
+    same_day_match = paste0(
+      c('traded_before_maturity', 'retail_traded_before_maturity',
+        'institutional_traded_before_maturity'), '_same_day_match'
+    ),
+    raw = paste0(
+      c('traded_before_maturity', 'retail_traded_before_maturity',
+        'institutional_traded_before_maturity'), '_raw'
+    ),
+    raw_yield = paste0(
+      c('traded_before_maturity', 'retail_traded_before_maturity',
+        'institutional_traded_before_maturity'), '_raw_yield'
+    ),
+    raw_buys = paste0(
+      c('traded_before_maturity', 'retail_traded_before_maturity',
+        'institutional_traded_before_maturity'), '_raw_buys'
+    ),
+    raw_gt_100k = c(
+      'traded_before_maturity_raw', 'retail_traded_before_maturity_raw',
+      'institutional_traded_before_maturity_raw_gt_100k'
+    ),
+    raw_buys_gt_100k = c(
+      'traded_before_maturity_raw_buys', 'retail_traded_before_maturity_raw_buys',
+      'institutional_traded_before_maturity_raw_buys_gt_100k'
+    )
   )
+  required_raw_outcomes <- outcome_sources
   missing_raw_outcomes <- setdiff(required_raw_outcomes, names(data))
   if (length(missing_raw_outcomes) > 0) {
     stop(paste('Missing raw trade outcomes:', paste(missing_raw_outcomes, collapse = ', ')))
   }
-  data[, traded_before_maturity := traded_before_maturity_raw]
-  data[, retail_traded_before_maturity := retail_traded_before_maturity_raw]
-  data[, institutional_traded_before_maturity := institutional_traded_before_maturity_raw]
+  data[, traded_before_maturity := get(outcome_sources[1])]
+  data[, retail_traded_before_maturity := get(outcome_sources[2])]
+  data[, institutional_traded_before_maturity := get(outcome_sources[3])]
 }
+disclosure_label <- ifelse(
+  disclosure_variant == 'indicator', 'Continuing Disclosure', 'CD Per Year'
+)
+data[, disclosure_control := if (disclosure_variant == 'indicator') {
+  disclosed_before_maturity
+} else {
+  avg_disclosures_per_year_before_maturity
+}]
 
 if (rating_variant == 'unrated_indicator') {
   if (!'rated' %in% names(data)) {
@@ -65,6 +131,13 @@ if (rating_variant == 'unrated_indicator') {
   }
   data[, unrated := as.integer(rated == 0)]
   data[unrated == 1, rating_num := 0]
+} else if (rating_variant == 'rating_fe') {
+  if (!'rating_fe' %in% names(data)) {
+    stop('Missing rating_fe needed for the rating FE specification')
+  }
+  if (any(is.na(data$rating_fe))) {
+    stop('rating_fe contains missing values')
+  }
 }
 
 data[, super_majority := ifelse(state %in% super_majority_states, 1, 0)]
@@ -74,7 +147,8 @@ data[, state_year := interaction(state, year, drop = TRUE)]
 #----------------------------------
 
 border_states <- fread('~/Dropbox/Voting on Bonds/Data/Clean_Intermediate/Border States/Border Matches All Mergent Data Expanded Set Buffer 100000.csv')
-border_states <- border_states[go_unlim == 1 & !(group %in% c('Rhode Island/Massachusetts'))]
+border_states <- filter_paper_border_pairs(border_states)
+border_states <- border_states[go_unlim == 1]
 #border_states <- Wins(border_states, col_list)
 # seed_issuer_id is reused by three pairs of municipalities. State and issuer
 # name are the stable border-sample key used elsewhere in the clean R code.
@@ -127,9 +201,12 @@ data <- media_disclosure[, .(seed_issuer_id, state, year, month, total_rp_articl
 desc_vars <- c(
   'city_go_vote', 'traded_before_maturity', 'retail_traded_before_maturity',
   'institutional_traded_before_maturity', 'low_state_tax_privilege',
-  'disclosed_before_maturity', 'ln_amount', 'ln_maturity_mths', 'callable',
-  'sinkable', 'insured', 'rating_num'
+  'disclosure_control', 'ln_amount', 'ln_maturity_mths', 'callable',
+  'sinkable', 'insured'
 )
+if (rating_variant != 'rating_fe') {
+  desc_vars <- c(desc_vars, 'rating_num')
+}
 if (rating_variant == 'unrated_indicator') {
   desc_vars <- c(desc_vars, 'unrated')
 }
@@ -152,9 +229,12 @@ colnames(desc_col) <- c("Variable", "Unit", "Mean", "Std", "Min", "P1", "Median"
 
 desc_labels <- c(
   'Vote', 'Trade', 'Retail Trade', 'Inst. Trade', 'Low Tax Priv.',
-  'Continuing Disclosure', 'Amount', 'Maturity', 'Callable', 'Sinkable',
-  'Insured', 'Rating'
+  disclosure_label, 'Amount', 'Maturity', 'Callable', 'Sinkable',
+  'Insured'
 )
+if (rating_variant != 'rating_fe') {
+  desc_labels <- c(desc_labels, 'Rating')
+}
 if (rating_variant == 'unrated_indicator') {
   desc_labels <- c(desc_labels, 'Unrated')
 }
@@ -229,14 +309,14 @@ writeLines(desc_table_output, paste0(tables_wd, '/secondary_market_descriptives'
 #----------------------------------
 
 
-r1 <- feols(traded_before_maturity ~ city_go_vote + disclosed_before_maturity + ln_amount +ln_maturity_mths + 
+r1 <- feols(traded_before_maturity ~ city_go_vote + disclosure_control + ln_amount +ln_maturity_mths + 
               callable + sinkable + insured + rating_num 
             +ln_gdp + ln_pop + ln_pers_inc   |year + purp_broad, 
             ~state, 
             data = data[year > 2004])
 summary(r1)
 
-r2 <- feols(traded_before_maturity ~ city_go_vote + low_state_tax_privilege + disclosed_before_maturity +  ln_amount +ln_maturity_mths + 
+r2 <- feols(traded_before_maturity ~ city_go_vote + low_state_tax_privilege + disclosure_control +  ln_amount +ln_maturity_mths + 
               callable + sinkable + insured + rating_num + 
             + ln_gdp + ln_pop + ln_pers_inc  |year + purp_broad, 
             ~state, 
@@ -249,14 +329,14 @@ summary(r2)
 # reg - border state
 #----------------------------------
 
-r1b <- feols(traded_before_maturity ~ city_go_vote + disclosed_before_maturity + ln_amount +ln_maturity_mths + 
+r1b <- feols(traded_before_maturity ~ city_go_vote + disclosure_control + ln_amount +ln_maturity_mths + 
               callable + sinkable + insured + rating_num + ln_gdp + ln_pop + ln_pers_inc   |year + purp_broad + group, 
             ~state_year, 
             data = border_states[year > 2004])
 summary(r1b)
 
 
-r2b <- feols(traded_before_maturity ~ city_go_vote + low_state_tax_privilege +  disclosed_before_maturity  + ln_amount +ln_maturity_mths + 
+r2b <- feols(traded_before_maturity ~ city_go_vote + low_state_tax_privilege +  disclosure_control  + ln_amount +ln_maturity_mths + 
               callable + sinkable + insured + rating_num + ln_gdp + ln_pop + ln_pers_inc    |year + purp_broad + group , 
             ~state_year, 
             data = border_states[year > 2004])
@@ -268,14 +348,14 @@ summary(r2b)
 #----------------------------------
 
 
-r1_r <- feols(retail_traded_before_maturity ~ city_go_vote + disclosed_before_maturity + ln_amount +ln_maturity_mths + 
+r1_r <- feols(retail_traded_before_maturity ~ city_go_vote + disclosure_control + ln_amount +ln_maturity_mths + 
               callable + sinkable + insured + rating_num 
             +ln_gdp + ln_pop + ln_pers_inc   |year + purp_broad, 
             ~state, 
             data = data[year > 2004])
 summary(r1_r)
 
-r2_r <- feols(retail_traded_before_maturity ~ city_go_vote + low_state_tax_privilege +  disclosed_before_maturity  + ln_amount +ln_maturity_mths + 
+r2_r <- feols(retail_traded_before_maturity ~ city_go_vote + low_state_tax_privilege +  disclosure_control  + ln_amount +ln_maturity_mths + 
               callable + sinkable + insured + rating_num + 
               + ln_gdp + ln_pop + ln_pers_inc  |year + purp_broad , 
             ~state, 
@@ -288,14 +368,14 @@ summary(r2_r)
 # reg - border state
 #----------------------------------
 
-r1b_r <- feols(retail_traded_before_maturity ~ city_go_vote + disclosed_before_maturity + ln_amount +ln_maturity_mths + 
+r1b_r <- feols(retail_traded_before_maturity ~ city_go_vote + disclosure_control + ln_amount +ln_maturity_mths + 
                callable + sinkable + insured + rating_num + ln_gdp + ln_pop + ln_pers_inc   |year + purp_broad + group, 
             ~state_year, 
              data = border_states[year > 2004])
 summary(r1b_r)
 
 
-r2b_r <- feols(retail_traded_before_maturity ~ city_go_vote + low_state_tax_privilege +  disclosed_before_maturity  + ln_amount +ln_maturity_mths + 
+r2b_r <- feols(retail_traded_before_maturity ~ city_go_vote + low_state_tax_privilege +  disclosure_control  + ln_amount +ln_maturity_mths + 
                callable + sinkable + insured + rating_num + ln_gdp + ln_pop + ln_pers_inc    |year + purp_broad + group , 
             ~state_year, 
              data = border_states[year > 2004])
@@ -307,7 +387,7 @@ summary(r2b_r)
 #----------------------------------
 
 
-r1_i <- feols(institutional_traded_before_maturity ~ city_go_vote + disclosed_before_maturity + ln_amount +ln_maturity_mths + 
+r1_i <- feols(institutional_traded_before_maturity ~ city_go_vote + disclosure_control + ln_amount +ln_maturity_mths + 
               callable + sinkable + insured + rating_num 
             +ln_gdp + ln_pop + ln_pers_inc   |year + purp_broad, 
             ~state, 
@@ -315,7 +395,7 @@ r1_i <- feols(institutional_traded_before_maturity ~ city_go_vote + disclosed_be
 summary(r1_i)
 
 
-r2_i <- feols(institutional_traded_before_maturity ~ city_go_vote +  low_state_tax_privilege +  disclosed_before_maturity  + ln_amount +ln_maturity_mths + 
+r2_i <- feols(institutional_traded_before_maturity ~ city_go_vote +  low_state_tax_privilege +  disclosure_control  + ln_amount +ln_maturity_mths + 
               callable + sinkable + insured + rating_num + 
               + ln_gdp + ln_pop + ln_pers_inc  |year + purp_broad , 
             ~state, 
@@ -328,14 +408,14 @@ summary(r2_i)
 # reg - border state
 #----------------------------------
 
-r1b_i <- feols(institutional_traded_before_maturity ~ city_go_vote + disclosed_before_maturity +  ln_amount +ln_maturity_mths + 
+r1b_i <- feols(institutional_traded_before_maturity ~ city_go_vote + disclosure_control +  ln_amount +ln_maturity_mths + 
                callable + sinkable + insured + rating_num + ln_gdp + ln_pop + ln_pers_inc   |year + purp_broad + group, 
             ~state_year, 
              data = border_states[year > 2004])
 summary(r1b_i)
 
 
-r2b_i <- feols(institutional_traded_before_maturity ~ city_go_vote + low_state_tax_privilege +  disclosed_before_maturity  + ln_amount +ln_maturity_mths + 
+r2b_i <- feols(institutional_traded_before_maturity ~ city_go_vote + low_state_tax_privilege +  disclosure_control  + ln_amount +ln_maturity_mths + 
                callable + sinkable + insured + rating_num + ln_gdp + ln_pop + ln_pers_inc    |year + purp_broad + group , 
             ~state_year, 
              data = border_states[year > 2004])
@@ -346,19 +426,19 @@ summary(r2b_i)
 # reg - investor response by website disclosure
 #----------------------------------
 
-r_web <- feols(traded_before_maturity ~ city_go_vote * high_bond_count + disclosed_before_maturity + ln_amount + ln_maturity_mths + 
+r_web <- feols(traded_before_maturity ~ city_go_vote * high_bond_count + disclosure_control + ln_amount + ln_maturity_mths + 
                  callable + sinkable + insured + rating_num + ln_gdp + ln_pop + ln_pers_inc | year + purp_broad + group,
             ~state_year, 
                data = border_states[year > 2004 & !is.na(high_bond_count)])
 summary(r_web)
 
-r_web_r <- feols(retail_traded_before_maturity ~ city_go_vote * high_bond_count + disclosed_before_maturity + ln_amount + ln_maturity_mths + 
+r_web_r <- feols(retail_traded_before_maturity ~ city_go_vote * high_bond_count + disclosure_control + ln_amount + ln_maturity_mths + 
                    callable + sinkable + insured + rating_num + ln_gdp + ln_pop + ln_pers_inc | year + purp_broad + group,
             ~state_year, 
                  data = border_states[year > 2004 & !is.na(high_bond_count)])
 summary(r_web_r)
 
-r_web_i <- feols(institutional_traded_before_maturity ~ city_go_vote * high_bond_count + disclosed_before_maturity + ln_amount + ln_maturity_mths + 
+r_web_i <- feols(institutional_traded_before_maturity ~ city_go_vote * high_bond_count + disclosure_control + ln_amount + ln_maturity_mths + 
                    callable + sinkable + insured + rating_num + ln_gdp + ln_pop + ln_pers_inc | year + purp_broad + group,
             ~state_year, 
                  data = border_states[year > 2004 & !is.na(high_bond_count)])
@@ -369,19 +449,19 @@ summary(r_web_i)
 # reg - investor response by media disclosure
 #----------------------------------
 
-r_media <- feols(traded_before_maturity ~ city_go_vote * high_articles_12_0 + disclosed_before_maturity + ln_amount + ln_maturity_mths + 
+r_media <- feols(traded_before_maturity ~ city_go_vote * high_articles_12_0 + disclosure_control + ln_amount + ln_maturity_mths + 
                    callable + sinkable + insured + rating_num + ln_gdp + ln_pop + ln_pers_inc | year + purp_broad,
             ~state, 
                  data = data[year > 2004 & !is.na(high_articles_12_0)])
 summary(r_media)
 
-r_media_r <- feols(retail_traded_before_maturity ~ city_go_vote * high_articles_12_0 + disclosed_before_maturity + ln_amount + ln_maturity_mths + 
+r_media_r <- feols(retail_traded_before_maturity ~ city_go_vote * high_articles_12_0 + disclosure_control + ln_amount + ln_maturity_mths + 
                      callable + sinkable + insured + rating_num + ln_gdp + ln_pop + ln_pers_inc | year + purp_broad,
             ~state, 
                    data = data[year > 2004 & !is.na(high_articles_12_0)])
 summary(r_media_r)
 
-r_media_i <- feols(institutional_traded_before_maturity ~ city_go_vote * high_articles_12_0 + disclosed_before_maturity + ln_amount + ln_maturity_mths + 
+r_media_i <- feols(institutional_traded_before_maturity ~ city_go_vote * high_articles_12_0 + disclosure_control + ln_amount + ln_maturity_mths + 
                      callable + sinkable + insured + rating_num + ln_gdp + ln_pop + ln_pers_inc | year + purp_broad,
             ~state, 
                    data = data[year > 2004 & !is.na(high_articles_12_0)])
@@ -403,6 +483,19 @@ if (rating_variant == 'unrated_indicator') {
   r_media <- update(r_media, . ~ . + unrated)
   r_media_r <- update(r_media_r, . ~ . + unrated)
   r_media_i <- update(r_media_i, . ~ . + unrated)
+} else if (rating_variant == 'rating_fe') {
+  r2 <- update(r2, . ~ . - rating_num | . + rating_fe)
+  r2_r <- update(r2_r, . ~ . - rating_num | . + rating_fe)
+  r2_i <- update(r2_i, . ~ . - rating_num | . + rating_fe)
+  r2b <- update(r2b, . ~ . - rating_num | . + rating_fe)
+  r2b_r <- update(r2b_r, . ~ . - rating_num | . + rating_fe)
+  r2b_i <- update(r2b_i, . ~ . - rating_num | . + rating_fe)
+  r_web <- update(r_web, . ~ . - rating_num | . + rating_fe)
+  r_web_r <- update(r_web_r, . ~ . - rating_num | . + rating_fe)
+  r_web_i <- update(r_web_i, . ~ . - rating_num | . + rating_fe)
+  r_media <- update(r_media, . ~ . - rating_num | . + rating_fe)
+  r_media_r <- update(r_media_r, . ~ . - rating_num | . + rating_fe)
+  r_media_i <- update(r_media_i, . ~ . - rating_num | . + rating_fe)
 }
 
 
@@ -427,14 +520,14 @@ table_call <- etable(r2, r2_r, r2_i,
                      signif.code = c("***"=0.01, "**"=0.05, "*"=0.10), 
                      tex = TRUE,
                      drop_raw = c("ln_gdp", "ln_pop", "ln_pers_inc", "ln_emp"),
-                     order = c("%city_go_vote", "%low_state_tax_privilege", "%disclosed_before_maturity"),
+                     order = c("%city_go_vote", "%low_state_tax_privilege", "%disclosure_control"),
                      extralines = list("-^County Controls" = rep("Yes", 3)),
                      dict = c(institutional_traded_before_maturity ='Inst. Trade',
                               retail_traded_before_maturity ='Retail Trade',
                               traded_before_maturity = 'Trade',
                               city_go_vote = 'Vote',
                               low_state_tax_privilege = 'Low Tax Priv.',
-                              disclosed_before_maturity = 'Continuing Disclosure',
+                              disclosure_control = disclosure_label,
                               avg_disclosures_per_year_before_maturity = 'CD Per Year',
                               ln_amount = 'Amount',
                               ln_maturity_mths = 'Maturity',
@@ -442,6 +535,7 @@ table_call <- etable(r2, r2_r, r2_i,
                               sinkable = 'Sinkable',
                               insured = 'Insured', 
                               rating_num = 'Rating',
+                              rating_fe = 'Rating',
                               unrated = 'Unrated',
                               ln_gdp =  'County ln(GDP)', 
                               ln_pop = 'County ln(Pop)' , 
@@ -483,15 +577,15 @@ table_call <- etable(r2b, r2b_r, r2b_i,
                      digits.stats = 3,
                      signif.code = c("***"=0.01, "**"=0.05, "*"=0.10), 
                      tex = TRUE,
-                     keep_raw = c("city_go_vote", "low_state_tax_privilege", "disclosed_before_maturity"),
-                     order = c("%city_go_vote", "%low_state_tax_privilege", "%disclosed_before_maturity"),
+                     keep_raw = c("city_go_vote", "low_state_tax_privilege", "disclosure_control"),
+                     order = c("%city_go_vote", "%low_state_tax_privilege", "%disclosure_control"),
                      extralines = list("-^County Controls" = rep("Yes", 3),
                                        "-^Bond Controls" = rep("Yes", 3)),
                      dict = c(institutional_traded_before_maturity ='Inst. Trade',
                               retail_traded_before_maturity ='Retail Trade',
                               traded_before_maturity = 'Trade',
                               city_go_vote = 'Vote',
-                              disclosed_before_maturity = 'Continuing Disclosure',
+                              disclosure_control = disclosure_label,
                               low_state_tax_privilege = 'Low Tax Priv.',
                               avg_disclosures_per_year_before_maturity = 'CD Per Year',
                               ln_amount = 'Amount',
@@ -500,6 +594,7 @@ table_call <- etable(r2b, r2b_r, r2b_i,
                               sinkable = 'Sinkable',
                               insured = 'Insured', 
                               rating_num = 'Rating',
+                              rating_fe = 'Rating',
                               unrated = 'Unrated',
                               ln_gdp =  'County ln(GDP)', 
                               ln_pop = 'County ln(Pop)' , 
@@ -539,8 +634,8 @@ table_call <- etable(r_web, r_web_r, r_web_i,
                      digits.stats = 3,
                      signif.code = c("***"=0.01, "**"=0.05, "*"=0.10), 
                      tex = TRUE,
-                     keep_raw = c("city_go_vote", "high_bond_count", "city_go_vote:high_bond_count", "disclosed_before_maturity"),
-                     order = c("%city_go_vote:high_bond_count", "%city_go_vote", "%high_bond_count", "%disclosed_before_maturity"),
+                     keep_raw = c("city_go_vote", "high_bond_count", "city_go_vote:high_bond_count", "disclosure_control"),
+                     order = c("%city_go_vote:high_bond_count", "%city_go_vote", "%high_bond_count", "%disclosure_control"),
                      extralines = list("-^County Controls" = rep("Yes", 3),
                                        "-^Bond Controls" = rep("Yes", 3)),
                      dict = c(institutional_traded_before_maturity ='Inst. Trade',
@@ -549,13 +644,14 @@ table_call <- etable(r_web, r_web_r, r_web_i,
                               city_go_vote = 'Vote',
                               high_bond_count = 'High Bond Text',
                               'city_go_vote:high_bond_count' = 'Vote $\\times$ High Bond Text',
-                              disclosed_before_maturity = 'Continuing Disclosure',
+                              disclosure_control = disclosure_label,
                               ln_amount = 'Amount',
                               ln_maturity_mths = 'Maturity',
                               callable = 'Callable',
                               sinkable = 'Sinkable',
                               insured = 'Insured', 
                               rating_num = 'Rating',
+                              rating_fe = 'Rating',
                               unrated = 'Unrated',
                               ln_gdp =  'County ln(GDP)', 
                               ln_pop = 'County ln(Pop)' , 
@@ -589,8 +685,8 @@ table_call <- etable(r_media, r_media_r, r_media_i,
                      digits.stats = 3,
                      signif.code = c("***"=0.01, "**"=0.05, "*"=0.10), 
                      tex = TRUE,
-                     keep_raw = c("city_go_vote", "high_articles_12_0", "city_go_vote:high_articles_12_0", "disclosed_before_maturity"),
-                     order = c("%city_go_vote:high_articles_12_0", "%city_go_vote", "%high_articles_12_0", "%disclosed_before_maturity"),
+                     keep_raw = c("city_go_vote", "high_articles_12_0", "city_go_vote:high_articles_12_0", "disclosure_control"),
+                     order = c("%city_go_vote:high_articles_12_0", "%city_go_vote", "%high_articles_12_0", "%disclosure_control"),
                      extralines = list("-^County Controls" = rep("Yes", 3),
                                        "-^Bond Controls" = rep("Yes", 3)),
                      dict = c(institutional_traded_before_maturity ='Inst. Trade',
@@ -599,13 +695,14 @@ table_call <- etable(r_media, r_media_r, r_media_i,
                               city_go_vote = 'Vote',
                               high_articles_12_0 = 'High Media Coverage',
                               'city_go_vote:high_articles_12_0' = 'Vote $\\times$ High Media Coverage',
-                              disclosed_before_maturity = 'Continuing Disclosure',
+                              disclosure_control = disclosure_label,
                               ln_amount = 'Amount',
                               ln_maturity_mths = 'Maturity',
                               callable = 'Callable',
                               sinkable = 'Sinkable',
                               insured = 'Insured', 
                               rating_num = 'Rating',
+                              rating_fe = 'Rating',
                               unrated = 'Unrated',
                               ln_gdp =  'County ln(GDP)', 
                               ln_pop = 'County ln(Pop)' , 

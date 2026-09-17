@@ -6,11 +6,12 @@ p_load(data.table, dplyr, stargazer, DescTools, arrow, glue, lfe, ggplot2, gridE
 tables_wd <- "/Users/kmunevar/Dropbox/Voting on Bonds/Code/R/Clean/output/revision_tables"
 source('/Users/kmunevar/Dropbox/Voting on Bonds/Code/R/Clean/modify_etable_rounding.R')
 source('/Users/kmunevar/Dropbox/Voting on Bonds/Code/R/Clean/state_policy_definitions.R')
+source('/Users/kmunevar/Dropbox/Voting on Bonds/Code/R/Clean/border_pair_definitions.R')
 tbl_dir <- "/Users/kmunevar/Dropbox/Voting on Bonds/Code/R/Clean/output/revision_tables"
 
 #---------------------------------------
 data <- fread('~/Dropbox/Voting on Bonds/Data/Clean_Intermediate/Websites/border_state_website_data_with_recovered.csv')
-data <- data[!(group %in% c('Rhode Island/Massachusetts'))]
+data <- filter_paper_border_pairs(data)
 data[, state_year := interaction(state, year, drop = TRUE)]
 
 data <- data[!is.na(total_subs)]
@@ -82,7 +83,6 @@ data[, group := as.factor(group)]
 data[, year := as.factor(year)]
 
 
-#data <- data[!(group %in% c('Rhode Island/Massachusetts', 'Missouri/Kentucky', 'Missouri/Tennessee'))]
 state_policy <- fread('/Users/kmunevar/Dropbox/Voting on Bonds/Data/State Monitoring Policy/state_enforcement_adoption_years.csv')
 state_policy[, AdoptionYear := ifelse(AdoptionYear == 'before_sample', 2009, AdoptionYear )]
 setnames(state_policy, 'Abbreviation', 'state')
@@ -91,11 +91,25 @@ data <- state_policy[data, on = .(state)]
 data[, state_monitor := ifelse(!is.na(AdoptionYear) & year_int >= AdoptionYear, 1, 0)]
 
 
-data[, fiscal_url := Winsorize(fiscal_url, val = quantile(fiscal_url, probs = c(0.01, 0.99)))]
-data[, fiscal_count := Winsorize(fiscal_count, val = quantile(fiscal_count, probs = c(0.01, 0.99)))]
-data[, bond_url := Winsorize(bond_url, val = quantile(bond_url, probs = c(0.01, 0.99)))]
-data[, bond_count := Winsorize(bond_count, val = quantile(bond_count, probs = c(0.01, 0.99)))]
-data[, financial_pdf_urls := Winsorize(financial_pdf_urls, val = quantile(financial_pdf_urls, probs = c(0.01, 0.99)))]
+# Use observed order statistics for the count-variable caps so winsorization
+# preserves integer-valued website disclosure counts.
+website_count_variables <- c(
+  'fiscal_url', 'fiscal_count', 'bond_url', 'bond_count',
+  'financial_pdf_urls'
+)
+for (variable in website_count_variables) {
+  website_count_caps <- quantile(
+    data[[variable]],
+    probs = c(0.01, 0.99),
+    na.rm = TRUE,
+    type = 1
+  )
+  set(
+    data,
+    j = variable,
+    value = Winsorize(data[[variable]], val = website_count_caps)
+  )
+}
 
 #---------------------------------------
 # Descriptives

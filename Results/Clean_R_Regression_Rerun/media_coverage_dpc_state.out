@@ -1,0 +1,7 @@
+/Volumes/Temp/tmp/RtmpKxlZl3/R.INSTALL104a432591603/arrow/tools/cpp/src/arrow/util/cpu_info.cc:239: IOError: sysctlbyname failed for 'hw.l1dcachesize'. Detail: [errno 1] Operation not permitted
+/Volumes/Temp/tmp/RtmpKxlZl3/R.INSTALL104a432591603/arrow/tools/cpp/src/arrow/util/cpu_info.cc:239: IOError: sysctlbyname failed for 'hw.l2cachesize'. Detail: [errno 1] Operation not permitted
+/Volumes/Temp/tmp/RtmpKxlZl3/R.INSTALL104a432591603/arrow/tools/cpp/src/arrow/util/cpu_info.cc:239: IOError: sysctlbyname failed for 'hw.l3cachesize'. Detail: [errno 1] Operation not permitted
+/Volumes/Temp/tmp/RtmpKxlZl3/R.INSTALL104a432591603/arrow/tools/cpp/src/arrow/util/cpu_info.cc:239: IOError: sysctlbyname failed for 'hw.optional.neon'. Detail: [errno 1] Operation not permitted
+NOTE: 136/3 fixed-effects (1,270 observations) removed because of only 0 outcomes or singletons.
+NOTE: 136/3 fixed-effects (1,270 observations) removed because of only 0 outcomes or singletons.
+Wrote /Users/kmunevar/Dropbox/Voting on Bonds/Code/R/Clean/output/revision_tables/media_coverage_dpc.tex

@@ -4,6 +4,7 @@ rm(list = ls())
 library(data.table)
 
 root <- '/Users/kmunevar/Dropbox/Voting on Bonds'
+source(file.path(root, 'Code/R/Clean/border_pair_definitions.R'))
 overleaf_tbl_dir <- '/Users/kmunevar/Dropbox/Apps/Overleaf/Voting on bonds/tables/revision_tables'
 
 panel_file <- file.path(
@@ -178,6 +179,7 @@ city_year_panel <- panel[
 ]
 
 border <- fread(border_file)
+border <- filter_paper_border_pairs(border)
 border[, seed_issuer_id := as.integer(as.numeric(seed_issuer_id))]
 border <- border[
   ,
@@ -225,8 +227,7 @@ balance_labels <- c(
 
 border_table_data <- city_year_panel[
   border_sample == 1 &
-    !is.na(group) &
-    group != 'Rhode Island/Massachusetts'
+    !is.na(group)
 ]
 full_table_data <- city_year_panel
 

@@ -6,6 +6,7 @@ p_load(data.table, dplyr, stargazer, DescTools, arrow, glue, lfe, ggplot2, gridE
 source('/Users/kmunevar/Dropbox/Voting on Bonds/Code/R/Clean/modify_etable_rounding.R')
 source('/Users/kmunevar/Dropbox/Voting on Bonds/Code/R/Clean/tax_privilege_definitions.R')
 source('/Users/kmunevar/Dropbox/Voting on Bonds/Code/R/Clean/state_policy_definitions.R')
+source('/Users/kmunevar/Dropbox/Voting on Bonds/Code/R/Clean/border_pair_definitions.R')
 tbl_dir <- '/Users/kmunevar/Dropbox/Voting on Bonds/Code/R/Clean/output/revision_tables'
 
 #----------------------------
@@ -61,6 +62,7 @@ full_sample <- data
 full_sample <- full_sample[insample == 1]
 # load border state issuers 
 border_state = fread('~/Dropbox/Voting on Bonds/Data/Clean_Intermediate/Border States/Border Matches All Mergent Data Expanded Set Buffer 100000.csv')
+border_state = filter_debt_yield_border_pairs(border_state)
 border_state = unique(border_state[, .(state, seed_issuer, group, category)])
 # only look at no revenue vote matches
 #border_state <- border_state[category != 'grey']
@@ -68,8 +70,8 @@ border_state[, border_sample := 1]
 data <- border_state[data, on = .(state, seed_issuer)]
 #data[state == 'LA', state_ltgo_allowed := 0]
 issuer_lvl_all <- data[border_sample == 1]
-#issuer_lvl_all <- issuer_lvl_all[group %in% all_border_states]
-issuer_lvl_all <- issuer_lvl_all[!is.na(group) & group != 'Rhode Island/Massachusetts']
+issuer_lvl_all <- issuer_lvl_all[!is.na(group)]
+assert_debt_yield_border_pairs(issuer_lvl_all)
 
 #----------------------------
 # Descriptives - full sample
@@ -526,7 +528,7 @@ writeLines(modified_output, paste0(tbl_dir, '/yield_spread_utgo_only.tex'))
 # Regressions - border state
 #----------------------------
 
-fixed_border <- issuer_lvl_all[!(group %in% c('Ohio/Kentucky', 'Michigan/Wisconsin'))]
+fixed_border <- issuer_lvl_all
 fixed_border[, state_year := interaction(state, year, drop = TRUE)]
 
 
@@ -967,9 +969,9 @@ writeLines(modified_output, file.path(tbl_dir, 'issuer_aggregate_debt_stock_ppml
 #----------------------------
 # Border-state analogue
 #----------------------------
-# The point-in-time table excludes the RI/MA and ME/NH groups. Keep the same
-# border pairs here; unlike the older aggregate table, do not drop OH/KY or MI/WI.
-issuer_border_comparable <- issuer_lvl_all[group != 'Maine/New Hampshire']
+# Debt-choice and yield-spread border tables use the same restricted six-pair
+# universe as the 2017 point-in-time design.
+issuer_border_comparable <- issuer_lvl_all
 
 issuer_border_choice <- feols(
   frac_utgo ~ city_go_vote + ln_gdp + ln_pop + ln_pers_inc +
@@ -1232,7 +1234,7 @@ writeLines(c(
   '\\begin{table}[H]\\centering',
   '\\caption{\\textbf{Debt Choice and Aggregate Yields: Full-Period Border-State Issuer Aggregates}}',
   '\\label{tab:debt_choice_border_state_issuer_aggregate}',
-  '\\parbox{\\textwidth}{This table repeats the point-in-time border-state specifications using debt issued by each issuer over the full 2000--2020 sample. Column 3 uses total Mergent GO plus revenue debt rather than Census debt. State-border fixed effects are included and standard errors are clustered by state-year; year is fixed at 2001 in this issuer-level cross section, so these clusters coincide with state clusters.}',
+  '\\parbox{\\textwidth}{This table repeats the point-in-time border-state specifications using debt issued by each issuer over the full 2000--2020 sample and the same six state-border pairs as the 2017 point-in-time design. Column 3 uses total Mergent GO plus revenue debt rather than Census debt. State-border fixed effects are included and standard errors are clustered by state-year; year is fixed at 2001 in this issuer-level cross section, so these clusters coincide with state clusters.}',
   '\\end{table}',
   '\\input{tables/clean/raw/issuer_aggregate_border_state}'
 ), file.path(processed_dir, 'debt_choice_border_state_issuer_aggregate.tex'))

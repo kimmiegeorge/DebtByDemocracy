@@ -20,6 +20,16 @@ input_dir_recovered = os.path.expanduser('~/Dropbox/Voting on Bonds/Data/Website
 data_dir = '~/Dropbox/Voting on Bonds/Data'
 clean_data_dir = '/Users/kmunevar/Dropbox/Voting on Bonds/Data/Clean_Intermediate'
 os.makedirs(os.path.expanduser(f'{clean_data_dir}/Websites'), exist_ok=True)
+project_root = next(
+    parent for parent in Path(__file__).resolve().parents
+    if (parent / 'Code/Config/border_state_pairs.csv').exists()
+)
+paper_border_pairs = (
+    pl.read_csv(project_root / 'Code/Config/border_state_pairs.csv')
+    .filter(pl.col('include_in_paper') == 1)
+    .get_column('group')
+    .to_list()
+)
 
 print("="*70)
 print("Creating Variables from Combined WBM Data")
@@ -396,6 +406,7 @@ sample_issuers2 = pl.read_csv(
 obs_sample = pl.concat([sample_issuers1, sample_issuers2]).unique()
 obs = pl.read_csv('~/Dropbox/Voting on Bonds/Data/Websites/Border States Website Data/Expanded Border Matches Issuers Website Collected 20251008.csv')
 obs = (obs
+       .filter(pl.col('group').is_in(paper_border_pairs))
        .filter(pl.col('City Website').is_in(obs_sample['URL'].to_list())))
 
 # Refresh website seed IDs from the current clean border sample. The website
@@ -404,6 +415,7 @@ obs = (obs
 border_seed_lookup = (
     pl.read_csv(f'{clean_data_dir}/Border States/Border Matches All Mergent Data Expanded Set Buffer 100000.csv',
                 infer_schema_length=10000)
+    .filter(pl.col('group').is_in(paper_border_pairs))
     .select(['seed_issuer', 'seed_issuer_id'])
     .with_columns([
         pl.col('seed_issuer').cast(pl.Utf8).str.strip_chars().str.to_uppercase().alias('seed_issuer_key'),

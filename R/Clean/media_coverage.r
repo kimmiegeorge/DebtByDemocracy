@@ -5,6 +5,7 @@ library(pacman)
 p_load(data.table, dplyr, stargazer, DescTools, arrow, glue, lfe, ggplot2, gridExtra, sandwich, zoo, fixest, haven, xtable)
 source('/Users/kmunevar/Dropbox/Voting on Bonds/Code/R/Clean/modify_etable_rounding.R')
 source('/Users/kmunevar/Dropbox/Voting on Bonds/Code/R/Clean/state_policy_definitions.R')
+source('/Users/kmunevar/Dropbox/Voting on Bonds/Code/R/Clean/border_pair_definitions.R')
 tbl_dir <- "/Users/kmunevar/Dropbox/Voting on Bonds/Code/R/Clean/output/revision_tables"
 data_wd <- "~/Dropbox/Voting on Bonds/Data/"
 clean_data_wd <- "~/Dropbox/Voting on Bonds/Data/Clean_Intermediate/"
@@ -83,10 +84,7 @@ border_articles[, lag_issuance_ym_id := shift(issuance_year_month_id, 1), .(seed
 border_articles[, diff := issuance_year_month_id - lag_issuance_ym_id]
 border_articles[, bond_prior_12 := ifelse(!is.na(diff) & diff <=  12, 1, 0)]
 
-#border_articles <- border_articles[group %in% all_border_states]
-#border_articles <- border_articles[!(group %in% c('Missouri/Kentucky', 'Missouri/Tennessee', 'Rhode Island/Massachusetts'))]
-
-border_articles <- border_articles[!(group %in% c('Rhode Island/Massachusetts'))]
+border_articles <- filter_paper_border_pairs(border_articles)
 border_articles[, state_year := interaction(state, year, drop = TRUE)]
 
 
@@ -94,8 +92,23 @@ border_articles[, log_sources := log(1+unique_sources_12)]
 issuance_lvl[, log_sources := log(1+unique_sources_12)]
 #_______________Descriptives________________
 
-border_articles[, total_articles_12_0_win := Winsorize(total_rp_articles_12_0, val = quantile(total_rp_articles_12_0, probs = c(0.01, 0.99)))]
-issuance_lvl[, total_articles_12_0_win := Winsorize(total_rp_articles_12_0, val = quantile(total_rp_articles_12_0, probs = c(0.01, 0.99)))]
+# Define the winsorized media outcome once from the full analysis sample and
+# apply the same integer-valued empirical percentile caps to both samples.
+# This keeps the dependent variable comparable across the full-sample and
+# border-state columns.
+media_article_caps <- quantile(
+  issuance_lvl[go_unlim_bond_issuance == 1 & rolling_sum_monthly_article_count_12 > 0, total_rp_articles_12_0],
+  probs = c(0.01, 0.99),
+  type = 1
+)
+issuance_lvl[, total_articles_12_0_win := Winsorize(
+  total_rp_articles_12_0,
+  val = media_article_caps
+)]
+border_articles[, total_articles_12_0_win := Winsorize(
+  total_rp_articles_12_0,
+  val = media_article_caps
+)]
 
 desc <- issuance_lvl[go_unlim_bond_issuance == 1 & rolling_sum_monthly_article_count_12 > 0, .(city_go_vote, total_articles_12_0_win,
                             bond_prior_12, log_sources, ln_amount,
@@ -121,6 +134,13 @@ colnames(desc_col) <- c("Variable", "Unit", "Mean", "Std", "Min", "P1", "Median"
 
 desc_col[, Variable := c('Vote', 'Total Articles - 12mo', 'Bond Issuance - 12mo', 'Num Sources', 'Amount',
                          'County ln(GDP)', 'County ln(Pop)', 'County ln(Pers. Inc)')]
+
+# Report empirical integer percentiles for the count variable. Other variables
+# retain R's default interpolated quantiles.
+desc_col[Variable == 'Total Articles - 12mo', `:=`(
+  P1 = quantile(desc$total_articles_12_0_win, probs = 0.01, na.rm = TRUE, type = 1),
+  P99 = quantile(desc$total_articles_12_0_win, probs = 0.99, na.rm = TRUE, type = 1)
+)]
 
 # Round numeric columns to 2 decimal places
 desc_col[, Mean := round(as.numeric(Mean), 2)]

@@ -4,6 +4,7 @@ rm(list = ls())
 library(data.table)
 
 root <- '/Users/kmunevar/Dropbox/Voting on Bonds'
+source(file.path(root, 'Code/R/Clean/border_pair_definitions.R'))
 census_dir <- file.path(root, 'Data/Census COG Finance')
 out_dir <- file.path(root, 'Results/R5 Balance')
 overleaf_tbl_dir <- '/Users/kmunevar/Dropbox/Apps/Overleaf/Voting on bonds/tables/revision_tables'
@@ -145,6 +146,7 @@ balance_data[, outstanding_debt_mil := total_end_debt_outstanding_dollars / 1e6]
 balance_data[, population_thou := population / 1e3]
 
 border <- fread(border_file)
+border <- filter_paper_border_pairs(border)
 border[, seed_issuer_id := as.integer(as.numeric(seed_issuer_id))]
 border <- unique(border[, .(seed_issuer_id, border_sample = 1L)])
 balance_data <- border[
