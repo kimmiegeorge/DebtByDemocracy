@@ -1,0 +1,36 @@
+\begingroup
+\centering
+\begin{tabular*}{\textwidth}{@{\extracolsep{\fill}}lcccc}
+   \toprule
+    & \multicolumn{2}{c}{Increase in Bond Text} & \multicolumn{2}{c}{Bond Coverage}\\
+   \cmidrule(lr){2-3}\cmidrule(lr){4-5}
+                                              & (1)           & (2)           & (3)         & (4)\\
+   \midrule
+   Election Year                              & 0.217$^{***}$ & 0.213$^{***}$ &             &   \\
+                                              & (5.51)       & (5.30)       &             &   \\
+   Prior Rejection                            & 0.085$^{**}$  & 0.076$^{*}$   & -0.009      & -0.009\\
+                                              & (2.29)       & (1.95)       & (-0.56)    & (-0.54)\\
+   Election Year $\times$ Prior Rejection     & 0.038         & 0.043         &             &   \\
+                                              & (0.45)       & (0.50)       &             &   \\
+   Bond Issuance Window                       &               & 0.021         &             & 0.019$^{*}$\\
+                                              &               & (0.92)       &             & (1.84)\\
+   County ln(GDP)                             &               & -0.033        &             & 0.022\\
+                                              &               & (-0.30)      &             & (1.00)\\
+   County ln(Pop)                             &               & -0.078        &             & 0.051\\
+                                              &               & (-0.34)      &             & (1.17)\\
+   County ln(Pers. Inc)                       &               & 0.344$^{**}$  &             & -0.055\\
+                                              &               & (2.02)       &             & (-1.37)\\
+   Election [-3, 0]                           &               &               & 0.026$^{*}$ & 0.025$^{*}$\\
+                                              &               &               & (1.84)     & (1.81)\\
+   Election [-3, 0] $\times$ Prior Rejection  &               &               & 0.026       & 0.027\\
+                                              &               &               & (1.12)     & (1.13)\\
+   \hline
+   N                               & 2,078         & 2,078         & 32,208      & 32,208\\
+   Adj. R$^2$                             & 0.099         & 0.100         & 0.209       & 0.210\\
+   City FE                                    & Yes           & Yes           & Yes         & Yes\\
+   Year FE                                    & Yes           & Yes           & No          & No\\
+   Year-Month FE                              & No            & No            & Yes         & Yes\\
+   Cluster              & County & County & County & County\\
+   \bottomrule
+\end{tabular*}
+\par\endgroup
