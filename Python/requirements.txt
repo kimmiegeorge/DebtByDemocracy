@@ -54,4 +54,4 @@ webencodings==0.5.1
 wrds==3.2.0
 numpy-financial
 yfinance
-
+statsmodels==0.14.5
