@@ -1,11 +1,11 @@
-# ravenpack media coverage tests 
+# 02: RavenPack media coverage results (Table 3; also Table 1 inputs)
 rm(list = ls())
 #---------------------------------------
 library(pacman)
 p_load(data.table, dplyr, stargazer, DescTools, arrow, glue, lfe, ggplot2, gridExtra, sandwich, zoo, fixest, haven, xtable)
-source('/Users/kmunevar/Dropbox/Voting on Bonds/Code/R/Clean/modify_etable_rounding.R')
-source('/Users/kmunevar/Dropbox/Voting on Bonds/Code/R/Clean/state_policy_definitions.R')
-source('/Users/kmunevar/Dropbox/Voting on Bonds/Code/R/Clean/border_pair_definitions.R')
+source('/Users/kmunevar/Dropbox/Voting on Bonds/Code/R/Clean/00_modify_etable_rounding.R')
+source('/Users/kmunevar/Dropbox/Voting on Bonds/Code/R/Clean/00_state_policy_definitions.R')
+source('/Users/kmunevar/Dropbox/Voting on Bonds/Code/R/Clean/00_border_pair_definitions.R')
 tbl_dir <- "/Users/kmunevar/Dropbox/Voting on Bonds/Code/R/Clean/output/revision_tables"
 data_wd <- "~/Dropbox/Voting on Bonds/Data/"
 clean_data_wd <- "~/Dropbox/Voting on Bonds/Data/Clean_Intermediate/"
@@ -262,11 +262,6 @@ vars <- c(
 
 table_out <- diff_table(issuance_lvl[go_unlim_bond_issuance == 1 & rolling_sum_monthly_article_count_12 > 0], "city_go_vote", vars)
 
-# View formatted table
-print(table_out[, .(variable, mean_0, mean_1, diff_fmt)])
-
-
-
 diff_tbl <- table_out[, .(
   Variable = c(
     "Total Articles - 12mo", "Bond Issuance - 12mo", "Num Sources", "Amount",
@@ -322,24 +317,20 @@ r1 <- fixest::fepois(total_articles_12_0_win ~city_go_vote + bond_prior_12 + log
                         ln_amount | issuance_year_month_id + purp_broad,
                       data = issuance_lvl[go_unlim_bond_issuance == 1 & rolling_sum_monthly_article_count_12 > 0 ], 
                       vcov = vcov_cluster(~state))
-summary(r1)
 r1b <- fixest::fepois(total_articles_12_0_win ~city_go_vote  + bond_prior_12 + log_sources + ln_amount + 
                        ln_gdp + ln_pop + ln_pers_inc | issuance_year_month_id + purp_broad,
                      data = issuance_lvl[go_unlim_bond_issuance == 1 & rolling_sum_monthly_article_count_12 > 0 ], 
                      vcov = vcov_cluster(~state))
-summary(r1b)
 
 r2 <- fixest::fepois(total_articles_12_0_win ~city_go_vote + bond_prior_12 + log_sources + 
                         ln_amount | issuance_year_month_id + group + purp_broad,
                       data = border_articles[go_unlim_bond_issuance == 1 & rolling_sum_monthly_article_count_12 > 0], 
                       vcov = vcov_cluster(~state_year))
-summary(r2)
 
 r2b <- fixest::fepois(total_articles_12_0_win ~city_go_vote  + bond_prior_12 + log_sources + ln_amount +
                        ln_gdp + ln_pop + ln_pers_inc | issuance_year_month_id + group + purp_broad,
                      data = border_articles[(go_unlim_bond_issuance == 1) & rolling_sum_monthly_article_count_12 > 0], 
                      vcov = vcov_cluster(~state_year))
-summary(r2b)
 
 
 
@@ -403,30 +394,6 @@ modified_output <- add_media_sample_headers(modified_output)
 modified_output <- add_panel(modified_output, 'Panel B: Regression analyses')
 
 writeLines(modified_output, paste0(tbl_dir, '/media_coverage.tex'))
-
-
-
-
-#------------- Plot -----------------
-event_data = fread(paste0(clean_data_wd, 'News/City_Month_DF_For_Event_Plot_GO_Only.csv'))
-event_data[, quarter := ((event_month + 24) %/% 3) + 1]
-event_data[, quarter := quarter - 9]
-event_data_quarter = event_data[, list(rp_article_count = mean(rp_article_count)), .(city_go_vote, quarter)]
-
-data_city_0 = event_data[city_go_vote == 0]
-data_city_1 = event_data[city_go_vote == 1]
-#loadfonts()
-plot = ggplot() +                                                                                                         
-  geom_line(data = data_city_0[event_month %in% c(-12:12)], aes(x = event_month, y = rp_article_count, color = "No"), size = 1.25) +                                                                                                 
-  geom_line(data = data_city_1[event_month %in% c(-12:12)], aes(x = event_month, y = rp_article_count, color = "Yes"), size = 1.25) +                                                                                                 
-  labs(x = "Event Month", y = "Monthly Article Count", title = "Article Counts Relative to Debt Issuance") +              
-  #ylim(0, 0.2) +                                                                                                         
-  scale_color_manual(values = c("skyblue2", "salmon2"), name = "Vote") +                                          
-  theme_minimal()
-
-ggsave(paste0(tbl_dir, "/article_counts.png"), plot = plot, width = 7, height = 5, dpi = 300)
-
-
 #===============================
 # super majority 
 #===============================
@@ -434,12 +401,10 @@ r1 <- fixest::fepois(total_articles_12_0_win ~city_go_vote + super_majority + bo
                         ln_amount | issuance_year_month_id + purp_broad,
                       data = issuance_lvl[go_unlim_bond_issuance == 1 & rolling_sum_monthly_article_count_12 > 0], 
                       vcov = vcov_cluster(~state))
-summary(r1)
 r1b <- fixest::fepois(total_articles_12_0_win ~city_go_vote + super_majority + bond_prior_12 + log_sources + ln_amount + 
                        ln_gdp + ln_pop + ln_pers_inc | issuance_year_month_id + purp_broad,
                      data = issuance_lvl[go_unlim_bond_issuance == 1 & rolling_sum_monthly_article_count_12 > 0], 
                      vcov = vcov_cluster(~state))
-summary(r1b)
 
 
 

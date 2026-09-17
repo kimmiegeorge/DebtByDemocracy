@@ -1,13 +1,13 @@
-# DPC media coverage tests
+# 08: DPC media coverage robustness (Online Appendix)
 rm(list = ls())
 
 # --------------------------------------
 # Libraries and paths
 # --------------------------------------
 library(pacman)
-p_load(data.table, DescTools, arrow, fixest, ggplot2, haven, xtable)
+p_load(data.table, DescTools, arrow, fixest, haven, xtable)
 
-source('/Users/kmunevar/Dropbox/Voting on Bonds/Code/R/Clean/modify_etable_rounding.R')
+source('/Users/kmunevar/Dropbox/Voting on Bonds/Code/R/Clean/00_modify_etable_rounding.R')
 
 tbl_dir <- "/Users/kmunevar/Dropbox/Voting on Bonds/Code/R/Clean/output/revision_tables"
 data_wd <- "~/Dropbox/Voting on Bonds/Data/"
@@ -25,7 +25,7 @@ issuance_lvl <- as.data.table(
   read_parquet(paste0(clean_data_wd, 'DPC Data/News/Issuance_Lvl_DPC_News.gzip'))
 )
 
-# Keep the same county identifier convention used in media_coverage.r.
+# Keep the same county identifier convention used in 02_media_coverage.R.
 full_data <- as.data.table(
   read_dta(
     paste0(data_wd, 'Mergent/Clean/260716_city_cusiplevel_statereq_purpose_yieldspread.dta'),
@@ -331,46 +331,3 @@ writeLines(
   ),
   output_file
 )
-
-cat('Wrote ', output_file, '\n', sep = '')
-
-
-# ===============================================================================
-# DPC article counts relative to debt issuance
-# ===============================================================================
-
-event_data <- fread(
-  paste0(
-    clean_data_wd,
-    'DPC Data/News/DPC_City_Month_DF_For_Event_Plot_Unlim_GO_Only.csv'
-  )
-)
-
-article_counts_dpc <- ggplot(
-  event_data,
-  aes(
-    x = event_month,
-    y = dpc_article_count_win,
-    color = factor(city_go_vote, levels = c(0, 1), labels = c('No', 'Yes'))
-  )
-) +
-  geom_line(linewidth = 1.25) +
-  labs(
-    x = 'Event Month',
-    y = 'Winsorized Monthly Article Count',
-    title = 'DPC Article Counts Relative to Debt Issuance',
-    color = 'Vote'
-  ) +
-  scale_color_manual(values = c('No' = 'skyblue2', 'Yes' = 'salmon2')) +
-  theme_minimal()
-
-figure_file <- paste0(tbl_dir, '/article_counts_dpc.png')
-ggsave(
-  figure_file,
-  plot = article_counts_dpc,
-  width = 7,
-  height = 5,
-  dpi = 300
-)
-
-cat('Wrote ', figure_file, '\n', sep = '')

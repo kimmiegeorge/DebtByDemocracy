@@ -1,9 +1,9 @@
-# TX election outcome tests
+# 03: Texas election timing and outcome results (Tables 4 and 5; also Table 1 inputs)
 #---------------------------------------
 rm(list = ls())
 library(pacman)
 p_load(data.table, dplyr, stargazer, DescTools, arrow, glue, lfe, ggplot2, gridExtra, sandwich, zoo, fixest, haven, xtable)
-source('/Users/kmunevar/Dropbox/Voting on Bonds/Code/R/Clean/modify_etable_rounding.R')
+source('/Users/kmunevar/Dropbox/Voting on Bonds/Code/R/Clean/00_modify_etable_rounding.R')
 tbl_dir <- "/Users/kmunevar/Dropbox/Voting on Bonds/Code/R/Clean/output/revision_tables"
 data_wd <- "~/Dropbox/Voting on Bonds/Data/"
 clean_data_wd <- "~/Dropbox/Voting on Bonds/Data/Clean_Intermediate/"
@@ -17,33 +17,6 @@ city_month <- fread(paste0(clean_data_wd, 'TX/City_Month_Elections_News_WithFail
 election <- fread(paste0(clean_data_wd, 'TX/News/Election_Level_With_News_WithFailed.csv'))
 election_brb_all <- copy(election)
 election_brb_all[, abs_vote_margin := abs(vote_margin)]
-
-county_demo_vars <- c('ln_county_pop_prior',
-                      'ln_county_gdp_prior',
-                      'ln_county_pers_inc_prior',
-                      'ln_county_percap_inc_prior',
-                      'ln_county_employment_prior')
-
-summarize_county_demo_missingness <- function(dt, label) {
-  demo_vars <- intersect(county_demo_vars, names(dt))
-  if (length(demo_vars) == 0) {
-    message(label, ': no county demographic variables found.')
-    return(invisible(NULL))
-  }
-
-  out <- dt[, c(list(N = .N,
-                    missing_any_county_demo = sum(Reduce(`|`, lapply(.SD, is.na)))),
-                setNames(lapply(.SD, function(x) sum(is.na(x))),
-                         paste0('missing_', demo_vars))),
-            by = year,
-            .SDcols = demo_vars][order(year)]
-
-  out[, pct_missing_any_county_demo := round(missing_any_county_demo / N, 3)]
-
-  message('\nCounty demographic missingness: ', label)
-  print(out[, .(year, N, missing_any_county_demo, pct_missing_any_county_demo)])
-  invisible(out)
-}
 
 first_nonmissing <- function(x) {
   x <- x[!is.na(x)]
@@ -76,11 +49,6 @@ actual_issue_city_year <- build_actual_issue_city_year(data_wd)
 
 #county_demo_source <- as.data.table(read_dta(paste0(data_wd, 'BEA/countydemos_2001_2022.dta')))
 county_demo_source <- as.data.table(read_dta(paste0(data_wd, 'BEA/countydemos_1999_2026.dta')))
-message('\nBEA county demographic source coverage:')
-print(county_demo_source[, .(min_year = min(year, na.rm = TRUE),
-                             max_year = max(year, na.rm = TRUE),
-                             county_years = .N,
-                             counties = uniqueN(fips))])
 
 updated_county_controls <- copy(county_demo_source)
 updated_county_controls[, fips := format_fips(fips)]
@@ -168,19 +136,6 @@ add_updated_county_controls <- function(dt,
   return(dt)
 }
 
-election_missing_raw <- summarize_county_demo_missingness(election, 'raw election-level media file')
-city_month_missing_raw <- summarize_county_demo_missingness(city_month, 'raw city-month media file')
-
-election_missing_sources <- summarize_county_demo_missingness(
-  election[unique_sources_12m_prior > 0],
-  'election-level media file after unique_sources_12m_prior > 0'
-)
-
-city_month_missing_sources <- summarize_county_demo_missingness(
-  city_month[seed_issuer %in% election[unique_sources_12m_prior > 0]$seed_issuer],
-  'city-month media file restricted to issuers with covered elections'
-)
-
 media_election_fips_map <- city_month[!is.na(fips),
                                       .(fips = first_nonmissing(fips)),
                                       by = .(seed_issuer_key = tolower(seed_issuer))]
@@ -190,11 +145,6 @@ election <- add_updated_county_controls(election,
                                         updated_county_controls,
                                         fips_map = media_election_fips_map,
                                         demo_year_offset = -1L)
-election_missing_updated <- summarize_county_demo_missingness(
-  election,
-  'raw election-level media file after updated BEA prior-year merge'
-)
-
 city_month <- city_month[seed_issuer %in% election[unique_sources_12m_prior > 0]$seed_issuer &!is.na(ln_county_employment_prior)]
 #election <- election[year >= 2010 & unique_sources_12m_prior > 0]
 election <- election[unique_sources_12m_prior > 0]
@@ -471,13 +421,9 @@ writeLines(desc_table_output, paste0(tbl_dir, '/election_descriptives.tex'))
 
 
 r0 <- feols(failed ~ coverage_3|year + purp_broad_new, data = election[unique_sources_12m_prior > 0], cluster = ~County)
-summary(r0)
 r1 <- feols(failed ~ coverage_3 + ln_Amount + unique_sources_12m_prior + ln_county_gdp_prior + ln_county_pop_prior +  ln_county_pers_inc_prior |year + purp_broad_new, data = election[ unique_sources_12m_prior > 0], cluster = ~County)
-summary(r1)
 r2 <- feols(abs_vote_margin  ~ coverage_3 |year + purp_broad_new, data = election[unique_sources_12m_prior > 0], cluster = ~County)
-summary(r2)
 r3 <- feols(abs_vote_margin ~ coverage_3  + ln_Amount + unique_sources_12m_prior + ln_county_gdp_prior + ln_county_pop_prior +  ln_county_pers_inc_prior|year + purp_broad_new, data = election[unique_sources_12m_prior > 0], cluster = ~County)
-summary(r3)
 
 
 
@@ -526,9 +472,7 @@ city_month[, rp_article_count_win := Winsorize(rp_article_count, val = quantile(
 
 
 r1 <- feols(covered ~ election_window|seed_issuer_id + ym_id, data = city_month[seed_issuer %in% election[unique_sources_12m_prior > 0]$seed_issuer & !is.na(ln_county_employment_prior)], cluster = ~fips)
-summary(r1)
 r2 <- feols(covered ~ election_window + issuance_window + ln_county_gdp_prior + ln_county_pop_prior +  ln_county_pers_inc_prior |seed_issuer_id + ym_id, data = city_month[seed_issuer %in% election[unique_sources_12m_prior > 0]$seed_issuer ], cluster = ~fips)
-summary(r2)
 
 
 
@@ -570,47 +514,6 @@ modified_output <- add_panel(modified_output, 'Panel B: Elections and media cove
 
 writeLines(modified_output, paste0(tbl_dir, '/tx_city_month_reg.tex'))
 
-
-
-
-# ===============================================================================
-# descriptives on elections at the union of website and media samples
-# ===============================================================================
-#election_website <- fread(paste0(clean_data_wd, 'Websites/Texas/election_level_website_data.csv'))
-election_website <- fread(paste0(clean_data_wd, 'Websites/Texas/election_level_website_data.csv'))
-election_website[, abs_vote_margin := abs(vote_margin)]
-election_website <- election_website[total_subs > 10]
-
-election_media <- election[, .(GovernmentName, ElectionDate, PropNumber, failed, abs_vote_margin)]
-election_website <- election_website[, .(GovernmentName, ElectionDate, PropNumber, failed, abs_vote_margin)]
-
-election_all <- rbindlist(list(election_media, election_website))
-election_all <- unique(election_all)
-
-
-
-desc <- election_all[, .(failed, 
-                         abs_vote_margin)]
-
-desc_col <- desc[, lapply(.SD, function(col) {
-  stats <- c(Mean = mean(col, na.rm = TRUE),
-             Std = sd(col, na.rm = TRUE),
-             Min = min(col, na.rm = TRUE),
-             p1 = quantile(col, probs = 0.01, na.rm = TRUE),
-             Median = median(col, na.rm = TRUE),
-             p99 = quantile(col, probs = 0.99, na.rm = TRUE),
-             Max = max(col, na.rm = TRUE),
-             N = sum(!is.na(col)))
-  return(stats)
-}), .SDcols = colnames(desc)]
-desc_col <- data.table::transpose(desc_col, keep.names = "variable")
-colnames(desc_col) <- c("variable", "Mean", "Std", "Min", "P1", "Median", "P99", "Max", "N")
-
-desc_col[, variable := c('Failed', 'Margin')]
-stargazer(desc_col, summary = F,type = 'latex', no.space = T, digits = 2,
-          rownames = F, table.placement = "H", out = paste0(tbl_dir ,'/Election Level Desc.tex'))
-
-
 # ===============================================================================
 # DATA LOADING AND PREPARATION - WEBSITES
 # ===============================================================================
@@ -621,30 +524,10 @@ election <- fread(paste0(clean_data_wd, 'Websites/Texas/election_level_website_d
 election[, fips := format_fips(fips)]
 election <- fill_missing_fips_from_tx_county(election, tx_county_fips_map)
 
-website_election_missing_raw <- summarize_county_demo_missingness(
-  election[total_subs == 50],
-  'raw website election-level file, total_subs == 50'
-)
-
-if (all(c('gdp', 'gdp_right', 'ln_county_gdp_prior') %in% names(election))) {
-  message('\nWebsite file GDP collision diagnostic:')
-  print(election[total_subs == 50,
-                 .(N = .N,
-                   missing_ln_county_gdp_prior = sum(is.na(ln_county_gdp_prior)),
-                   has_gdp_right_when_ln_county_gdp_missing = sum(is.na(ln_county_gdp_prior) & !is.na(gdp_right)),
-                   has_unsuffixed_gdp_when_ln_county_gdp_missing = sum(is.na(ln_county_gdp_prior) & !is.na(gdp))),
-                 by = year][order(year)])
-}
-
 election <- add_updated_county_controls(election,
                                         updated_county_controls,
                                         demo_year_offset = -1L)
 election <- fill_missing_county_controls_earliest(election, updated_county_controls)
-website_election_missing_updated <- summarize_county_demo_missingness(
-  election[total_subs == 50],
-  'raw website election-level file after updated BEA prior-year merge, total_subs == 50'
-)
-
 # ===============================================================================
 # REGRESSION - WEBSITE TIME SERIES
 # ===============================================================================
@@ -696,11 +579,9 @@ website_city_year[, positive_delta_bond_debt1 := ifelse(delta_bond_debt_count1 >
 
 r1 <- feols(positive_delta_bond_debt1 ~ election | seed_issuer + year,
                     data = website_city_year[!is.na(fips)], cluster = ~fips)
-summary(r1)
 
 r2 <- feols(positive_delta_bond_debt1 ~ election + issuance_window + ln_county_gdp_prior + ln_county_pop_prior + ln_county_pers_inc_prior | seed_issuer + year,
                     data = website_city_year[!is.na(fips)], cluster = ~fips)
-summary(r2)
 
 table_call <- etable(r1, r2,
                      coefstat = 'tstat',
@@ -736,46 +617,65 @@ modified_output <- add_panel(modified_output, 'Panel A: Elections and website di
 writeLines(modified_output, paste0(tbl_dir, '/tx_website_time_series_reg.tex'))
 
 
-r1 <- feols(positive_delta_bond_debt ~ election | seed_issuer + year,
-                    data = website_city_year[!is.na(fips)], cluster = ~fips)
-summary(r1)
+# Response 2: estimate the website-disclosure specification in levels using
+# PPML. Restrict the sample to city-years with 50 processed sub-URLs so Bond
+# Count is measured over comparable website content across observations.
+website_city_year_poisson <- website_city_year[
+  !is.na(fips) & total_subs == 50
+]
 
-r2 <- feols(positive_delta_bond_debt ~ election + issuance_window + ln_county_gdp_prior + ln_county_pop_prior + ln_county_pers_inc_prior | seed_issuer + year,
-                    data = website_city_year[!is.na(fips)], cluster = ~fips)
-summary(r2)
+r1_poisson <- fepois(
+  bond_count ~ election | seed_issuer + year,
+  data = website_city_year_poisson,
+  cluster = ~fips
+)
 
-table_call <- etable(r1, r2,
-                     coefstat = 'tstat',
-                     style.tex = style.tex(main = 'aer', fixef.suffix = ' FE', yesNo = c("Yes", "No")),
-                     fitstat = c('n', 'ar2'), 
-                     se.below = TRUE, 
-                     digits = 3, 
-                     digits.stats = 3,
-                     signif.code = c("***"=0.01, "**"=0.05, "*"=0.10), 
-                     tex = TRUE,
-                     dict = c(positive_delta_bond_debt = 'Increase in Bond Text (2yr)',
-                              election = 'Election Year',
-                              issuance_window = 'Bond Issuance Year',
-                              ln_county_gdp_prior = 'County ln(GDP)',
-                              ln_county_pop_prior = 'County ln(Pop)',
-                              ln_county_pers_inc_prior = 'County ln(Pers. Inc)',
-                              ln_county_employment_prior = 'County ln(Emp)',
-                              seed_issuer = 'City',
-                              year = 'Year'),
-                     placement = 'H',
-                     replace = TRUE)
+r2_poisson <- fepois(
+  bond_count ~ election + issuance_window + ln_county_gdp_prior +
+    ln_county_pop_prior + ln_county_pers_inc_prior | seed_issuer + year,
+  data = website_city_year_poisson,
+  cluster = ~fips
+)
 
+table_call <- etable(
+  r1_poisson, r2_poisson,
+  coefstat = 'tstat',
+  style.tex = style.tex(main = 'aer', fixef.suffix = ' FE', yesNo = c("Yes", "No")),
+  fitstat = c('n', 'pr2'),
+  se.below = TRUE,
+  digits = 3,
+  digits.stats = 3,
+  signif.code = c("***" = 0.01, "**" = 0.05, "*" = 0.10),
+  tex = TRUE,
+  dict = c(
+    bond_count = 'Bond Count',
+    election = 'Election Year',
+    issuance_window = 'Bond Issuance Year',
+    ln_county_gdp_prior = 'County ln(GDP)',
+    ln_county_pop_prior = 'County ln(Pop)',
+    ln_county_pers_inc_prior = 'County ln(Pers. Inc)',
+    seed_issuer = 'City',
+    year = 'Year'
+  ),
+  placement = 'H',
+  replace = TRUE
+)
 
 modified_output <- modify_etable_rounding(
   table_call,
   coef_digits = 3,
   tstat_digits = 2
 )
-
 modified_output <- format_table(modified_output, cluster_level = "County")
-modified_output <- add_panel(modified_output, 'Panel A: Elections and website disclosure over time', ncols = 3)
-
-writeLines(modified_output, paste0(tbl_dir, '/tx_website_time_series_reg_2yr.tex'))
+modified_output <- add_panel(
+  modified_output,
+  'Panel A: Elections and website disclosure over time',
+  ncols = 3
+)
+writeLines(
+  modified_output,
+  paste0(tbl_dir, '/tx_website_time_series_reg_2yr_poisson.tex')
+)
 
 
 
@@ -798,13 +698,9 @@ election[, high_bond_count := ifelse(bond_count > median(bond_count, na.rm = TRU
 
 
 r0 <- feols(failed ~ high_bond_count|year + purp_broad_new, data = election, cluster = ~County, fixef.rm = 'singleton')
-summary(r0)
 r1 <- feols(failed ~ high_bond_count + ln_amount  + ln_county_gdp_prior + ln_county_pop_prior +  ln_county_pers_inc_prior  |year + purp_broad_new, data = election,cluster = ~County,  fixef.rm = 'singleton')
-summary(r1)
 r2 <- feols(abs_vote_margin  ~ high_bond_count |year + purp_broad_new, data = election, cluster = ~County,  fixef.rm = 'singleton')
-summary(r2) 
 r3 <- feols(abs_vote_margin ~ high_bond_count + ln_amount  + ln_county_gdp_prior + ln_county_pop_prior +  ln_county_pers_inc_prior   |year + purp_broad_new, data = election,cluster = ~County,  fixef.rm = 'singleton')
-summary(r3)
 
 
 table_call <- etable(r0, r1, r2, r3,

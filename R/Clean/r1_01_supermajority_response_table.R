@@ -1,16 +1,16 @@
 #!/usr/bin/env Rscript
 
-# Build the response-only R3.b table from the reviewed media-coverage
-# supermajority output. The underlying regression remains in media_coverage.R;
+# R1-01: Build the response-only R3.b table from the reviewed media-coverage
+# supermajority output. The underlying regression remains in 02_media_coverage.R;
 # this script removes the old panel heading and creates a printable wrapper for
-# response.tex.
+# response_1.tex.
 
 args <- commandArgs(trailingOnly = FALSE)
 file_arg <- grep('^--file=', args, value = TRUE)
 script_path <- if (length(file_arg) > 0L) {
   normalizePath(sub('^--file=', '', file_arg[[1L]]), mustWork = TRUE)
 } else {
-  normalizePath('Code/R/Clean/r3b_supermajority_response_table.R', mustWork = TRUE)
+  normalizePath('Code/R/Clean/r1_01_supermajority_response_table.R', mustWork = TRUE)
 }
 
 clean_dir <- dirname(script_path)
@@ -20,7 +20,6 @@ processed_dir <- file.path(clean_dir, 'output', 'processed')
 media_source <- file.path(revision_dir, 'media_coverage_super_majority.tex')
 media_output <- file.path(revision_dir, 'r3b_media_supermajority.tex')
 wrapper_output <- file.path(processed_dir, 'supermajority_media_response.tex')
-compat_output <- file.path(processed_dir, 'r3b_supermajority_information.tex')
 
 required_files <- c(media_source)
 missing_files <- required_files[!file.exists(required_files)]
@@ -28,7 +27,7 @@ if (length(missing_files) > 0L) {
   stop(
     'Missing reviewed supermajority table output(s): ',
     paste(missing_files, collapse = ', '),
-    '. Run websites.R and media_coverage.R first.'
+    '. Run 02_media_coverage.R first.'
   )
 }
 
@@ -77,11 +76,3 @@ wrapper_lines <- c(
 )
 
 writeLines(wrapper_lines, wrapper_output)
-writeLines(
-  '\\input{tables/clean/processed/supermajority_media_response}',
-  compat_output
-)
-
-cat('Wrote ', media_output, '\n', sep = '')
-cat('Wrote ', wrapper_output, '\n', sep = '')
-cat('Wrote ', compat_output, '\n', sep = '')

@@ -1,12 +1,12 @@
+# 01: Website disclosure results (Tables 2 and 4; also Table 1 inputs)
 
 rm(list = ls())
 #---------------------------------------
 library(pacman)
 p_load(data.table, dplyr, stargazer, DescTools, arrow, glue, lfe, ggplot2, gridExtra, sandwich, zoo, fixest, xtable)
 tables_wd <- "/Users/kmunevar/Dropbox/Voting on Bonds/Code/R/Clean/output/revision_tables"
-source('/Users/kmunevar/Dropbox/Voting on Bonds/Code/R/Clean/modify_etable_rounding.R')
-source('/Users/kmunevar/Dropbox/Voting on Bonds/Code/R/Clean/state_policy_definitions.R')
-source('/Users/kmunevar/Dropbox/Voting on Bonds/Code/R/Clean/border_pair_definitions.R')
+source('/Users/kmunevar/Dropbox/Voting on Bonds/Code/R/Clean/00_modify_etable_rounding.R')
+source('/Users/kmunevar/Dropbox/Voting on Bonds/Code/R/Clean/00_border_pair_definitions.R')
 tbl_dir <- "/Users/kmunevar/Dropbox/Voting on Bonds/Code/R/Clean/output/revision_tables"
 
 #---------------------------------------
@@ -18,9 +18,6 @@ data <- data[!is.na(total_subs)]
 data <- data[!is.na(city_go_vote)]
 data <- data[total_subs == 50]
 data <- data[seed_issuer != 'BONDUEL WIS']
-data[, super_majority := as.integer(state %in% super_majority_states)]
-
-
 # Merge the shared full-Mergent end-of-year outstanding-debt panel. The Python
 # builder counts a CUSIP in year t when it was offered by December 31 of t and
 # matures after December 31 of t. Use a composite issuer key because
@@ -33,7 +30,6 @@ data[, issuer_key := paste(
   sep = '|'
 )]
 
-expected_website_years <- nrow(data)
 debt_panel <- fread(
   '/Users/kmunevar/Dropbox/Voting on Bonds/Data/Clean_Intermediate/Mergent/Outstanding Debt/full_mergent_issuer_year_outstanding_debt.csv',
   select = c(
@@ -58,25 +54,6 @@ data <- debt_panel[data, on = .(issuer_key, year_int)]
 if (data[is.na(ln_1p_outstanding_debt_lag1), .N] > 0L) {
   stop('The shared outstanding-debt panel is missing website issuer-years.')
 }
-
-message(sprintf(
-  paste0(
-    'Merged prior-year-end debt for %s website-years and %s issuers; ',
-    '%s issuer-years have zero outstanding debt.'
-  ),
-  format(nrow(data), big.mark = ','),
-  format(uniqueN(data$issuer_key), big.mark = ','),
-  format(data[total_outstanding_debt_lag1 == 0, .N], big.mark = ',')
-))
-
-if (nrow(data) != expected_website_years) {
-  warning(sprintf(
-    'The debt-panel merge produced %s website-years; expected %s.',
-    format(nrow(data), big.mark = ','),
-    format(expected_website_years, big.mark = ',')
-  ))
-}
-
 
 # variable adjustments 
 data[, group := as.factor(group)]
@@ -260,10 +237,6 @@ vars <- c("bond_url", "bond_count",
 
 table_out <- diff_table(data[total_subs == 50], "city_go_vote", vars)
 
-# View formatted table
-print(table_out[, .(variable, mean_0, mean_1, diff_fmt)])
-
-
 diff_tbl <- table_out[, .(
   Variable = c(
     "Bond URLs", "Bond Count",
@@ -320,12 +293,6 @@ diff_table_output <- add_panel(diff_table_output, 'Panel A: Mean values by vote 
 
 # Write to file
 writeLines(diff_table_output, paste0(tables_wd, "/website_diff_means_table.tex"))
-
-fwrite(
-  table_out[variable == 'ln_1p_outstanding_debt_lag1',
-            .(variable, mean_0, mean_1, diff, tstat, pval, n_0, n_1)],
-  paste0(tables_wd, '/website_debt_outstanding_diff_means.csv')
-)
 
 #---------------------------------
 # regs
@@ -387,150 +354,3 @@ modified_output <- format_table(modified_output, cluster_level = "State-Year")
 modified_output <- add_panel(modified_output, 'Panel B: Regression analyses')
 
 writeLines(modified_output, paste0(tables_wd, '/websites_regression.tex'))
-
-
-#---------------------------------
-# Supermajority-state specification
-#---------------------------------
-
-sm_r1 <- fixest::fepois(bond_url ~ city_go_vote + super_majority + ln_1p_outstanding_debt_lag1 +
-                          state_monitor + ln_gdp + ln_pop + ln_pers_inc | group + year,
-                        data = data, cluster = ~state_year)
-sm_r2 <- fixest::fepois(bond_count ~ city_go_vote + super_majority + ln_1p_outstanding_debt_lag1 +
-                          state_monitor + ln_gdp + ln_pop + ln_pers_inc | group + year,
-                        data = data, cluster = ~state_year)
-sm_r3 <- fixest::fepois(fiscal_url ~ city_go_vote + super_majority + ln_1p_outstanding_debt_lag1 +
-                          state_monitor + ln_gdp + ln_pop + ln_pers_inc | group + year,
-                        data = data, cluster = ~state_year)
-sm_r4 <- fixest::fepois(fiscal_count ~ city_go_vote + super_majority + ln_1p_outstanding_debt_lag1 +
-                          state_monitor + ln_gdp + ln_pop + ln_pers_inc | group + year,
-                        data = data, cluster = ~state_year)
-sm_r5 <- fixest::fepois(financial_pdf_urls ~ city_go_vote + super_majority + ln_1p_outstanding_debt_lag1 +
-                          state_monitor + ln_gdp + ln_pop + ln_pers_inc | group + year,
-                        data = data, cluster = ~state_year)
-
-sm_table_call <- etable(
-  sm_r1, sm_r2, sm_r3, sm_r4, sm_r5,
-  coefstat = 'tstat',
-  keep_raw = c('^city_go_vote$', '^super_majority$'),
-  style.tex = style.tex(main = 'aer', fixef.suffix = ' FE', yesNo = c("Yes", "No")),
-  fitstat = c('n', 'pr2'),
-  se.below = TRUE,
-  digits = 3,
-  digits.stats = 3,
-  signif.code = c("***" = 0.01, "**" = 0.05, "*" = 0.10),
-  tex = TRUE,
-  dict = c(
-    bond_url = 'Bond URLs',
-    bond_count = 'Bond Count',
-    fiscal_url = 'Fiscal URLs',
-    fiscal_count = 'Fiscal Count',
-    financial_pdf_urls = 'Financial Docs',
-    city_go_vote = 'Vote',
-    super_majority = 'Supermajority State',
-    group = 'State-Border',
-    year = 'Year'
-  ),
-  placement = 'H',
-  replace = TRUE
-)
-
-sm_modified_output <- modify_etable_rounding(
-  sm_table_call,
-  coef_digits = 3,
-  tstat_digits = 2
-)
-
-sm_modified_output <- format_table(sm_modified_output, cluster_level = "State-Year")
-sm_modified_output <- add_panel(
-  sm_modified_output,
-  'Panel C: Supermajority-state specification',
-  ncols = 6
-)
-
-writeLines(
-  sm_modified_output,
-  paste0(tables_wd, '/websites_regression_super_majority.tex')
-)
-
-
-#---------------------------------
-# Time series: issuance years and website disclosure
-#---------------------------------
-
-website_city_year <- copy(data)
-website_city_year[, year := year_int]
-website_city_year[, state_year := interaction(state, year, drop = TRUE)]
-
-issue_level <- haven::read_dta(
-  '~/Dropbox/Voting on Bonds/Data/Mergent/Clean/260716_city_cusiplevel_statereq_purpose_yieldspread.dta',
-  col_select = c('seed_issuer_id', 'year', 'issue_id', 'go_unlim', 'go_lim')
-)
-issue_level <- as.data.table(issue_level)
-issue_level <- unique(issue_level[, .(seed_issuer_id, year, issue_id, go_unlim, go_lim)])
-issue_level <- unique(issue_level[!is.na(seed_issuer_id) & !is.na(year),
-                                  .(seed_issuer_id, year, issue_id, go_unlim, go_lim)])
-issue_city_year <- issue_level[, .(num_issues_bond_data = uniqueN(issue_id), 
-                                   num_issues_go = uniqueN(issue_id[go_unlim == 1 | go_lim == 1])),
-                               by = .(seed_issuer_id, year)]
-
-website_city_year <- issue_city_year[website_city_year, on = .(seed_issuer_id, year)]
-website_city_year[is.na(num_issues_bond_data), num_issues_bond_data := 0L]
-website_city_year[, issuance_window := ifelse(num_issues_bond_data > 0, 1, 0)]
-website_city_year[, issuance_window_go := ifelse(num_issues_go > 0, 1, 0)]
-website_city_year[is.na(issuance_window_go), issuance_window_go := 0]
-website_city_year[is.na(issuance_window), issuance_window := 0]
-website_city_year[, total_words := bond_count]
-
-website_city_year_lag2 <- website_city_year[, .(seed_issuer,
-                                                year = year + 1L,
-                                                total_words_lag2 = total_words)]
-website_city_year <- website_city_year_lag2[website_city_year, on = .(seed_issuer, year)]
-website_city_year[, delta_bond_debt_count := total_words - total_words_lag2]
-website_city_year[, positive_delta_bond_debt := ifelse(delta_bond_debt_count > 0, 1, 0)]
-
-r1 <- feols(positive_delta_bond_debt ~ issuance_window_go | seed_issuer + year,
-            data = website_city_year[!is.na(total_words_lag2)],
-            cluster = ~state_year)
-
-r2 <- feols(positive_delta_bond_debt ~ issuance_window_go + issuance_window_go:city_go_vote | seed_issuer + year,
-            data = website_city_year[!is.na(total_words_lag2)],
-            cluster = ~state_year)
-
-r3 <- feols(positive_delta_bond_debt ~ issuance_window_go  +
-              state_monitor + ln_gdp + ln_pop + ln_pers_inc | seed_issuer + year,
-            data = website_city_year[!is.na(total_words_lag2) & city_go_vote == 1],
-            cluster = ~state_year)
-
-table_call <- etable(r1, r2, r3,
-                     coefstat = 'tstat',
-                     style.tex = style.tex(main = 'aer', fixef.suffix = ' FE', yesNo = c("Yes", "No")),
-                     fitstat = c('n', 'ar2'),
-                     se.below = TRUE,
-                     digits = 3,
-                     digits.stats = 3,
-                     signif.code = c("***"=0.01, "**"=0.05, "*"=0.10),
-                     tex = TRUE,
-                     dict = c(positive_delta_bond_debt = 'Increase in Bond Text',
-                              issuance_window = 'Bond Issuance Year',
-                              city_go_vote = 'Vote',
-                              `issuance_window:city_go_vote` = 'Bond Issuance Year $\\times$ Vote',
-                              state_monitor = 'State Fiscal Monitor',
-                              ln_gdp = 'County ln(GDP)',
-                              ln_pop = 'County ln(Pop)',
-                              ln_pers_inc = 'County ln(Pers. Inc)',
-                              seed_issuer = 'City',
-                              year = 'Year'),
-                     placement = 'H',
-                     replace = TRUE)
-
-modified_output <- modify_etable_rounding(
-  table_call,
-  coef_digits = 3,
-  tstat_digits = 2
-)
-
-modified_output <- format_table(modified_output, cluster_level = "State-Year")
-modified_output <- add_panel(modified_output, 'Panel A: Issuance years and website disclosure over time', ncols = 4)
-
-writeLines(modified_output, paste0(tables_wd, '/websites_issuance_time_series_reg.tex'))

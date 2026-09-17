@@ -1,4 +1,4 @@
-# Helpers for applying fixed decimal places to etable output. fixest treats a
+# 00: Helpers for applying fixed decimal places to etable output. fixest treats a
 # numeric `digits` argument as significant digits, so `digits = 3` prints 2.35
 # rather than the fixed-decimal value 2.346.
 
@@ -142,7 +142,6 @@ modify_etable_tex_rounding <- function(..., coef_digits = 3, tstat_digits = 2, f
   # Write to final destination if specified
   if (!is.null(file)) {
     writeLines(modified_content, file)
-    cat("Modified table written to:", file, "\n")
   }
   
   # Clean up temp file

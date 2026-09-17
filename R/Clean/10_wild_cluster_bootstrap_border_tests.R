@@ -1,4 +1,4 @@
-# Wild-cluster bootstrap inference for the border-state tests reported in the paper
+# 10: Wild-cluster bootstrap inference (Online Appendix)
 #
 # This script reproduces the current website, border-state media-coverage, 2017
 # point-in-time, and secondary-market trading border specifications. Inference is
@@ -29,10 +29,9 @@ processed_output_dir <- file.path(root, 'Code/R/Clean/output/processed')
 dir.create(output_dir, recursive = TRUE, showWarnings = FALSE)
 dir.create(processed_output_dir, recursive = TRUE, showWarnings = FALSE)
 
-source(file.path(root, 'Code/R/Clean/tax_privilege_definitions.R'))
-source(file.path(root, 'Code/R/Clean/border_pair_definitions.R'))
+source(file.path(root, 'Code/R/Clean/00_tax_privilege_definitions.R'))
+source(file.path(root, 'Code/R/Clean/00_border_pair_definitions.R'))
 
-output_csv <- file.path(output_dir, 'wild_cluster_bootstrap_border_tests.csv')
 output_tex <- file.path(output_dir, 'wild_cluster_bootstrap_border_tests.tex')
 output_processed_tex <- file.path(
   processed_output_dir,
@@ -223,7 +222,6 @@ wild_cluster_score_test <- function(model, data, outcome, controls,
 estimate_specification <- function(data, panel, column, outcome_label, outcome,
                                    controls, fixed_effects, family,
                                    baseline_cluster) {
-  message('Estimating ', panel, ', ', outcome_label, ' ...')
   model <- fit_paper_model(
     data = data,
     outcome = outcome,
@@ -405,7 +403,7 @@ media_data[, log_sources := log1p(unique_sources_12)]
 # Match the media table's outcome definition: calculate the empirical 1st and
 # 99th percentile caps in the full media analysis sample, then apply those same
 # caps to the border-state sample. The RI treatment recode and the employment
-# and analysis-sample screens mirror media_coverage.r; the issuer merge in that
+# and analysis-sample screens mirror 02_media_coverage.R; the issuer merge in that
 # script adds labels only and does not affect the percentile calculation.
 media_cap_data <- fread(file.path(
   root,
@@ -487,7 +485,6 @@ if ('nh_city' %in% names(point_data)) {
 } else {
   point_data <- point_data[!(state == 'NH' & government_type_label == 'township')]
 }
-point_data[state == 'ME', city_go_vote := NA_real_]
 point_data <- point_data[!is.na(city_go_vote)]
 add_low_state_tax_privilege(point_data)
 point_data[, frac_utgo_outstanding :=
@@ -647,8 +644,6 @@ results <- rbindlist(
   fill = TRUE
 )
 setorder(results, panel, column)
-fwrite(results, output_csv)
-
 significance_stars <- function(p_value) {
   ifelse(
     p_value < 0.01, '***',
@@ -824,17 +819,3 @@ processed_latex_lines <- c(
 
 writeLines(raw_latex_lines, output_tex)
 writeLines(processed_latex_lines, output_processed_tex)
-
-print(results[, .(
-  panel,
-  outcome,
-  coefficient = round(coefficient, 3),
-  baseline_p_value = round(baseline_p_value, 4),
-  state_cluster_p_value = round(state_cluster_p_value, 4),
-  wild_cluster_p_value = round(wild_cluster_p_value, 4),
-  observations,
-  state_clusters
-)])
-message('Wrote ', output_csv)
-message('Wrote ', output_tex)
-message('Wrote ', output_processed_tex)

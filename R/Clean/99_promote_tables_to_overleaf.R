@@ -1,6 +1,6 @@
 #!/usr/bin/env Rscript
 
-# Copy clean table outputs into the Overleaf clean/raw table folder when ready.
+# 99: Copy clean table outputs into the Overleaf clean/raw table folder when ready.
 # Dry-run is the default. Use --apply to copy, and --overwrite to replace files
 # that already exist in Overleaf.
 
@@ -19,7 +19,7 @@ file_arg <- grep('^--file=', commandArgs(FALSE), value = TRUE)
 script_path <- if (length(file_arg) > 0) {
   normalizePath(sub('^--file=', '', file_arg[[1]]), mustWork = FALSE)
 } else {
-  normalizePath(file.path(getwd(), 'R/Clean/promote_tables_to_overleaf.R'), mustWork = FALSE)
+  normalizePath(file.path(getwd(), 'R/Clean/99_promote_tables_to_overleaf.R'), mustWork = FALSE)
 }
 repo_root <- normalizePath(file.path(dirname(script_path), '..', '..'), mustWork = FALSE)
 default_source <- file.path(repo_root, 'R/Clean/output/revision_tables')
@@ -36,15 +36,15 @@ if (has_flag('--help') || has_flag('-h')) {
   cat(
     'Usage:\n',
     paste0(
-      '  Rscript R/Clean/promote_tables_to_overleaf.R [--apply] [--overwrite] ',
+      '  Rscript R/Clean/99_promote_tables_to_overleaf.R [--apply] [--overwrite] ',
       '[--recursive] [--files=file1.tex,file2.tex]\n\n'
     ),
     'Defaults:\n',
     paste0('  --source=', default_source, '\n'),
     paste0('  --dest=', default_dest, '\n\n'),
     'Examples:\n',
-    '  Rscript R/Clean/promote_tables_to_overleaf.R\n',
-    '  Rscript R/Clean/promote_tables_to_overleaf.R --apply --overwrite\n',
+    '  Rscript R/Clean/99_promote_tables_to_overleaf.R\n',
+    '  Rscript R/Clean/99_promote_tables_to_overleaf.R --apply --overwrite\n',
     sep = ''
   )
   quit(status = 0)
@@ -58,6 +58,49 @@ table_files <- list.files(source_dir, pattern = '\\.tex$', recursive = recursive
 table_files <- table_files[!grepl('/robustness/', table_files, fixed = TRUE)]
 table_files <- sort(table_files)
 
+# Default to outputs used by the manuscript or either response document. This
+# prevents stale exploratory tables left in output/ from being promoted.
+document_table_files <- c(
+  'website_descriptives.tex',
+  'website_diff_means_table.tex',
+  'websites_regression.tex',
+  'media_descriptives.tex',
+  'media_diff_means_table.tex',
+  'media_coverage.tex',
+  'election_descriptives.tex',
+  'tx_website_time_series_reg.tex',
+  'tx_city_month_reg.tex',
+  'tx_failed_and_margin_websites.tex',
+  'tx_failed_and_margin.tex',
+  'tx_website_time_series_reg_2yr_poisson.tex',
+  'secondary_market_descriptives.tex',
+  'trade_before_maturity_full_sample_tax.tex',
+  'trade_before_maturity_border_sample_tax.tex',
+  'issuer_level_desc.tex',
+  'point_in_time_census_debt_poisson_2017_full_sample.tex',
+  'point_in_time_debt_choice_2017_allgo.tex',
+  'point_in_time_debt_choice_2017_utgo_only.tex',
+  'point_in_time_purpose_category_amount_ppml_2017_full_sample.tex',
+  'point_in_time_purpose_revenue_share_2017_full_sample.tex',
+  'point_in_time_yield_spread_2017_full_sample.tex',
+  'point_in_time_yield_spread_2017_full_sample_panel_b_utgo_ltgo_revenue.tex',
+  'point_in_time_robustness_border_state.tex',
+  'point_in_time_robustness_super_majority.tex',
+  'alternative_sample_robustness_panel_a_debt_choice_allgo.tex',
+  'alternative_sample_robustness_panel_b_debt_choice_utgo_only.tex',
+  'alternative_sample_robustness_panel_c_yield_spread.tex',
+  'alternative_sample_robustness_panel_d_purpose_2012.tex',
+  'alternative_sample_robustness_panel_e_purpose_aggregate.tex',
+  'media_coverage_dpc.tex',
+  'point_in_time_county_city_debt_issuance_share_2017.tex',
+  'wild_cluster_bootstrap_border_tests.tex',
+  'media_coverage_exclude_month_zero.tex',
+  'r3b_media_supermajority.tex',
+  'point_in_time_debt_choice_2017_allgo_vs_az_co_mo_sd_vt.tex',
+  'point_in_time_debt_choice_2017_utgo_vs_az_co_mo_sd_vt.tex',
+  'media_coverage_panel_b_ols.tex'
+)
+
 if (nzchar(files_arg)) {
   requested_files <- trimws(strsplit(files_arg, ',', fixed = TRUE)[[1]])
   relative_paths <- substring(table_files, nchar(source_dir) + 2)
@@ -66,6 +109,9 @@ if (nzchar(files_arg)) {
     stop('Requested files not found in source: ', paste(missing_files, collapse = ', '))
   }
   table_files <- table_files[relative_paths %in% requested_files]
+} else {
+  relative_paths <- substring(table_files, nchar(source_dir) + 2)
+  table_files <- table_files[relative_paths %in% document_table_files]
 }
 
 if (length(table_files) == 0) {

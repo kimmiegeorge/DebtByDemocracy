@@ -1,4 +1,4 @@
-# Media coverage Panel B: OLS estimates for log(1 + total articles)
+# R1-03: Media coverage Panel B OLS estimates for log(1 + total articles)
 
 rm(list = ls())
 
@@ -11,8 +11,8 @@ data_dir <- file.path(project_dir, "Data")
 clean_data_dir <- file.path(data_dir, "Clean_Intermediate")
 table_dir <- file.path(project_dir, "Code", "R", "Clean", "output", "revision_tables")
 
-source(file.path(project_dir, "Code", "R", "Clean", "modify_etable_rounding.R"))
-source(file.path(project_dir, "Code", "R", "Clean", "border_pair_definitions.R"))
+source(file.path(project_dir, "Code", "R", "Clean", "00_modify_etable_rounding.R"))
+source(file.path(project_dir, "Code", "R", "Clean", "00_border_pair_definitions.R"))
 
 output_file <- file.path(table_dir, "media_coverage_panel_b_ols.tex")
 
@@ -184,5 +184,3 @@ table_output <- add_media_sample_headers(table_output, outcome_label)
 
 dir.create(table_dir, recursive = TRUE, showWarnings = FALSE)
 writeLines(table_output, output_file)
-
-message("Wrote ", output_file)

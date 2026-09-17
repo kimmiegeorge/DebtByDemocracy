@@ -1,4 +1,4 @@
-# Media coverage robustness: exclude the issuance month from the article window
+# 11: Media coverage excluding month zero (Online Appendix)
 
 rm(list = ls())
 
@@ -13,8 +13,8 @@ clean_data_dir <- file.path(data_dir, "Clean_Intermediate")
 raw_table_dir <- file.path(project_dir, "Code", "R", "Clean", "output", "revision_tables")
 processed_table_dir <- file.path(project_dir, "Code", "R", "Clean", "output", "processed")
 
-source(file.path(project_dir, "Code", "R", "Clean", "modify_etable_rounding.R"))
-source(file.path(project_dir, "Code", "R", "Clean", "border_pair_definitions.R"))
+source(file.path(project_dir, "Code", "R", "Clean", "00_modify_etable_rounding.R"))
+source(file.path(project_dir, "Code", "R", "Clean", "00_border_pair_definitions.R"))
 
 raw_output_file <- file.path(raw_table_dir, "media_coverage_exclude_month_zero.tex")
 processed_output_file <- file.path(processed_table_dir, "media_coverage_exclude_month_zero.tex")
@@ -250,8 +250,3 @@ processed_output <- c(
 
 dir.create(processed_table_dir, recursive = TRUE, showWarnings = FALSE)
 writeLines(processed_output, processed_output_file)
-
-message("Full-sample article caps: ", paste(full_article_caps, collapse = ", "))
-message("Border-sample article caps: ", paste(border_article_caps, collapse = ", "))
-message("Wrote ", raw_output_file)
-message("Wrote ", processed_output_file)

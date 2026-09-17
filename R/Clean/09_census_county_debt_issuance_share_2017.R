@@ -1,4 +1,4 @@
-# 2017 county-level city share of total Census debt outstanding
+# 09: County-level city debt share robustness (Online Appendix)
 rm(list = ls())
 
 library(data.table)
@@ -11,8 +11,8 @@ processed_dir <- file.path(
 )
 tbl_dir <- file.path(root, 'Code/R/Clean/output/revision_tables')
 
-source(file.path(root, 'Code/R/Clean/modify_etable_rounding.R'))
-source(file.path(root, 'Code/R/Clean/tax_privilege_definitions.R'))
+source(file.path(root, 'Code/R/Clean/00_modify_etable_rounding.R'))
+source(file.path(root, 'Code/R/Clean/00_tax_privilege_definitions.R'))
 
 # Aggregate total end-of-year Census debt for all city and township governments
 # in each county. Total debt is long-term plus short-term debt outstanding.
@@ -121,20 +121,6 @@ r3_2017_county_share <- feols(
   vcov = vcov_cluster(~state)
 )
 
-print(summary(r1_2017_county_share))
-print(summary(r3_2017_county_share))
-
-cat('\nOutcome summary by city GO vote requirement:\n')
-print(
-  regression_data[, .(
-    counties = .N,
-    mean_city_share = mean(city_total_debt_share),
-    median_city_share = median(city_total_debt_share),
-    total_city_debt_mil = sum(city_total_debt_dollars) / 1000000,
-    total_noncity_debt_mil = sum(noncity_total_debt_dollars) / 1000000
-  ), by = city_go_vote]
-)
-
 control_dict <- c(
   city_total_debt_share = 'Pct City Total Debt',
   city_go_vote = 'GO Vote',
@@ -180,4 +166,3 @@ output_file <- file.path(
   'point_in_time_county_city_debt_issuance_share_2017.tex'
 )
 writeLines(modified_output, output_file)
-cat('\nWrote regression table to:', output_file, '\n')

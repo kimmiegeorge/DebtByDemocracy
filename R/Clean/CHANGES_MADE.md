@@ -1,5 +1,18 @@
 # R Clean Folder Changes Made
 
+## 2026-09-17: Table-led script order and unused-code cleanup
+
+- Renamed preparation helpers with the `00_` prefix and numbered paper scripts by the order of their tables after the summary statistics table.
+- Kept the Texas media event-time figure beside its associated election table as `03_texas_media_event_time.R`, and kept the purpose-substitution figure beside Table 9 in `06_point_in_time_purpose_substitution.R`.
+- Renamed response-only scripts with `r1_` and `r2_` prefixes in their document order.
+- Removed table, figure, diagnostic, and sensitivity-output blocks that are not included in the live paper or either response document.
+- Removed console-only model summaries, sample diagnostics, progress messages, and file-written notices. Execution-critical validation and `capture.output(print(...))` calls used to build LaTeX tables remain.
+- Flattened `05_census_mergent_point_in_time_debt_choice.R`: every regression specification and table export is now written explicitly in paper order, model objects have outcome-specific names, and regressions that were estimated but never exported were removed.
+- Flattened the regression and table-export sections of `06_point_in_time_purpose_substitution.R` and `07_alternative_sample_robustness.R`. The `06` pie-chart helper remains because it constructs the associated paper figure.
+- Removed the unused `census_cog_balance.R`, `census_county_total_debt_share_2017.R`, aggregate `debt_choice.r`, and Texas prior-rejection heterogeneity scripts from the clean workflow.
+- Restricted the default promotion allowlist in `99_promote_tables_to_overleaf.R` to raw table fragments used by the live documents; explicit `--files=` selections remain available.
+- Added `README.md` as the current run-order index. Historical entries below retain the filenames and alternatives that existed when those entries were written.
+
 ## 2026-07-21: DPC prior-year source measure and table specification
 
 - Added `dpc_sources_12_neg1` to the clean DPC news pipeline. It is the raw count of distinct named DPC news sources covering an issuer during months -12 through -1 relative to issuance; blank source names are excluded.

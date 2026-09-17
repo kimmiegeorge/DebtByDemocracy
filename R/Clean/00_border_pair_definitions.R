@@ -1,4 +1,4 @@
-# Canonical state-border pair definitions used by every active paper regression.
+# 00: Canonical state-border pair definitions used by every active paper regression.
 # The CSV is also read by the Python border-sample builder, making it the
 # cross-language source of truth for pair inclusion.
 

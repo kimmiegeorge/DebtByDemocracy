@@ -1,4 +1,4 @@
-# Texas bond-election and issuance event-time media plots
+# 03: Texas bond-election and issuance event-time media plot (associated with Table 4)
 #
 # This script compares the probability that a Texas city receives any
 # bond-related RavenPack coverage around:
@@ -388,42 +388,6 @@ expand_unbalanced_count_window <- function(events) {
   expanded[]
 }
 
-three_month_event_panel <- rbindlist(list(
-  expand_unbalanced_count_window(regression_election_events),
-  expand_unbalanced_count_window(unbalanced_issuance_events)
-))
-
-three_month_bin_levels <- c(
-  '-12 to -10', '-9 to -7', '-6 to -4', '-3 to -1',
-  'Event (0 to 2)', '3 to 5', '6 to 8', '9 to 11'
-)
-three_month_event_panel[, event_bin := cut(
-  event_time,
-  breaks = seq(-13, 11, by = 3),
-  labels = three_month_bin_levels,
-  right = TRUE
-)]
-
-# Sum the three monthly counts within each proposition/issuance event. Boundary
-# bins with fewer than three observed months are omitted, which makes the panel
-# unbalanced while retaining every event wherever its full bin is observable.
-three_month_event_bins <- three_month_event_panel[
-  , .(
-    three_month_articles = sum(rp_article_count_winsorized),
-    observed_months = .N
-  ),
-  by = .(event_type, event_id, seed_issuer, event_bin)
-][observed_months == 3L]
-
-three_month_summary <- three_month_event_bins[
-  , .(
-    estimate = mean(three_month_articles),
-    observations = .N,
-    cities = uniqueN(seed_issuer)
-  ),
-  by = .(event_type, event_bin)
-]
-
 # -----------------------------------------------------------------------------
 # City-clustered means and confidence intervals
 # -----------------------------------------------------------------------------
@@ -467,36 +431,6 @@ summarize_clustered <- function(data, outcome_name, by_names) {
   ]
 }
 
-raw_summary <- summarize_clustered(
-  event_panel,
-  'any_bond_coverage',
-  c('event_type', 'event_time')
-)
-
-adjusted_summary <- summarize_clustered(
-  event_panel,
-  'coverage_change_pp',
-  c('event_type', 'event_time')
-)
-
-article_count_summary <- summarize_clustered(
-  event_panel,
-  'rp_article_count',
-  c('event_type', 'event_time')
-)
-
-article_count_adjusted_summary <- summarize_clustered(
-  event_panel,
-  'article_count_change',
-  c('event_type', 'event_time')
-)
-
-winsorized_article_count_summary <- summarize_clustered(
-  event_panel,
-  'rp_article_count_winsorized',
-  c('event_type', 'event_time')
-)
-
 event_panel[, event_bin := fcase(
   event_time <= -16L, '-18 to -16',
   event_time <= -13L, '-15 to -13',
@@ -523,10 +457,7 @@ event_panel[, event_bin := factor(event_bin, levels = bin_levels)]
 # First calculate one mean per city-event-bin. This prevents a three-month bin
 # from receiving three times the weight of event month zero.
 event_bin_panel <- event_panel[
-  , .(
-    bin_coverage = mean(any_bond_coverage),
-    bin_article_count = mean(rp_article_count_winsorized)
-  ),
+  , .(bin_coverage = mean(any_bond_coverage)),
   by = .(event_type, event_id, seed_issuer, event_bin)
 ]
 binned_summary <- summarize_clustered(
@@ -534,66 +465,12 @@ binned_summary <- summarize_clustered(
   'bin_coverage',
   c('event_type', 'event_bin')
 )
-binned_article_count_summary <- summarize_clustered(
-  event_bin_panel,
-  'bin_article_count',
-  c('event_type', 'event_bin')
-)
-
 # -----------------------------------------------------------------------------
 # Figures
 # -----------------------------------------------------------------------------
 
 event_order <- c('Bond election', 'GO bond issuance')
-raw_summary[, event_type := factor(event_type, levels = event_order)]
-adjusted_summary[, event_type := factor(event_type, levels = event_order)]
-article_count_summary[, event_type := factor(event_type, levels = event_order)]
-article_count_adjusted_summary[, event_type := factor(event_type, levels = event_order)]
-winsorized_article_count_summary[
-  , event_type := factor(event_type, levels = event_order)
-]
 binned_summary[, event_type := factor(event_type, levels = event_order)]
-binned_article_count_summary[
-  , event_type := factor(event_type, levels = event_order)
-]
-three_month_summary[, event_type := factor(event_type, levels = event_order)]
-three_month_summary[
-  , event_bin := factor(event_bin, levels = three_month_bin_levels)
-]
-election_bin_n <- range(
-  three_month_summary[event_type == 'Bond election', observations]
-)
-issuance_bin_n <- range(
-  three_month_summary[event_type == 'GO bond issuance', observations]
-)
-
-event_colors <- c(
-  'Bond election' = '#0072B2',
-  'GO bond issuance' = '#D55E00'
-)
-
-percent_labels <- function(x) sprintf('%.0f%%', 100 * x)
-pp_labels <- function(x) sprintf('%+.0f', x)
-wrap_caption <- function(x, width) paste(strwrap(x, width = width), collapse = '\n')
-
-facet_labels <- c(
-  'Bond election' = sprintf('A. Bond election (N = %s)', format(nrow(election_events), big.mark = ',')),
-  'GO bond issuance' = sprintf(
-    'B. GO bond issuance (N = %s)',
-    format(nrow(issuance_events), big.mark = ',')
-  )
-)
-
-three_month_facet_labels <- c(
-  'Bond election' = sprintf(
-    'A. Bond election (N = %s)',
-    format(nrow(regression_election_events), big.mark = ',')
-  ),
-  'GO bond issuance' = sprintf(
-    'B. GO bond issuance (N = %s)',
-    format(nrow(unbalanced_issuance_events), big.mark = ',')
-  )
-)
 
 common_theme <- theme_minimal(base_size = 11, base_family = 'serif') +
   theme(
@@ -604,206 +481,6 @@ common_theme <- theme_minimal(base_size = 11, base_family = 'serif') +
     plot.title.position = 'plot',
     plot.caption = element_text(hjust = 0, size = 8.5),
     plot.caption.position = 'plot'
-  )
-
-raw_plot <- ggplot(
-  raw_summary,
-  aes(x = event_time, y = estimate, color = event_type, fill = event_type)
-) +
-  geom_ribbon(
-    aes(ymin = pmax(conf_low, 0), ymax = conf_high),
-    alpha = 0.16,
-    linewidth = 0,
-    show.legend = FALSE
-  ) +
-  geom_vline(xintercept = 0, color = 'grey40', linetype = 'dashed') +
-  geom_line(linewidth = 0.8, show.legend = FALSE) +
-  geom_point(size = 1.5, show.legend = FALSE) +
-  facet_wrap(
-    vars(event_type),
-    nrow = 1,
-    labeller = as_labeller(facet_labels)
-  ) +
-  scale_color_manual(values = event_colors) +
-  scale_fill_manual(values = event_colors) +
-  scale_x_continuous(breaks = seq(-18, 18, by = 3)) +
-  scale_y_continuous(labels = percent_labels, expand = expansion(mult = c(0.02, 0.08))) +
-  labs(
-    title = 'Bond-related media coverage around Texas bond events',
-    subtitle = 'Monthly probability of any RavenPack bond-related article',
-    x = 'Months relative to event',
-    y = 'City-event months with coverage',
-    caption = wrap_caption(
-      paste0(
-        'Notes: Balanced -18 to +18-month windows. Each carried or defeated bond proposition is a separate election ',
-        'observation; propositions in the same city-month share its media outcome. Issuance events combine city GO ',
-        'issues by offering month. Shading is a 95% confidence ',
-        'interval with standard errors clustered by city.'
-      ),
-      width = 155
-    )
-  ) +
-  common_theme
-
-adjusted_plot <- ggplot(
-  adjusted_summary,
-  aes(x = event_time, y = estimate, color = event_type, fill = event_type)
-) +
-  geom_ribbon(
-    aes(ymin = conf_low, ymax = conf_high),
-    alpha = 0.12,
-    linewidth = 0,
-    color = NA
-  ) +
-  geom_hline(yintercept = 0, color = 'grey45', linewidth = 0.4) +
-  geom_vline(xintercept = 0, color = 'grey40', linetype = 'dashed') +
-  geom_line(linewidth = 0.9) +
-  geom_point(size = 1.5) +
-  scale_color_manual(values = event_colors) +
-  scale_fill_manual(values = event_colors) +
-  scale_x_continuous(breaks = seq(-18, 18, by = 3)) +
-  scale_y_continuous(labels = pp_labels) +
-  labs(
-    title = 'Change in bond-related media coverage around Texas bond events',
-    subtitle = 'Relative to each event\'s average monthly coverage in months -18 through -13',
-    x = 'Months relative to event',
-    y = 'Change in coverage probability (percentage points)',
-    color = NULL,
-    fill = NULL,
-    caption = wrap_caption(
-      paste0(
-        'Notes: Each event is demeaned by its own early pre-event coverage rate before averaging. ',
-        'Shading is a 95% confidence interval with standard errors clustered by city.'
-      ),
-      width = 115
-    )
-  ) +
-  common_theme
-
-article_count_plot <- ggplot(
-  article_count_summary[event_time >= -12L & event_time <= 12L],
-  aes(x = event_time, y = estimate, color = event_type)
-) +
-  geom_vline(xintercept = 0, color = 'grey40', linetype = 'dashed') +
-  geom_line(linewidth = 0.9, show.legend = FALSE) +
-  geom_point(size = 1.5, show.legend = FALSE) +
-  facet_wrap(
-    vars(event_type),
-    nrow = 1,
-    labeller = as_labeller(facet_labels)
-  ) +
-  scale_color_manual(values = event_colors) +
-  scale_x_continuous(
-    breaks = seq(-12, 12, by = 3),
-    limits = c(-12, 12)
-  ) +
-  scale_y_continuous(
-    limits = c(0, NA),
-    expand = expansion(mult = c(0, 0.08))
-  ) +
-  labs(
-    title = 'Number of bond-related articles around Texas bond events',
-    subtitle = 'Average monthly RavenPack article count per city-event',
-    x = 'Months relative to event',
-    y = 'Average number of articles',
-    caption = wrap_caption(
-      paste0(
-        'Notes: Monthly articles are summed within each city and then averaged across city-events at each event month. ',
-        'The outcome is not transformed or winsorized. The sample is restricted to issuers with at least one election ',
-        'having a positive number of RavenPack sources in the prior 12 months. The figure reports raw averages without ',
-        'confidence intervals. Each bond proposition is a separate election observation.'
-      ),
-      width = 150
-    )
-  ) +
-  common_theme +
-  theme(legend.position = 'none')
-
-winsorized_article_count_plot <- ggplot(
-  winsorized_article_count_summary[event_time >= -12L & event_time <= 12L],
-  aes(x = event_time, y = estimate, color = event_type)
-) +
-  geom_vline(xintercept = 0, color = 'grey40', linetype = 'dashed') +
-  geom_line(linewidth = 0.9, show.legend = FALSE) +
-  geom_point(size = 1.5, show.legend = FALSE) +
-  facet_wrap(
-    vars(event_type),
-    nrow = 1,
-    labeller = as_labeller(facet_labels)
-  ) +
-  scale_color_manual(values = event_colors) +
-  scale_x_continuous(
-    breaks = seq(-12, 12, by = 3),
-    limits = c(-12, 12)
-  ) +
-  scale_y_continuous(
-    limits = c(0, NA),
-    expand = expansion(mult = c(0, 0.08))
-  ) +
-  labs(
-    title = 'Winsorized bond-related article counts around Texas bond events',
-    subtitle = sprintf(
-      'Average monthly count per city-event; city-month counts capped at the 99th percentile (%g articles)',
-      article_count_winsor_cap
-    ),
-    x = 'Months relative to event',
-    y = 'Average winsorized number of articles',
-    caption = wrap_caption(
-      paste0(
-        'Notes: Winsorization is applied to unique city-month observations before constructing event windows. ',
-        'The sample is restricted to issuers with at least one election having a positive number of RavenPack sources ',
-        'in the prior 12 months. Each bond proposition is a separate election observation. The figure reports raw ',
-        'averages of the winsorized counts without confidence intervals.'
-      ),
-      width = 150
-    )
-  ) +
-  common_theme +
-  theme(legend.position = 'none')
-
-three_month_article_count_plot <- ggplot(
-  three_month_summary,
-  aes(x = event_bin, y = estimate, color = event_type, group = event_type)
-) +
-  geom_line(linewidth = 0.9, show.legend = FALSE) +
-  geom_point(size = 2, show.legend = FALSE) +
-  facet_wrap(
-    vars(event_type),
-    nrow = 1,
-    labeller = as_labeller(three_month_facet_labels)
-  ) +
-  scale_color_manual(values = event_colors) +
-  scale_x_discrete(drop = FALSE) +
-  scale_y_continuous(
-    limits = c(0, NA),
-    expand = expansion(mult = c(0, 0.08))
-  ) +
-  labs(
-    title = 'Bond-related article counts in three-month event-time windows',
-    subtitle = sprintf(
-      'Average three-month total; monthly city counts winsorized at %g articles',
-      article_count_winsor_cap
-    ),
-    x = 'Months relative to event',
-    y = 'Average articles per three-month window',
-    caption = wrap_caption(
-      paste0(
-        'Notes: The event window contains months 0 through 2. Election observations exactly match the 699-proposition ',
-        'media-election regression universe. Each proposition is separate, including propositions held together. ',
-        'The event-time panel is unbalanced; an event enters a bin whenever all three months are observed. The RavenPack ',
-        'panel ends in December 2020, so the 64 regression elections held in 2021 contribute only to observable pre-event ',
-        sprintf(
-          'bins. Bin-specific N ranges from %s to %s elections and %s to %s issuances.',
-          election_bin_n[1], election_bin_n[2], issuance_bin_n[1], issuance_bin_n[2]
-        )
-      ),
-      width = 155
-    )
-  ) +
-  common_theme +
-  theme(
-    legend.position = 'none',
-    axis.text.x = element_text(angle = 30, hjust = 1)
   )
 
 binned_plot <- ggplot(
@@ -827,38 +504,6 @@ binned_plot <- ggplot(
   common_theme +
   theme(axis.text.x = element_text(angle = 35, hjust = 1))
 
-binned_article_count_plot <- ggplot(
-  binned_article_count_summary,
-  aes(x = event_bin, y = estimate, color = event_type, group = event_type)
-) +
-  geom_line(linewidth = 0.8) +
-  geom_point(size = 2) +
-  scale_color_manual(values = event_colors) +
-  scale_y_continuous(
-    limits = c(0, NA),
-    expand = expansion(mult = c(0, 0.08))
-  ) +
-  labs(
-    title = 'Bond-related article counts in event-time bins',
-    subtitle = sprintf(
-      'Average city-month count within each event-time interval; counts winsorized at %g articles',
-      article_count_winsor_cap
-    ),
-    x = 'Months relative to event',
-    y = 'Average city-month article count',
-    color = NULL,
-    caption = wrap_caption(
-      paste0(
-        'Notes: Each city-event receives equal weight within a bin. Event month zero is shown separately. ',
-        'Monthly city article counts are winsorized before aggregation. The figure reports averages without ',
-        'confidence intervals.'
-      ),
-      width = 130
-    )
-  ) +
-  common_theme +
-  theme(axis.text.x = element_text(angle = 35, hjust = 1))
-
 save_figure <- function(plot, filename, width, height) {
   ggsave(
     file.path(fig_dir, paste0(filename, '.pdf')),
@@ -868,152 +513,6 @@ save_figure <- function(plot, filename, width, height) {
     units = 'in',
     bg = 'white'
   )
-  ggsave(
-    file.path(fig_dir, paste0(filename, '.png')),
-    plot = plot,
-    width = width,
-    height = height,
-    units = 'in',
-    dpi = 300,
-    bg = 'white'
-  )
 }
 
-save_figure(raw_plot, 'texas_media_event_time_raw', 10, 5.7)
-save_figure(adjusted_plot, 'texas_media_event_time_baseline_adjusted', 7.5, 5.7)
-save_figure(article_count_plot, 'texas_media_event_time_article_counts', 7.5, 5.7)
-save_figure(
-  winsorized_article_count_plot,
-  'texas_media_event_time_article_counts_winsorized',
-  7.5,
-  5.7
-)
-save_figure(
-  three_month_article_count_plot,
-  'texas_media_event_time_article_counts_winsorized_3month',
-  10,
-  5.7
-)
 save_figure(binned_plot, 'texas_media_event_time_binned', 10, 5.7)
-save_figure(
-  binned_article_count_plot,
-  'texas_media_event_time_binned_article_counts',
-  10,
-  5.7
-)
-
-# -----------------------------------------------------------------------------
-# Reusable plot data and diagnostics
-# -----------------------------------------------------------------------------
-
-setorder(event_panel, event_type, seed_issuer, event_year_month_id, event_time)
-fwrite(
-  event_panel[
-    , .(
-      event_type, event_id, seed_issuer, event_date, event_size, event_instance,
-      event_time, calendar_date, calendar_year, calendar_month,
-      rp_article_count, rp_article_count_winsorized,
-      any_bond_coverage, baseline_coverage,
-      baseline_article_count, coverage_change_pp, article_count_change
-    )
-  ],
-  file.path(processed_dir, 'texas_media_event_time_panel.csv')
-)
-
-raw_summary[, estimand := 'Raw monthly coverage probability']
-adjusted_summary[, estimand := 'Percentage-point change from months -18 to -13']
-monthly_summary <- rbindlist(list(raw_summary, adjusted_summary), fill = TRUE)
-fwrite(
-  monthly_summary,
-  file.path(processed_dir, 'texas_media_event_time_monthly_summary.csv')
-)
-fwrite(
-  binned_summary,
-  file.path(processed_dir, 'texas_media_event_time_binned_summary.csv')
-)
-fwrite(
-  binned_article_count_summary,
-  file.path(
-    processed_dir,
-    'texas_media_event_time_binned_article_count_summary.csv'
-  )
-)
-
-article_count_summary[, estimand := 'Raw mean monthly article count']
-article_count_adjusted_summary[
-  , estimand := 'Article-count change from months -18 to -13'
-]
-fwrite(
-  rbindlist(
-    list(article_count_summary, article_count_adjusted_summary),
-    fill = TRUE
-  ),
-  file.path(processed_dir, 'texas_media_event_time_article_count_summary.csv')
-)
-fwrite(
-  winsorized_article_count_summary,
-  file.path(
-    processed_dir,
-    'texas_media_event_time_article_count_winsorized_summary.csv'
-  )
-)
-fwrite(
-  three_month_summary,
-  file.path(
-    processed_dir,
-    'texas_media_event_time_article_count_winsorized_3month_summary.csv'
-  )
-)
-
-sample_summary <- rbindlist(list(
-  data.table(
-    measure = c(
-      'News sample start',
-      'News sample end',
-      'Event-time radius (months)',
-      'Cities in news panel',
-      'Regression-eligible issuers before event-window restriction',
-      'Article-count winsorization percentile',
-      'Article-count winsorization cap'
-    ),
-    value = c(
-      as.character(news_start),
-      as.character(news_end),
-      as.character(event_radius),
-      as.character(uniqueN(city_month$seed_issuer)),
-      as.character(length(regression_eligible_issuers)),
-      as.character(winsor_upper_probability),
-      as.character(article_count_winsor_cap)
-    )
-  ),
-  data.table(
-    measure = c(
-      'Bond election: proposition observations',
-      'Bond election: city-month events',
-      'Bond election: unique cities',
-      'GO bond issuance: city-month events',
-      'GO bond issuance: unique cities'
-    ),
-    value = c(
-      as.character(nrow(election_events)),
-      as.character(nrow(election_city_months)),
-      as.character(uniqueN(election_events$seed_issuer)),
-      as.character(nrow(issuance_events)),
-      as.character(uniqueN(issuance_events$seed_issuer))
-    )
-  )
-))
-fwrite(
-  sample_summary,
-  file.path(processed_dir, 'texas_media_event_time_sample_summary.csv')
-)
-
-message(sprintf(
-  paste0(
-    'Texas media event-time outputs complete: %s election events and ',
-    '%s GO issuance events across a balanced +/- %s-month window.'
-  ),
-  format(nrow(election_events), big.mark = ','),
-  format(nrow(issuance_events), big.mark = ','),
-  event_radius
-))

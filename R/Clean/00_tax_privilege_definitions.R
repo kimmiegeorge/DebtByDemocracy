@@ -1,4 +1,4 @@
-# Babina et al. (2021, RFS), Table 2. "Low tax privilege" is defined as
+# 00: Babina et al. (2021, RFS), Table 2. "Low tax privilege" is defined as
 # membership in the fourth or bottom quintile of average state tax privilege.
 babina_fourth_privilege_quintile_states <- c(
   'MD', 'AL', 'MS', 'NH', 'AZ', 'CO', 'MI', 'UT', 'PA', 'FL'
