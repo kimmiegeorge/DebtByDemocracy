@@ -55,6 +55,9 @@ census_mergent_match_file = diag_dir / 'census_cog_2022_mergent_exact_matches.cs
 border_file = border_dir / 'Border Matches All Mergent Data Expanded Set Buffer 100000.csv'
 
 bond_file = mergent_dir / '260716_city_cusiplevel_statereq_purpose_yieldspread.dta'
+# This file retains every Mergent bond associated with a matched issuer,
+# including bonds outside the paper's GO and strict-revenue classifications.
+all_bonds_file = mergent_dir / '260917_city_cusiplevel_finsample_allbonds.dta'
 yield_spread_file = clean_data_dir / 'Mergent' / 'Clean' / 'bond_level_off_yield_spread.csv'
 
 high_state_tax_privilege_states = {
@@ -377,7 +380,7 @@ census_cross_section = (
 
 
 #%% -----------------------------------------------------------------------
-# load Mergent bond-level file, controls, and outstanding debt measures
+# load Mergent bond-level files, controls, and outstanding debt measures
 # -----------------------------------------------------------------------
 print('Loading Mergent bond-level file...')
 bond_cols = [
@@ -412,6 +415,24 @@ bond_cols = [
 ]
 
 raw_bonds = read_stata_columns(bond_file, bond_cols)
+
+# The paper-sample file above is needed for the GO/revenue classification,
+# offering-yield spread, and issuer controls.  The expanded file is used only
+# for total Mergent debt so that this measure includes all bonds linked to an
+# issuer, rather than only the GO and strict-revenue bonds used in the paper.
+all_bond_cols = [
+    'cusip',
+    'seed_issuer_id',
+    'seed_issuer',
+    'state',
+    'fips',
+    'offering_date',
+    'maturity_date',
+    'amount',
+]
+
+print('Loading expanded Mergent all-bonds file...')
+raw_all_bonds = read_stata_columns(all_bonds_file, all_bond_cols)
 
 # Retain the original Gao et al. spread and use the pasted-formula NC spread
 # for the backward-compatible outcome consumed by the regression tables.
@@ -537,7 +558,25 @@ bonds = (
     ])
 )
 
+all_bonds = (
+    raw_all_bonds
+    .pipe(normalize_id_columns)
+    .with_columns([
+        pl.col('amount').cast(pl.Float64),
+        pl.col('offering_date').cast(pl.Date),
+        pl.col('maturity_date').cast(pl.Date),
+    ])
+    .filter(
+        pl.col('seed_issuer_id').is_not_null()
+        & pl.col('amount').is_not_null()
+        & (pl.col('amount') > 0)
+        & pl.col('offering_date').is_not_null()
+        & pl.col('maturity_date').is_not_null()
+    )
+)
+
 mergent_years = []
+all_mergent_years = []
 
 for year in target_years:
     as_of = date(year, 12, 31)
@@ -555,6 +594,14 @@ for year in target_years:
                 .dt.total_days()
                 / 365.25
             ).alias('original_maturity_years')
+        )
+    )
+
+    all_bonds_outstanding = (
+        all_bonds
+        .filter(
+            (pl.col('offering_date') <= as_of)
+            & (pl.col('maturity_date') > as_of)
         )
     )
 
@@ -723,9 +770,19 @@ for year in target_years:
 
     mergent_years.append(agg)
 
-mergent_outstanding = pl.concat(mergent_years, how='diagonal')
+    all_mergent_years.append(
+        all_bonds_outstanding
+        .group_by('issuer_key')
+        .agg(
+            pl.col('amount').sum().alias('mergent_total_outstanding_debt')
+        )
+        .with_columns(pl.lit(year).alias('year'))
+    )
 
-mergent_amount_cols = [
+mergent_outstanding = pl.concat(mergent_years, how='diagonal')
+all_mergent_outstanding = pl.concat(all_mergent_years, how='diagonal')
+
+paper_mergent_amount_cols = [
     'mergent_go_revenue_outstanding_debt',
     'mergent_all_go_outstanding_debt',
     'mergent_revenue_outstanding_debt',
@@ -735,8 +792,18 @@ mergent_amount_cols = [
 
 mergent_outstanding = mergent_outstanding.with_columns([
     (pl.col(col) / 1_000_000).alias(col.replace('_debt', '_debt_mil'))
-    for col in mergent_amount_cols
+    for col in paper_mergent_amount_cols
 ])
+
+all_mergent_outstanding = all_mergent_outstanding.with_columns(
+    (pl.col('mergent_total_outstanding_debt') / 1_000_000)
+    .alias('mergent_total_outstanding_debt_mil')
+)
+
+mergent_amount_cols = [
+    'mergent_total_outstanding_debt',
+    *paper_mergent_amount_cols,
+]
 
 
 #%% -----------------------------------------------------------------------
@@ -747,6 +814,7 @@ full_panel = (
     census_cross_section
     .join(issuers, on='issuer_key', how='left', suffix='_issuer')
     .join(mergent_outstanding, on=['issuer_key', 'year'], how='left')
+    .join(all_mergent_outstanding, on=['issuer_key', 'year'], how='left')
 )
 
 for col in mergent_amount_cols:
@@ -842,6 +910,8 @@ ordered_cols_base = [
     'county_nonmunicipal_total_debt_mil',
     'county_nonmunicipal_lt_debt_issued_mil',
     'ln_1p_county_nonmunicipal_total_debt',
+    'mergent_total_outstanding_debt',
+    'mergent_total_outstanding_debt_mil',
     'mergent_go_revenue_outstanding_debt',
     'mergent_go_revenue_outstanding_debt_mil',
     'mergent_all_go_outstanding_debt',
@@ -934,6 +1004,7 @@ diagnostics = (
         pl.col('city_go_vote').eq(0).sum().alias('control_issuers'),
         pl.col('city_go_vote').eq(1).sum().alias('treat_issuers'),
         (pl.col('mergent_go_revenue_outstanding_debt') > 0).sum().alias('issuers_with_mergent_debt'),
+        (pl.col('mergent_total_outstanding_debt') > 0).sum().alias('issuers_with_total_mergent_debt'),
         pl.col('mergent_wavg_yield_spread_go_revenue').is_not_null().sum().alias('issuers_with_mergent_yield_spread'),
     ])
     .sort('year')
