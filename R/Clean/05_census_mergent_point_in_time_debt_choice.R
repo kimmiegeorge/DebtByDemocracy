@@ -83,15 +83,6 @@ data_2017 <- data_2017[!is.na(city_go_vote)]
 data_2017[, super_majority := as.integer(state %in% super_majority_states)]
 add_low_state_tax_privilege(data_2017, year_value = 2017)
 
-data_2017[, frac_utgo_outstanding := mergent_utgo_outstanding_debt / mergent_go_revenue_outstanding_debt]
-data_2017[, frac_ltgo_outstanding := mergent_ltgo_outstanding_debt / mergent_go_revenue_outstanding_debt]
-data_2017[, frac_rev_outstanding := mergent_revenue_outstanding_debt / mergent_go_revenue_outstanding_debt]
-data_2017[mergent_go_revenue_outstanding_debt <= 0, `:=`(
-  frac_utgo_outstanding = NA_real_,
-  frac_ltgo_outstanding = NA_real_,
-  frac_rev_outstanding = NA_real_
-)]
-
 data_2017[, ln_census_population := log(census_population)]
 
 full_sample_2017 <- data_2017[insample == 1]
@@ -641,8 +632,6 @@ if ('nh_city' %in% names(border_2017)) {
 }
 border_2017 <- border_2017[!is.na(city_go_vote)]
 add_low_state_tax_privilege(border_2017, year_value = 2017)
-border_2017[, frac_utgo_outstanding := mergent_utgo_outstanding_debt / mergent_go_revenue_outstanding_debt]
-border_2017[mergent_go_revenue_outstanding_debt <= 0, frac_utgo_outstanding := NA_real_]
 border_2017[, ln_census_population := log(census_population)]
 border_2017[, state_year := interaction(state, year, drop = TRUE)]
 

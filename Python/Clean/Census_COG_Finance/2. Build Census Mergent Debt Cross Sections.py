@@ -893,6 +893,67 @@ for col in mergent_amount_cols:
     full_panel = full_panel.with_columns(pl.col(col).fill_null(0))
     full_panel = full_panel.with_columns(pl.col(col.replace('_debt', '_debt_mil')).fill_null(0))
 
+# Debt-composition shares used in the point-in-time debt-choice analysis. The
+# original shares partition the paper's GO + strict-revenue measure. The `_wrl`
+# versions add lease/rent and loan-agreement debt to the denominator and include
+# its corresponding share. A zero denominator is recorded as missing.
+go_revenue_plus_lease_rent_loan_agreement = (
+    pl.col('mergent_go_revenue_outstanding_debt')
+    + pl.col('mergent_lease_rent_loan_agreement_outstanding_debt')
+)
+
+full_panel = full_panel.with_columns([
+    pl.when(pl.col('mergent_go_revenue_outstanding_debt') > 0)
+    .then(
+        pl.col('mergent_utgo_outstanding_debt')
+        / pl.col('mergent_go_revenue_outstanding_debt')
+    )
+    .otherwise(None)
+    .alias('frac_utgo_outstanding'),
+    pl.when(pl.col('mergent_go_revenue_outstanding_debt') > 0)
+    .then(
+        pl.col('mergent_ltgo_outstanding_debt')
+        / pl.col('mergent_go_revenue_outstanding_debt')
+    )
+    .otherwise(None)
+    .alias('frac_ltgo_outstanding'),
+    pl.when(pl.col('mergent_go_revenue_outstanding_debt') > 0)
+    .then(
+        pl.col('mergent_revenue_outstanding_debt')
+        / pl.col('mergent_go_revenue_outstanding_debt')
+    )
+    .otherwise(None)
+    .alias('frac_rev_outstanding'),
+    pl.when(go_revenue_plus_lease_rent_loan_agreement > 0)
+    .then(
+        pl.col('mergent_utgo_outstanding_debt')
+        / go_revenue_plus_lease_rent_loan_agreement
+    )
+    .otherwise(None)
+    .alias('frac_utgo_outstanding_wrl'),
+    pl.when(go_revenue_plus_lease_rent_loan_agreement > 0)
+    .then(
+        pl.col('mergent_ltgo_outstanding_debt')
+        / go_revenue_plus_lease_rent_loan_agreement
+    )
+    .otherwise(None)
+    .alias('frac_ltgo_outstanding_wrl'),
+    pl.when(go_revenue_plus_lease_rent_loan_agreement > 0)
+    .then(
+        pl.col('mergent_revenue_outstanding_debt')
+        / go_revenue_plus_lease_rent_loan_agreement
+    )
+    .otherwise(None)
+    .alias('frac_rev_outstanding_wrl'),
+    pl.when(go_revenue_plus_lease_rent_loan_agreement > 0)
+    .then(
+        pl.col('mergent_lease_rent_loan_agreement_outstanding_debt')
+        / go_revenue_plus_lease_rent_loan_agreement
+    )
+    .otherwise(None)
+    .alias('frac_lease_rent_loan_agreement_outstanding_wrl'),
+])
+
 border_memberships = (
     pl.read_csv(border_file, infer_schema_length=10000)
     .pipe(normalize_id_columns)
@@ -986,6 +1047,13 @@ ordered_cols_base = [
     'mergent_total_outstanding_debt_mil',
     'mergent_lease_rent_loan_agreement_outstanding_debt',
     'mergent_lease_rent_loan_agreement_outstanding_debt_mil',
+    'frac_utgo_outstanding',
+    'frac_ltgo_outstanding',
+    'frac_rev_outstanding',
+    'frac_utgo_outstanding_wrl',
+    'frac_ltgo_outstanding_wrl',
+    'frac_rev_outstanding_wrl',
+    'frac_lease_rent_loan_agreement_outstanding_wrl',
     'mergent_go_revenue_outstanding_debt',
     'mergent_go_revenue_outstanding_debt_mil',
     'mergent_all_go_outstanding_debt',

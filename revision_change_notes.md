@@ -50,3 +50,15 @@
 - Static issuer controls and the legacy Gao yield spread remain temporary
   lookups from the prior bond file because those fields are not retained in the
   expanded DTA.
+
+## Outstanding-debt composition shares
+
+- Moved `frac_utgo_outstanding`, `frac_ltgo_outstanding`, and
+  `frac_rev_outstanding` from the R point-in-time analysis script into the
+  Python cross-section build. Their denominator remains outstanding GO plus
+  strict-revenue debt, and they are missing when that denominator is zero.
+- Added lease/rent-inclusive shares with denominator outstanding GO/revenue
+  debt plus outstanding lease/rent--loan-agreement debt:
+  `frac_utgo_outstanding_wrl`, `frac_ltgo_outstanding_wrl`,
+  `frac_rev_outstanding_wrl`, and
+  `frac_lease_rent_loan_agreement_outstanding_wrl`.
