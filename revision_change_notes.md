@@ -39,6 +39,8 @@
 - `mergent_total_outstanding_debt` includes every valid expanded-file bond
   outstanding at the cross-section date, regardless of `bond_type` or security
   code.
+- Added `total_nonmergent_census_debt_mil`, defined as Census total debt minus
+  total outstanding Mergent debt, with both components measured in millions.
 - `mergent_go_revenue_outstanding_debt` uses `bond_type` equal to `go` or
   `rev`. The final `rev` bond type excludes sales- and excise-tax bonds.
 - Reapplied in Python the six issuance-level UTGO/LTGO/GO corrections from the

@@ -940,6 +940,15 @@ for col in mergent_amount_cols:
     full_panel = full_panel.with_columns(pl.col(col).fill_null(0))
     full_panel = full_panel.with_columns(pl.col(col.replace('_debt', '_debt_mil')).fill_null(0))
 
+# Census total debt not represented by the issuer's outstanding Mergent bonds.
+# Both input measures are in millions of dollars.
+full_panel = full_panel.with_columns(
+    (
+        pl.col('census_total_debt_mil')
+        - pl.col('mergent_total_outstanding_debt_mil')
+    ).alias('total_nonmergent_census_debt_mil')
+)
+
 # Debt-composition shares used in the point-in-time debt-choice analysis. The
 # original shares partition the paper's GO + strict-revenue measure. The `_wrl`
 # versions add lease/rent and loan-agreement debt to the denominator and include
@@ -1082,6 +1091,7 @@ ordered_cols_base = [
     'census_population',
     'census_lt_debt_mil',
     'census_total_debt_mil',
+    'total_nonmergent_census_debt_mil',
     'census_lt_debt_per_capita',
     'census_total_debt_per_capita',
     'county_nonmunicipal_governments',
