@@ -58,7 +58,9 @@ bond_file = mergent_dir / '260716_city_cusiplevel_statereq_purpose_yieldspread.d
 # This file retains every Mergent bond associated with a matched issuer,
 # including bonds outside the paper's GO and strict-revenue classifications.
 all_bonds_file = mergent_dir / '260917_city_cusiplevel_finsample_allbonds.dta'
-yield_spread_file = clean_data_dir / 'Mergent' / 'Clean' / 'bond_level_off_yield_spread.csv'
+# Rebuilt from the expanded all-bonds file by
+# Python/Clean/Yield_Spreads/Compute Yield Spreads.py.
+yield_spread_file = clean_data_dir / 'Mergent' / 'Clean' / 'bond_level_off_yield_spread_allbonds.csv'
 
 high_state_tax_privilege_states = {
     'CA', 'OR', 'HI', 'VT', 'RI', 'MT', 'ME', 'NJ', 'MN', 'NC', 'ID', 'NY',

@@ -17,6 +17,19 @@
   the final GO and strict (non-sales/excise-tax) revenue categories. Do not use
   `rev == 1` for strict revenue, because it is a broader classification in this
   file.
-- Next: migrate the remaining Mergent inputs in
-  `Python/Clean/Census_COG_Finance/2. Build Census Mergent Debt Cross Sections.py`
-  to the expanded DTA, beginning with the yield-spread and rating constructions.
+
+## Expanded Mergent yield-spread construction
+
+- Rebuilt the NC/tax-adjusted, maturity-matched Treasury yield-spread lookup
+  from the expanded all-bonds DTA. The new output is
+  `Data/Clean_Intermediate/Mergent/Clean/bond_level_off_yield_spread_allbonds.csv`.
+- The calculation uses the same Taxsim and Treasury-curve method as the prior
+  lookup and covers all maturity-eligible expanded-file bonds, including
+  `newmatch == 1` bonds. Among shared CUSIPs with a nonmissing prior NC spread,
+  the rebuilt values are identical.
+- Updated the Census--Mergent cross-section builder to use this expanded-file
+  lookup. The legacy Gao spread is not available in the expanded DTA and is
+  retained only from the current paper-sample bond file during the transition.
+- Next: recreate the bond-level ordinal and issue-level rating variables from
+  the expanded DTA's raw Fitch, Moody's, and S&P fields, then migrate the
+  remaining Mergent inputs in the cross-section builder.

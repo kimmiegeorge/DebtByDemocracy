@@ -24,14 +24,32 @@ import polars as pl
 
 ROOT = Path(os.path.expanduser("~/Dropbox/Voting on Bonds"))
 DATA = ROOT / "Data"
-BOND_FILE = DATA / "Mergent/Clean/260716_city_cusiplevel_statereq_purpose_yieldspread.dta"
+# This expanded file includes all bonds associated with the matched city
+# issuers, including the valid issuer-name matches added in `newmatch`.
+BOND_FILE = DATA / "Mergent/Clean/260917_city_cusiplevel_finsample_allbonds.dta"
 TAX_FILE = DATA / "MSRB/taxsim_nber_max_state_income_rates_1977_2021.csv"
 TREASURY_FILE = DATA / "Nominal Yield Curve/nominal_yield_curve.csv"
 OUTPUT_DIR = DATA / "Clean_Intermediate/Mergent/Clean"
 OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
 
-BOND_OUTPUT = OUTPUT_DIR / "bond_level_off_yield_spread.csv"
-ISSUER_OUTPUT = OUTPUT_DIR / "issuer_level_nc_yield_spreads.csv"
+BOND_OUTPUT = OUTPUT_DIR / "bond_level_off_yield_spread_allbonds.csv"
+ISSUER_OUTPUT = OUTPUT_DIR / "issuer_level_nc_yield_spreads_allbonds.csv"
+
+STATE_NAMES = {
+    "AL": "Alabama", "AK": "Alaska", "AZ": "Arizona", "AR": "Arkansas",
+    "CA": "California", "CO": "Colorado", "CT": "Connecticut", "DE": "Delaware",
+    "FL": "Florida", "GA": "Georgia", "HI": "Hawaii", "ID": "Idaho",
+    "IL": "Illinois", "IN": "Indiana", "IA": "Iowa", "KS": "Kansas",
+    "KY": "Kentucky", "LA": "Louisiana", "ME": "Maine", "MD": "Maryland",
+    "MA": "Massachusetts", "MI": "Michigan", "MN": "Minnesota", "MS": "Mississippi",
+    "MO": "Missouri", "MT": "Montana", "NE": "Nebraska", "NV": "Nevada",
+    "NH": "New Hampshire", "NJ": "New Jersey", "NM": "New Mexico", "NY": "New York",
+    "NC": "North Carolina", "ND": "North Dakota", "OH": "Ohio", "OK": "Oklahoma",
+    "OR": "Oregon", "PA": "Pennsylvania", "RI": "Rhode Island", "SC": "South Carolina",
+    "SD": "South Dakota", "TN": "Tennessee", "TX": "Texas", "UT": "Utah",
+    "VT": "Vermont", "VA": "Virginia", "WA": "Washington", "WV": "West Virginia",
+    "WI": "Wisconsin", "WY": "Wyoming", "DC": "Washington DC",
+}
 
 BOND_COLUMNS = [
     "issue_id",
@@ -39,12 +57,10 @@ BOND_COLUMNS = [
     "seed_issuer",
     "seed_issuer_id",
     "state",
-    "state_name",
     "state_tax",
     "offering_date",
     "maturity_date",
     "offering_yield",
-    "offering_yield_spread",
     "amount",
     "bond_type",
     "go_unlim",
@@ -64,20 +80,19 @@ def weighted_average(group: pd.DataFrame, mask: pd.Series) -> float:
     )
 
 
-print("Loading Mergent bonds and preserving the Gao spread...")
+print("Loading expanded Mergent bond file...")
 bonds_pd = pd.read_stata(BOND_FILE, columns=BOND_COLUMNS, convert_categoricals=False)
 bonds = (
     pl.from_pandas(bonds_pd)
-    .rename({"offering_yield_spread": "offering_yield_spread_gao"})
     .with_columns([
         pl.col("issue_id").cast(pl.Int64),
         pl.col("cusip").cast(pl.Utf8),
         pl.col("offering_date").cast(pl.Date),
         pl.col("maturity_date").cast(pl.Date),
         pl.col("offering_yield").cast(pl.Float64),
-        pl.col("offering_yield_spread_gao").cast(pl.Float64),
         pl.col("amount").cast(pl.Float64),
         pl.col("state_tax").cast(pl.Utf8).str.strip_chars(),
+        pl.lit(None).cast(pl.Float64).alias("offering_yield_spread_gao"),
     ])
     .with_columns([
         pl.col("offering_date").dt.year().alias("year"),
@@ -90,6 +105,13 @@ bonds = (
         pl.col("maturity_years").round(0).cast(pl.Int64).alias("maturity_years_rounded")
     )
 )
+
+state_lookup = pl.DataFrame({
+    "state": list(STATE_NAMES),
+    "state_name": list(STATE_NAMES.values()),
+})
+
+bonds = bonds.join(state_lookup, on="state", how="left")
 
 print("Joining state-year Taxsim rates and applying the state exemption indicator...")
 tax_rates = (
@@ -208,7 +230,6 @@ issuer_bonds = (
     eligible
     .filter(
         pl.col("seed_issuer").is_not_null()
-        & pl.col("rev").is_not_null()
         & pl.col("amount").is_not_null()
         & (pl.col("amount") > 0)
     )
@@ -221,7 +242,7 @@ for seed_issuer, group in issuer_bonds.groupby("seed_issuer", sort=False, dropna
     go = group["bond_type"].eq("go")
     utgo = group["go_unlim"].eq(1)
     ltgo = group["go_lim"].eq(1)
-    revenue = group["rev"].eq(1)
+    revenue = group["bond_type"].eq("rev")
     overall = weighted_average(group, all_rows)
     issuer_rows.append({
         "seed_issuer": seed_issuer,
