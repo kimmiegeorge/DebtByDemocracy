@@ -30,6 +30,23 @@
 - Updated the Census--Mergent cross-section builder to use this expanded-file
   lookup. The legacy Gao spread is not available in the expanded DTA and is
   retained only from the current paper-sample bond file during the transition.
-- Next: recreate the bond-level ordinal and issue-level rating variables from
-  the expanded DTA's raw Fitch, Moody's, and S&P fields, then migrate the
-  remaining Mergent inputs in the cross-section builder.
+
+## Expanded Mergent cross-section construction
+
+- The cross-section builder now uses the expanded DTA for all bond-level debt,
+  maturity, rating, yield-spread, and bond-characteristic aggregations. It
+  retains `newmatch == 1` observations.
+- `mergent_total_outstanding_debt` includes every valid expanded-file bond
+  outstanding at the cross-section date, regardless of `bond_type` or security
+  code.
+- `mergent_go_revenue_outstanding_debt` uses `bond_type` equal to `go` or
+  `rev`. The final `rev` bond type excludes sales- and excise-tax bonds.
+- Added `mergent_lease_rent_loan_agreement_outstanding_debt` and its millions
+  and CUSIP-count counterparts. It combines Mergent security codes `C`
+  (lease/rent) and `N` (loan agreement), irrespective of final bond type.
+- Recreated `rating_num`, `rating_issue_max`, and `issue_unrated` directly from
+  raw ratings in the expanded DTA using the prior Stata rules. All recreated
+  values match the legacy file for its shared CUSIPs.
+- Static issuer controls and the legacy Gao yield spread remain temporary
+  lookups from the prior bond file because those fields are not retained in the
+  expanded DTA.

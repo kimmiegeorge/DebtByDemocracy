@@ -14,9 +14,10 @@ bonds with missing offering_yield_spread from the denominator.
 
 Weighted-average ratings use amount outstanding as weights after replacing a
 missing issuance-level rating with zero. The issuance-level measure is the
-maximum bond-level rating_num within an issuance, constructed upstream as
-rating_issue_max. Unrated issuances therefore remain in both the numerator
-(with a zero contribution) and denominator.
+maximum bond-level rating_num within an issuance. The script reconstructs it
+from the raw Moody's, S&P, and Fitch fields using the prior Stata rules.
+Unrated issuances therefore remain in both the numerator (with a zero
+contribution) and denominator.
 '''
 
 #%% -----------------------------------------------------------------------
@@ -54,10 +55,14 @@ county_nonmunicipal_file = out_dir / 'census_cog_county_nonmunicipal_debt_summar
 census_mergent_match_file = diag_dir / 'census_cog_2022_mergent_exact_matches.csv'
 border_file = border_dir / 'Border Matches All Mergent Data Expanded Set Buffer 100000.csv'
 
-bond_file = mergent_dir / '260716_city_cusiplevel_statereq_purpose_yieldspread.dta'
-# This file retains every Mergent bond associated with a matched issuer,
-# including bonds outside the paper's GO and strict-revenue classifications.
-all_bonds_file = mergent_dir / '260917_city_cusiplevel_finsample_allbonds.dta'
+# This is the primary Mergent source for every bond-level construction below.
+# It includes all bonds associated with the matched city issuers, including
+# valid issuer-name matches added in `newmatch`.
+bond_file = mergent_dir / '260917_city_cusiplevel_finsample_allbonds.dta'
+# The expanded file does not retain several static controls or the legacy Gao
+# spread. These are temporarily read from the prior file only as lookups; all
+# bond classifications and aggregations use the expanded file above.
+legacy_bond_file = mergent_dir / '260716_city_cusiplevel_statereq_purpose_yieldspread.dta'
 # Rebuilt from the expanded all-bonds file by
 # Python/Clean/Yield_Spreads/Compute Yield Spreads.py.
 yield_spread_file = clean_data_dir / 'Mergent' / 'Clean' / 'bond_level_off_yield_spread_allbonds.csv'
@@ -65,6 +70,24 @@ yield_spread_file = clean_data_dir / 'Mergent' / 'Clean' / 'bond_level_off_yield
 high_state_tax_privilege_states = {
     'CA', 'OR', 'HI', 'VT', 'RI', 'MT', 'ME', 'NJ', 'MN', 'NC', 'ID', 'NY',
     'AR', 'SC', 'NE', 'OH', 'WV', 'NM', 'DE',
+}
+
+moody_rating_num = {
+    'Aaa': 16, 'Aa1': 15, 'Aa2': 14, 'Aa3': 13, 'A1': 12, 'A2': 11,
+    'A3': 10, 'Baa1': 9, 'Baa2': 8, 'Baa3': 7, 'Ba1': 6, 'Ba2': 5,
+    'Ba3': 4, 'WR': 1,
+}
+
+sp_rating_num = {
+    'AAA': 16, 'AA+': 15, 'AA': 14, 'AA-': 13, 'A+': 12, 'A': 11,
+    'A-': 10, 'BBB+': 9, 'BBB': 8, 'BBB-': 7, 'BB+': 6, 'BB': 5,
+    'BB-': 4, 'B+': 3, 'B': 2,
+}
+
+fitch_rating_num = {
+    'AAA': 16, 'AA+': 15, 'AA': 14, 'AA-': 13, 'A+': 12, 'A': 11,
+    'A-': 10, 'BBB+': 9, 'BBB': 8, 'BBB-': 7, 'BB+': 6, 'BB': 5,
+    'BB-': 4, 'B+': 3, 'B': 2, 'W': 1,
 }
 
 
@@ -382,30 +405,46 @@ census_cross_section = (
 
 
 #%% -----------------------------------------------------------------------
-# load Mergent bond-level files, controls, and outstanding debt measures
+# load Mergent bond-level data, controls, and outstanding debt measures
 # -----------------------------------------------------------------------
-print('Loading Mergent bond-level file...')
+print('Loading expanded Mergent bond-level file...')
 bond_cols = [
     'cusip',
     'issue_id',
     'seed_issuer_id',
     'seed_issuer',
     'state',
-    'state_name',
     'fips',
     'offering_date',
     'maturity_date',
     'amount',
+    'bond_type',
+    'security_code',
     'go_unlim',
     'go_lim',
     'rev',
     'insured',
     'callable',
     'sinkable',
-    'rating_issue_max',
-    'offering_yield_spread',
+    'rated',
+    'rating_f',
+    'rating_m',
+    'rating_s',
     'city_go_vote',
     'city_rev_vote',
+]
+
+raw_bonds = read_stata_columns(bond_file, bond_cols)
+
+# The expanded file lacks a few static issuer controls and the legacy Gao
+# spread. Preserve those values for the existing CUSIPs while the expanded
+# file supplies every bond-level classification and characteristic.
+legacy_control_cols = [
+    'seed_issuer_id',
+    'seed_issuer',
+    'state',
+    'fips',
+    'state_name',
     'nh_city',
     'state_go_vote',
     'state_utgo_allowed',
@@ -416,28 +455,34 @@ bond_cols = [
     'glm_proactive',
 ]
 
-raw_bonds = read_stata_columns(bond_file, bond_cols)
+print('Loading legacy issuer-control and Gao-spread lookups...')
+legacy_controls = (
+    read_stata_columns(legacy_bond_file, legacy_control_cols)
+    .pipe(normalize_id_columns)
+    .group_by('issuer_key')
+    .agg([
+        first_non_null_expr(col)
+        for col in legacy_control_cols
+        if col not in {'seed_issuer_id', 'seed_issuer', 'state', 'fips'}
+    ])
+)
 
-# The paper-sample file above is needed for the GO/revenue classification,
-# offering-yield spread, and issuer controls.  The expanded file is used only
-# for total Mergent debt so that this measure includes all bonds linked to an
-# issuer, rather than only the GO and strict-revenue bonds used in the paper.
-all_bond_cols = [
-    'cusip',
-    'seed_issuer_id',
-    'seed_issuer',
-    'state',
-    'fips',
-    'offering_date',
-    'maturity_date',
-    'amount',
-]
+legacy_gao_spreads = (
+    read_stata_columns(
+        legacy_bond_file,
+        ['issue_id', 'cusip', 'offering_yield_spread'],
+    )
+    .rename({'offering_yield_spread': 'offering_yield_spread_gao'})
+    .with_columns([
+        pl.col('issue_id').cast(pl.Int64),
+        pl.col('cusip').cast(pl.Utf8),
+        pl.col('offering_yield_spread_gao').cast(pl.Float64),
+    ])
+    .unique(subset=['issue_id', 'cusip'])
+)
 
-print('Loading expanded Mergent all-bonds file...')
-raw_all_bonds = read_stata_columns(all_bonds_file, all_bond_cols)
-
-# Retain the original Gao et al. spread and use the pasted-formula NC spread
-# for the backward-compatible outcome consumed by the regression tables.
+# The NC spread is rebuilt for the expanded all-bonds universe by
+# Python/Clean/Yield_Spreads/Compute Yield Spreads.py.
 nc_spreads = (
     pl.read_csv(yield_spread_file, infer_schema_length=10000)
     .select([
@@ -450,11 +495,13 @@ nc_spreads = (
 
 raw_bonds = (
     raw_bonds
-    .rename({'offering_yield_spread': 'offering_yield_spread_gao'})
+    .pipe(normalize_id_columns)
     .with_columns([
         pl.col('issue_id').cast(pl.Int64),
         pl.col('cusip').cast(pl.Utf8),
     ])
+    .join(legacy_controls, on='issuer_key', how='left')
+    .join(legacy_gao_spreads, on=['issue_id', 'cusip'], how='left')
     .join(nc_spreads, on=['issue_id', 'cusip'], how='left')
     .with_columns(
         pl.col('offering_yield_spread_nc').alias('offering_yield_spread')
@@ -531,54 +578,92 @@ bonds = (
     .with_columns([
         pl.col('issue_id').cast(pl.Int64, strict=False),
         pl.col('amount').cast(pl.Float64),
-        pl.col('rating_issue_max').cast(pl.Float64).fill_null(0),
         pl.col('offering_yield_spread').cast(pl.Float64),
         pl.col('offering_yield_spread_nc').cast(pl.Float64),
         pl.col('offering_yield_spread_gao').cast(pl.Float64),
+        pl.col('security_code').cast(pl.Utf8),
+        pl.col('bond_type').cast(pl.Utf8),
         pl.col('go_unlim').fill_null(0).cast(pl.Int8, strict=False),
         pl.col('go_lim').fill_null(0).cast(pl.Int8, strict=False),
-        pl.col('rev').cast(pl.Int8, strict=False),
+        pl.col('rated').fill_null(0).cast(pl.Int8, strict=False),
         pl.col('insured').fill_null(0).cast(pl.Int8, strict=False),
         pl.col('callable').fill_null(0).cast(pl.Int8, strict=False),
         pl.col('sinkable').fill_null(0).cast(pl.Int8, strict=False),
+        pl.col('rating_f').cast(pl.Utf8).str.strip_chars(),
+        pl.col('rating_m').cast(pl.Utf8).str.strip_chars(),
+        pl.col('rating_s').cast(pl.Utf8).str.strip_chars(),
         pl.col('offering_date').cast(pl.Date),
         pl.col('maturity_date').cast(pl.Date),
     ])
+    # The historical Stata rating construction found Moody's and S&P stored
+    # in the opposite raw fields, so preserve that correction here.
+    .with_columns([
+        pl.col('rating_s').alias('rating_m'),
+        pl.col('rating_m').alias('rating_s'),
+    ])
+    .with_columns(
+        pl.when(pl.col('rating_m').eq('#Aaa'))
+        .then(pl.lit('Aaa'))
+        .otherwise(pl.col('rating_m'))
+        .alias('rating_m')
+    )
+    .with_columns(
+        pl.coalesce([
+            pl.col('rating_m').replace_strict(moody_rating_num, default=None),
+            pl.col('rating_s').replace_strict(sp_rating_num, default=None),
+            pl.col('rating_f').replace_strict(fitch_rating_num, default=None),
+        ]).cast(pl.Float64).alias('rating_num')
+    )
+    .with_columns(
+        pl.when(pl.col('rated').eq(0))
+        .then(pl.lit(0.0))
+        .otherwise(pl.col('rating_num'))
+        .alias('rating_num')
+    )
     .filter(
         pl.col('seed_issuer_id').is_not_null()
-        & pl.col('rev').is_not_null()
         & pl.col('amount').is_not_null()
         & (pl.col('amount') > 0)
         & pl.col('offering_date').is_not_null()
         & pl.col('maturity_date').is_not_null()
     )
     .with_columns([
-        (pl.col('go_unlim').eq(1) | pl.col('go_lim').eq(1)).alias('all_go'),
-        pl.col('go_unlim').eq(1).alias('utgo'),
-        pl.col('go_lim').eq(1).alias('ltgo'),
-        pl.col('rev').eq(1).alias('revenue'),
+        pl.col('bond_type').eq('go').alias('all_go'),
+        (pl.col('bond_type').eq('go') & pl.col('go_unlim').eq(1)).alias('utgo'),
+        (pl.col('bond_type').eq('go') & pl.col('go_lim').eq(1)).alias('ltgo'),
+        pl.col('bond_type').eq('rev').alias('revenue'),
+        pl.col('security_code').is_in(['C', 'N']).alias('lease_rent_loan_agreement'),
     ])
 )
 
-all_bonds = (
-    raw_all_bonds
-    .pipe(normalize_id_columns)
-    .with_columns([
-        pl.col('amount').cast(pl.Float64),
-        pl.col('offering_date').cast(pl.Date),
-        pl.col('maturity_date').cast(pl.Date),
+rating_issues = (
+    bonds
+    .group_by('issue_id')
+    .agg([
+        pl.col('rating_num').max().alias('rating_issue_max_raw'),
+        pl.col('insured').max().alias('insured_issue'),
     ])
-    .filter(
-        pl.col('seed_issuer_id').is_not_null()
-        & pl.col('amount').is_not_null()
-        & (pl.col('amount') > 0)
-        & pl.col('offering_date').is_not_null()
-        & pl.col('maturity_date').is_not_null()
-    )
+    .with_columns([
+        (
+            pl.col('rating_issue_max_raw').eq(0)
+            & pl.col('insured_issue').eq(0)
+        ).cast(pl.Int8).alias('issue_unrated'),
+        pl.when(
+            pl.col('rating_issue_max_raw').eq(0)
+            & pl.col('insured_issue').eq(1)
+        )
+        .then(pl.lit(16.0))
+        .when(pl.col('rating_issue_max_raw').eq(0))
+        .then(pl.lit(None).cast(pl.Float64))
+        .otherwise(pl.col('rating_issue_max_raw'))
+        .alias('rating_issue_max'),
+    ])
+    .select(['issue_id', 'issue_unrated', 'rating_issue_max'])
 )
+
+bonds = bonds.join(rating_issues, on='issue_id', how='left')
 
 mergent_years = []
-all_mergent_years = []
 
 for year in target_years:
     as_of = date(year, 12, 31)
@@ -599,34 +684,38 @@ for year in target_years:
         )
     )
 
-    all_bonds_outstanding = (
-        all_bonds
-        .filter(
-            (pl.col('offering_date') <= as_of)
-            & (pl.col('maturity_date') > as_of)
-        )
-    )
-
     any_go_or_revenue = pl.col('all_go') | pl.col('revenue')
     all_go = pl.col('all_go')
     revenue = pl.col('revenue')
     utgo = pl.col('utgo')
     ltgo = pl.col('ltgo')
+    lease_rent_loan_agreement = pl.col('lease_rent_loan_agreement')
+    all_bonds = pl.lit(True)
 
     agg = (
         outstanding
         .group_by('issuer_key')
         .agg([
+            amount_expr(all_bonds, 'mergent_total_outstanding_debt'),
             amount_expr(any_go_or_revenue, 'mergent_go_revenue_outstanding_debt'),
             amount_expr(all_go, 'mergent_all_go_outstanding_debt'),
             amount_expr(revenue, 'mergent_revenue_outstanding_debt'),
             amount_expr(utgo, 'mergent_utgo_outstanding_debt'),
             amount_expr(ltgo, 'mergent_ltgo_outstanding_debt'),
+            amount_expr(
+                lease_rent_loan_agreement,
+                'mergent_lease_rent_loan_agreement_outstanding_debt',
+            ),
+            count_expr(all_bonds, 'mergent_total_bonds_outstanding'),
             count_expr(any_go_or_revenue, 'mergent_go_revenue_bonds_outstanding'),
             count_expr(all_go, 'mergent_all_go_bonds_outstanding'),
             count_expr(revenue, 'mergent_revenue_bonds_outstanding'),
             count_expr(utgo, 'mergent_utgo_bonds_outstanding'),
             count_expr(ltgo, 'mergent_ltgo_bonds_outstanding'),
+            count_expr(
+                lease_rent_loan_agreement,
+                'mergent_lease_rent_loan_agreement_bonds_outstanding',
+            ),
             weighted_spread_expr(any_go_or_revenue, 'mergent_wavg_yield_spread_go_revenue'),
             weighted_spread_expr(revenue, 'mergent_wavg_yield_spread_revenue'),
             weighted_spread_expr(all_go, 'mergent_wavg_yield_spread_all_go'),
@@ -772,40 +861,22 @@ for year in target_years:
 
     mergent_years.append(agg)
 
-    all_mergent_years.append(
-        all_bonds_outstanding
-        .group_by('issuer_key')
-        .agg(
-            pl.col('amount').sum().alias('mergent_total_outstanding_debt')
-        )
-        .with_columns(pl.lit(year).alias('year'))
-    )
-
 mergent_outstanding = pl.concat(mergent_years, how='diagonal')
-all_mergent_outstanding = pl.concat(all_mergent_years, how='diagonal')
 
-paper_mergent_amount_cols = [
+mergent_amount_cols = [
+    'mergent_total_outstanding_debt',
     'mergent_go_revenue_outstanding_debt',
     'mergent_all_go_outstanding_debt',
     'mergent_revenue_outstanding_debt',
     'mergent_utgo_outstanding_debt',
     'mergent_ltgo_outstanding_debt',
+    'mergent_lease_rent_loan_agreement_outstanding_debt',
 ]
 
 mergent_outstanding = mergent_outstanding.with_columns([
     (pl.col(col) / 1_000_000).alias(col.replace('_debt', '_debt_mil'))
-    for col in paper_mergent_amount_cols
+    for col in mergent_amount_cols
 ])
-
-all_mergent_outstanding = all_mergent_outstanding.with_columns(
-    (pl.col('mergent_total_outstanding_debt') / 1_000_000)
-    .alias('mergent_total_outstanding_debt_mil')
-)
-
-mergent_amount_cols = [
-    'mergent_total_outstanding_debt',
-    *paper_mergent_amount_cols,
-]
 
 
 #%% -----------------------------------------------------------------------
@@ -816,7 +887,6 @@ full_panel = (
     census_cross_section
     .join(issuers, on='issuer_key', how='left', suffix='_issuer')
     .join(mergent_outstanding, on=['issuer_key', 'year'], how='left')
-    .join(all_mergent_outstanding, on=['issuer_key', 'year'], how='left')
 )
 
 for col in mergent_amount_cols:
@@ -914,6 +984,8 @@ ordered_cols_base = [
     'ln_1p_county_nonmunicipal_total_debt',
     'mergent_total_outstanding_debt',
     'mergent_total_outstanding_debt_mil',
+    'mergent_lease_rent_loan_agreement_outstanding_debt',
+    'mergent_lease_rent_loan_agreement_outstanding_debt_mil',
     'mergent_go_revenue_outstanding_debt',
     'mergent_go_revenue_outstanding_debt_mil',
     'mergent_all_go_outstanding_debt',
@@ -924,6 +996,8 @@ ordered_cols_base = [
     'mergent_utgo_outstanding_debt_mil',
     'mergent_ltgo_outstanding_debt',
     'mergent_ltgo_outstanding_debt_mil',
+    'mergent_total_bonds_outstanding',
+    'mergent_lease_rent_loan_agreement_bonds_outstanding',
     'mergent_go_revenue_bonds_outstanding',
     'mergent_all_go_bonds_outstanding',
     'mergent_revenue_bonds_outstanding',
