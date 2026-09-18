@@ -41,6 +41,9 @@
   code.
 - `mergent_go_revenue_outstanding_debt` uses `bond_type` equal to `go` or
   `rev`. The final `rev` bond type excludes sales- and excise-tax bonds.
+- Reapplied in Python the six issuance-level UTGO/LTGO/GO corrections from the
+  legacy Stata construction. The expanded-file creation script did not retain
+  those overrides for Mergent issuances with varying security codes.
 - Added `mergent_lease_rent_loan_agreement_outstanding_debt` and its millions
   and CUSIP-count counterparts. It combines Mergent security codes `C`
   (lease/rent) and `N` (loan agreement), excluding bonds whose final

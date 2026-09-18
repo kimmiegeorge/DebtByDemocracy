@@ -436,6 +436,34 @@ bond_cols = [
 
 raw_bonds = read_stata_columns(bond_file, bond_cols)
 
+# Preserve the six issuance-level classification corrections applied in the
+# legacy Stata build (260716_mergent_updatestatelaw_strictrevbond.do). Mergent
+# reports varying security codes within these issuances, so the corrections
+# must be made before any GO/revenue or UTGO/LTGO aggregation.
+issue_id = pl.col('issue_id').cast(pl.Int64, strict=False)
+raw_bonds = raw_bonds.with_columns([
+    pl.when(issue_id.is_in([766088, 1223949, 642811, 640435]))
+    .then(pl.lit(1))
+    .when(issue_id.is_in([34328, 572223]))
+    .then(pl.lit(0))
+    .otherwise(pl.col('go_unlim'))
+    .alias('go_unlim'),
+    pl.when(issue_id.is_in([34328, 572223]))
+    .then(pl.lit(1))
+    .when(issue_id.is_in([766088, 642811, 640435]))
+    .then(pl.lit(0))
+    .otherwise(pl.col('go_lim'))
+    .alias('go_lim'),
+    pl.when(issue_id.eq(1223949))
+    .then(pl.lit(0))
+    .otherwise(pl.col('rev'))
+    .alias('rev'),
+    pl.when(issue_id.eq(1223949))
+    .then(pl.lit('go'))
+    .otherwise(pl.col('bond_type'))
+    .alias('bond_type'),
+])
+
 # The expanded file lacks a few static issuer controls and the legacy Gao
 # spread. Preserve those values for the existing CUSIPs while the expanded
 # file supplies every bond-level classification and characteristic.
