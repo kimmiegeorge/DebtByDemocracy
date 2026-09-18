@@ -43,7 +43,9 @@
   `rev`. The final `rev` bond type excludes sales- and excise-tax bonds.
 - Added `mergent_lease_rent_loan_agreement_outstanding_debt` and its millions
   and CUSIP-count counterparts. It combines Mergent security codes `C`
-  (lease/rent) and `N` (loan agreement), irrespective of final bond type.
+  (lease/rent) and `N` (loan agreement), excluding bonds whose final
+  `bond_type` is `go`. Thus, a C/N bond classified as GO remains GO rather
+  than being placed in the lease/rent--loan-agreement category.
 - Recreated `rating_num`, `rating_issue_max`, and `issue_unrated` directly from
   raw ratings in the expanded DTA using the prior Stata rules. All recreated
   values match the legacy file for its shared CUSIPs.
@@ -57,8 +59,9 @@
   `frac_rev_outstanding` from the R point-in-time analysis script into the
   Python cross-section build. Their denominator remains outstanding GO plus
   strict-revenue debt, and they are missing when that denominator is zero.
-- Added lease/rent-inclusive shares with denominator outstanding GO/revenue
-  debt plus outstanding lease/rent--loan-agreement debt:
+- Added lease/rent-inclusive shares with denominator outstanding GO debt
+  (including C/N GO bonds), strict revenue debt excluding C/N bonds, and
+  non-GO C/N lease/rent--loan-agreement debt:
   `frac_utgo_outstanding_wrl`, `frac_ltgo_outstanding_wrl`,
   `frac_rev_outstanding_wrl`, and
   `frac_lease_rent_loan_agreement_outstanding_wrl`.
