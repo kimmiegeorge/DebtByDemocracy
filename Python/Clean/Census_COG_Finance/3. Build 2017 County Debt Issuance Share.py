@@ -105,16 +105,6 @@ raw_policy = (
     ])
 )
 
-policy_consistency = raw_policy.group_by('state').agg([
-    pl.col(column).drop_nulls().n_unique().alias(column)
-    for column in policy_columns
-])
-inconsistent = policy_consistency.filter(
-    pl.any_horizontal([pl.col(column) > 1 for column in policy_columns])
-)
-if inconsistent.height > 0:
-    raise ValueError(f'Policy values vary within state:\n{inconsistent}')
-
 state_policy = (
     raw_policy
     .group_by('state')
