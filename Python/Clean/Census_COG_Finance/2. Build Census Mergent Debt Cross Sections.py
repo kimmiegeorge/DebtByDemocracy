@@ -719,12 +719,6 @@ other_table_lines.extend([
     + f" & {other_bonds['sales_tax_flag'].sum():,}" + r' \\',
     r'\bottomrule',
     r'\end{tabular*}',
-    r'\par\smallskip',
-    r'\parbox{\textwidth}{\footnotesize Notes: Cleaned bond-level observations classified as '
-    r'\texttt{other}, before the 2012/2017 outstanding-date filters. Amount is bond par amount; '
-    r'percentages are within the other category. Sales tax counts bonds whose issue description '
-    r'contains both SALE and TAX (the existing \texttt{temp\_salestax} flag); these are a subset '
-    r'of each row, not an additional category. Security code H includes sales and excise taxes.}',
     r'\endgroup',
 ])
 other_table_dir.mkdir(parents=True, exist_ok=True)
