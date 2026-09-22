@@ -59,9 +59,9 @@ border_file = border_dir / 'Border Matches All Mergent Data Expanded Set Buffer 
 # It includes all bonds associated with the matched city issuers, including
 # valid issuer-name matches added in `newmatch`.
 bond_file = mergent_dir / '260917_city_cusiplevel_finsample_allbonds.dta'
-# The expanded file does not retain several static controls or the legacy Gao
-# spread. These are temporarily read from the prior file only as lookups; all
-# bond classifications and aggregations use the expanded file above.
+# The expanded file does not retain several static issuer controls. These
+# are read from the prior file as lookups; all bond classifications and
+# aggregations use the expanded file above.
 legacy_bond_file = mergent_dir / '260716_city_cusiplevel_statereq_purpose_yieldspread.dta'
 # Rebuilt from the expanded all-bonds file by
 # Python/Clean/Yield_Spreads/Compute Yield Spreads.py.
@@ -464,8 +464,7 @@ raw_bonds = raw_bonds.with_columns([
     .alias('bond_type'),
 ])
 
-# The expanded file lacks a few static issuer controls and the legacy Gao
-# spread. Preserve those values for the existing CUSIPs while the expanded
+# Preserve static issuer controls from the legacy file while the expanded
 # file supplies every bond-level classification and characteristic.
 legacy_control_cols = [
     'seed_issuer_id',
@@ -483,7 +482,7 @@ legacy_control_cols = [
     'glm_proactive',
 ]
 
-print('Loading legacy issuer-control and Gao-spread lookups...')
+print('Loading legacy issuer-control lookup...')
 legacy_controls = (
     read_stata_columns(legacy_bond_file, legacy_control_cols)
     .pipe(normalize_id_columns)
@@ -493,20 +492,6 @@ legacy_controls = (
         for col in legacy_control_cols
         if col not in {'seed_issuer_id', 'seed_issuer', 'state', 'fips'}
     ])
-)
-
-legacy_gao_spreads = (
-    read_stata_columns(
-        legacy_bond_file,
-        ['issue_id', 'cusip', 'offering_yield_spread'],
-    )
-    .rename({'offering_yield_spread': 'offering_yield_spread_gao'})
-    .with_columns([
-        pl.col('issue_id').cast(pl.Int64),
-        pl.col('cusip').cast(pl.Utf8),
-        pl.col('offering_yield_spread_gao').cast(pl.Float64),
-    ])
-    .unique(subset=['issue_id', 'cusip'])
 )
 
 # The NC spread is rebuilt for the expanded all-bonds universe by
@@ -529,7 +514,6 @@ raw_bonds = (
         pl.col('cusip').cast(pl.Utf8),
     ])
     .join(legacy_controls, on='issuer_key', how='left')
-    .join(legacy_gao_spreads, on=['issue_id', 'cusip'], how='left')
     .join(nc_spreads, on=['issue_id', 'cusip'], how='left')
     .with_columns(
         pl.col('offering_yield_spread_nc').alias('offering_yield_spread')
@@ -608,7 +592,6 @@ bonds = (
         pl.col('amount').cast(pl.Float64),
         pl.col('offering_yield_spread').cast(pl.Float64),
         pl.col('offering_yield_spread_nc').cast(pl.Float64),
-        pl.col('offering_yield_spread_gao').cast(pl.Float64),
         pl.col('security_code').cast(pl.Utf8),
         pl.col('bond_type').cast(pl.Utf8),
         pl.col('go_unlim').fill_null(0).cast(pl.Int8, strict=False),
@@ -790,31 +773,6 @@ for year in target_years:
                 ltgo,
                 'mergent_wavg_yield_spread_ltgo_nc',
                 'offering_yield_spread_nc',
-            ),
-            weighted_spread_expr(
-                any_go_or_revenue,
-                'mergent_wavg_yield_spread_go_revenue_gao',
-                'offering_yield_spread_gao',
-            ),
-            weighted_spread_expr(
-                revenue,
-                'mergent_wavg_yield_spread_revenue_gao',
-                'offering_yield_spread_gao',
-            ),
-            weighted_spread_expr(
-                all_go,
-                'mergent_wavg_yield_spread_all_go_gao',
-                'offering_yield_spread_gao',
-            ),
-            weighted_spread_expr(
-                utgo,
-                'mergent_wavg_yield_spread_utgo_gao',
-                'offering_yield_spread_gao',
-            ),
-            weighted_spread_expr(
-                ltgo,
-                'mergent_wavg_yield_spread_ltgo_gao',
-                'offering_yield_spread_gao',
             ),
             weighted_average_expr(
                 any_go_or_revenue,
@@ -1142,11 +1100,6 @@ ordered_cols_base = [
     'mergent_wavg_yield_spread_all_go_nc',
     'mergent_wavg_yield_spread_utgo_nc',
     'mergent_wavg_yield_spread_ltgo_nc',
-    'mergent_wavg_yield_spread_go_revenue_gao',
-    'mergent_wavg_yield_spread_revenue_gao',
-    'mergent_wavg_yield_spread_all_go_gao',
-    'mergent_wavg_yield_spread_utgo_gao',
-    'mergent_wavg_yield_spread_ltgo_gao',
     'mergent_wavg_original_maturity_years_go_revenue',
     'mergent_wavg_original_maturity_years_all_go',
     'mergent_wavg_original_maturity_years_utgo',
