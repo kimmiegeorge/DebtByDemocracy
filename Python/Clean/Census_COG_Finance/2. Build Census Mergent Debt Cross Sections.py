@@ -737,31 +737,6 @@ for year in target_years:
             weighted_spread_expr(all_go, 'mergent_wavg_yield_spread_all_go'),
             weighted_spread_expr(utgo, 'mergent_wavg_yield_spread_utgo'),
             weighted_spread_expr(ltgo, 'mergent_wavg_yield_spread_ltgo'),
-            weighted_spread_expr(
-                any_go_or_revenue,
-                'mergent_wavg_yield_spread_go_revenue_nc',
-                'offering_yield_spread_nc',
-            ),
-            weighted_spread_expr(
-                revenue,
-                'mergent_wavg_yield_spread_revenue_nc',
-                'offering_yield_spread_nc',
-            ),
-            weighted_spread_expr(
-                all_go,
-                'mergent_wavg_yield_spread_all_go_nc',
-                'offering_yield_spread_nc',
-            ),
-            weighted_spread_expr(
-                utgo,
-                'mergent_wavg_yield_spread_utgo_nc',
-                'offering_yield_spread_nc',
-            ),
-            weighted_spread_expr(
-                ltgo,
-                'mergent_wavg_yield_spread_ltgo_nc',
-                'offering_yield_spread_nc',
-            ),
             weighted_average_expr(
                 any_go_or_revenue,
                 'original_maturity_years',
@@ -1098,45 +1073,27 @@ ordered_cols_base = [
     'frac_ltgo_outstanding_all',
     'frac_rev_outstanding_all',
     'frac_other_outstanding_all',
-    'mergent_go_revenue_outstanding_debt',
-    'mergent_go_revenue_outstanding_debt_mil',
-    'mergent_all_go_outstanding_debt',
-    'mergent_all_go_outstanding_debt_mil',
-    'mergent_revenue_outstanding_debt',
-    'mergent_other_outstanding_debt',
-    'mergent_revenue_outstanding_debt_mil',
-    'mergent_other_outstanding_debt_mil',
-    'mergent_utgo_outstanding_debt',
-    'mergent_utgo_outstanding_debt_mil',
-    'mergent_ltgo_outstanding_debt',
-    'mergent_ltgo_outstanding_debt_mil',
-    'mergent_total_bonds_outstanding',
-    'mergent_lease_rent_loan_agreement_bonds_outstanding',
-    'mergent_go_revenue_bonds_outstanding',
-    'mergent_all_go_bonds_outstanding',
-    'mergent_revenue_bonds_outstanding',
-    'mergent_utgo_bonds_outstanding',
-    'mergent_ltgo_bonds_outstanding',
-    'mergent_wavg_yield_spread_go_revenue',
-    'mergent_wavg_yield_spread_revenue',
-    'mergent_wavg_yield_spread_all_go',
-    'mergent_wavg_yield_spread_utgo',
-    'mergent_wavg_yield_spread_ltgo',
-    'mergent_wavg_yield_spread_go_revenue_nc',
-    'mergent_wavg_yield_spread_revenue_nc',
-    'mergent_wavg_yield_spread_all_go_nc',
-    'mergent_wavg_yield_spread_utgo_nc',
-    'mergent_wavg_yield_spread_ltgo_nc',
-    'mergent_wavg_original_maturity_years_go_revenue',
-    'mergent_wavg_original_maturity_years_all_go',
-    'mergent_wavg_original_maturity_years_utgo',
-    'mergent_wavg_original_maturity_years_ltgo',
-    'mergent_wavg_original_maturity_years_revenue',
-    'mergent_wavg_rating_go_revenue_zero_unrated',
-    'mergent_wavg_rating_all_go_zero_unrated',
-    'mergent_wavg_rating_utgo_zero_unrated',
-    'mergent_wavg_rating_ltgo_zero_unrated',
-    'mergent_wavg_rating_revenue_zero_unrated',
+    *[
+        f'mergent_{suffix}_outstanding_debt{unit}'
+        for suffix in ['go_revenue', 'all_go', 'revenue', 'other', 'utgo', 'ltgo']
+        for unit in ['', '_mil']
+    ],
+    *[
+        f'mergent_{suffix}_bonds_outstanding'
+        for suffix in [
+            'total', 'lease_rent_loan_agreement', 'go_revenue',
+            'all_go', 'revenue', 'utgo', 'ltgo',
+        ]
+    ],
+    *[
+        f'mergent_wavg_{feature}_{suffix}'
+        for feature in ['yield_spread', 'original_maturity_years']
+        for suffix in ['go_revenue', 'all_go', 'utgo', 'ltgo', 'revenue']
+    ],
+    *[
+        f'mergent_wavg_rating_{suffix}_zero_unrated'
+        for suffix in ['go_revenue', 'all_go', 'utgo', 'ltgo', 'revenue']
+    ],
     *[
         f'mergent_wavg_{feature}_{suffix}'
         for feature in ['insured', 'callable', 'sinkable']
