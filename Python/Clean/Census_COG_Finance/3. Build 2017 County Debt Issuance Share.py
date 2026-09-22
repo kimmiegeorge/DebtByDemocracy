@@ -62,7 +62,6 @@ def read_bea_county_file(path: Path, value_column: str) -> pl.DataFrame:
         ])
         .rename({'fips': 'county_fips'})
         .select(['county_fips', value_column])
-        .unique(subset=['county_fips'], keep='first')
     )
 
 
