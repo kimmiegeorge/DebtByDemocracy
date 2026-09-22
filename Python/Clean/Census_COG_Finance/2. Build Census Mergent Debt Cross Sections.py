@@ -647,10 +647,6 @@ bonds = (
             pl.col('security_code').is_in(['C', 'N'])
             & ~pl.col('bond_type').eq('go')
         ).alias('lease_rent_loan_agreement'),
-        (
-            pl.col('bond_type').eq('rev')
-            & ~pl.col('security_code').is_in(['C', 'N'])
-        ).alias('revenue_non_lease_rent_loan_agreement'),
     ])
 )
 
@@ -708,8 +704,6 @@ for year in target_years:
     utgo = pl.col('utgo')
     ltgo = pl.col('ltgo')
     lease_rent_loan_agreement = pl.col('lease_rent_loan_agreement')
-    revenue_non_lease_rent_loan_agreement = pl.col('revenue_non_lease_rent_loan_agreement')
-    go_revenue_for_composition = all_go | revenue_non_lease_rent_loan_agreement
     all_bonds = pl.lit(True)
 
     agg = (
@@ -725,14 +719,6 @@ for year in target_years:
             amount_expr(
                 lease_rent_loan_agreement,
                 'mergent_lease_rent_loan_agreement_outstanding_debt',
-            ),
-            amount_expr(
-                go_revenue_for_composition,
-                'mergent_go_revenue_for_composition_outstanding_debt',
-            ),
-            amount_expr(
-                revenue_non_lease_rent_loan_agreement,
-                'mergent_revenue_non_lease_rent_loan_agreement_outstanding_debt',
             ),
             count_expr(all_bonds, 'mergent_total_bonds_outstanding'),
             count_expr(any_go_or_revenue, 'mergent_go_revenue_bonds_outstanding'),
@@ -874,8 +860,6 @@ mergent_amount_cols = [
     'mergent_utgo_outstanding_debt',
     'mergent_ltgo_outstanding_debt',
     'mergent_lease_rent_loan_agreement_outstanding_debt',
-    'mergent_go_revenue_for_composition_outstanding_debt',
-    'mergent_revenue_non_lease_rent_loan_agreement_outstanding_debt',
 ]
 
 mergent_outstanding = mergent_outstanding.with_columns([
@@ -912,7 +896,7 @@ full_panel = full_panel.with_columns(
 # versions add lease/rent and loan-agreement debt to the denominator and include
 # its corresponding share. A zero denominator is recorded as missing.
 go_revenue_plus_lease_rent_loan_agreement = (
-    pl.col('mergent_go_revenue_for_composition_outstanding_debt')
+    pl.col('mergent_go_revenue_outstanding_debt')
     + pl.col('mergent_lease_rent_loan_agreement_outstanding_debt')
 )
 
@@ -954,7 +938,7 @@ full_panel = full_panel.with_columns([
     .alias('frac_ltgo_outstanding_wrl'),
     pl.when(go_revenue_plus_lease_rent_loan_agreement > 0)
     .then(
-        pl.col('mergent_revenue_non_lease_rent_loan_agreement_outstanding_debt')
+        pl.col('mergent_revenue_outstanding_debt')
         / go_revenue_plus_lease_rent_loan_agreement
     )
     .otherwise(None)
@@ -1062,10 +1046,6 @@ ordered_cols_base = [
     'mergent_total_outstanding_debt_mil',
     'mergent_lease_rent_loan_agreement_outstanding_debt',
     'mergent_lease_rent_loan_agreement_outstanding_debt_mil',
-    'mergent_go_revenue_for_composition_outstanding_debt',
-    'mergent_go_revenue_for_composition_outstanding_debt_mil',
-    'mergent_revenue_non_lease_rent_loan_agreement_outstanding_debt',
-    'mergent_revenue_non_lease_rent_loan_agreement_outstanding_debt_mil',
     'frac_utgo_outstanding',
     'frac_ltgo_outstanding',
     'frac_rev_outstanding',
