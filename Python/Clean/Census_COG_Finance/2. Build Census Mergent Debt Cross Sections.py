@@ -701,6 +701,7 @@ for year in target_years:
     any_go_or_revenue = pl.col('all_go') | pl.col('revenue')
     all_go = pl.col('all_go')
     revenue = pl.col('revenue')
+    other = pl.col('bond_type').eq('other')
     utgo = pl.col('utgo')
     ltgo = pl.col('ltgo')
     lease_rent_loan_agreement = pl.col('lease_rent_loan_agreement')
@@ -714,6 +715,7 @@ for year in target_years:
             amount_expr(any_go_or_revenue, 'mergent_go_revenue_outstanding_debt'),
             amount_expr(all_go, 'mergent_all_go_outstanding_debt'),
             amount_expr(revenue, 'mergent_revenue_outstanding_debt'),
+            amount_expr(other, 'mergent_other_outstanding_debt'),
             amount_expr(utgo, 'mergent_utgo_outstanding_debt'),
             amount_expr(ltgo, 'mergent_ltgo_outstanding_debt'),
             amount_expr(
@@ -857,6 +859,7 @@ mergent_amount_cols = [
     'mergent_go_revenue_outstanding_debt',
     'mergent_all_go_outstanding_debt',
     'mergent_revenue_outstanding_debt',
+    'mergent_other_outstanding_debt',
     'mergent_utgo_outstanding_debt',
     'mergent_ltgo_outstanding_debt',
     'mergent_lease_rent_loan_agreement_outstanding_debt',
@@ -894,7 +897,9 @@ full_panel = full_panel.with_columns(
 # Debt-composition shares used in the point-in-time debt-choice analysis. The
 # original shares partition the paper's GO + strict-revenue measure. The `_wrl`
 # versions add lease/rent and loan-agreement debt to the denominator and include
-# its corresponding share. A zero denominator is recorded as missing.
+# its corresponding share. The `_all` versions use total Mergent debt,
+# including other bonds. GO includes UTGO and LTGO, so its share overlaps theirs.
+# A zero denominator is recorded as missing.
 go_revenue_plus_lease_rent_loan_agreement = (
     pl.col('mergent_go_revenue_outstanding_debt')
     + pl.col('mergent_lease_rent_loan_agreement_outstanding_debt')
@@ -950,6 +955,41 @@ full_panel = full_panel.with_columns([
     )
     .otherwise(None)
     .alias('frac_lease_rent_loan_agreement_outstanding_wrl'),
+    pl.when(pl.col('mergent_total_outstanding_debt') > 0)
+    .then(
+        pl.col('mergent_all_go_outstanding_debt')
+        / pl.col('mergent_total_outstanding_debt')
+    )
+    .otherwise(None)
+    .alias('frac_go_outstanding_all'),
+    pl.when(pl.col('mergent_total_outstanding_debt') > 0)
+    .then(
+        pl.col('mergent_utgo_outstanding_debt')
+        / pl.col('mergent_total_outstanding_debt')
+    )
+    .otherwise(None)
+    .alias('frac_utgo_outstanding_all'),
+    pl.when(pl.col('mergent_total_outstanding_debt') > 0)
+    .then(
+        pl.col('mergent_ltgo_outstanding_debt')
+        / pl.col('mergent_total_outstanding_debt')
+    )
+    .otherwise(None)
+    .alias('frac_ltgo_outstanding_all'),
+    pl.when(pl.col('mergent_total_outstanding_debt') > 0)
+    .then(
+        pl.col('mergent_revenue_outstanding_debt')
+        / pl.col('mergent_total_outstanding_debt')
+    )
+    .otherwise(None)
+    .alias('frac_rev_outstanding_all'),
+    pl.when(pl.col('mergent_total_outstanding_debt') > 0)
+    .then(
+        pl.col('mergent_other_outstanding_debt')
+        / pl.col('mergent_total_outstanding_debt')
+    )
+    .otherwise(None)
+    .alias('frac_other_outstanding_all'),
 ])
 
 border_memberships = (
@@ -1053,12 +1093,19 @@ ordered_cols_base = [
     'frac_ltgo_outstanding_wrl',
     'frac_rev_outstanding_wrl',
     'frac_lease_rent_loan_agreement_outstanding_wrl',
+    'frac_go_outstanding_all',
+    'frac_utgo_outstanding_all',
+    'frac_ltgo_outstanding_all',
+    'frac_rev_outstanding_all',
+    'frac_other_outstanding_all',
     'mergent_go_revenue_outstanding_debt',
     'mergent_go_revenue_outstanding_debt_mil',
     'mergent_all_go_outstanding_debt',
     'mergent_all_go_outstanding_debt_mil',
     'mergent_revenue_outstanding_debt',
+    'mergent_other_outstanding_debt',
     'mergent_revenue_outstanding_debt_mil',
+    'mergent_other_outstanding_debt_mil',
     'mergent_utgo_outstanding_debt',
     'mergent_utgo_outstanding_debt_mil',
     'mergent_ltgo_outstanding_debt',
