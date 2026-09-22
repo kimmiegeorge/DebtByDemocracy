@@ -1,20 +1,10 @@
 '''
-Build the 2017 county-level Census debt issuance share dataset.
+Build 2017 county identifiers, state policy flags, and BEA economic controls.
 
-The unit of observation is a county. City issuance is the sum of Census item
-29U (long-term debt issued) for municipal governments and townships (Census
-government types 2 and 3). Non-city issuance is the corresponding sum for
-county, special-district, and school-district governments (types 1, 4, and 5).
-
-The primary outcome is:
-
-    city long-term debt issued
-    -----------------------------------------------
-    city + non-city long-term debt issued
-
-The share is undefined for counties in which no local government issued
-long-term debt during 2017. Those counties remain in the output with a missing
-share and an explicit zero-total-issuance flag.
+The county universe includes municipal/township and nonmunicipal governments.
+R/Clean/09_census_county_debt_issuance_share_2017.R uses these controls and
+separately constructs city and non-city outstanding debt from Census data.
+The historical output filename is retained for that downstream reader.
 '''
 
 #%% -----------------------------------------------------------------------
@@ -66,76 +56,37 @@ def read_bea_county_file(path: Path, value_column: str) -> pl.DataFrame:
 
 
 #%% -----------------------------------------------------------------------
-# aggregate municipal issuance
+# build the county universe
 # -------------------------------------------------------------------------
-print('Aggregating 2017 municipal long-term debt issuance to counties...')
+print('Loading 2017 county identifiers...')
 
-city_county = (
+city_county_keys = (
     pl.read_csv(city_panel_file, infer_schema_length=10000)
     .filter(
         pl.col('year').eq(target_year)
         & pl.col('government_type').cast(pl.Utf8).is_in(['2', '3'])
     )
-    .with_columns([
-        pl.col('state').cast(pl.Utf8),
-        pl.col('county_fips').cast(pl.Utf8).str.zfill(5),
-        pl.col('lt_debt_issued').cast(pl.Float64).fill_null(0),
-    ])
-    .group_by(['year', 'state', 'county_fips'])
-    .agg([
-        pl.len().alias('city_governments'),
-        (pl.col('lt_debt_issued') > 0).sum().alias('city_governments_with_issuance'),
-        (pl.col('lt_debt_issued').sum() * 1000).alias('city_lt_debt_issued_dollars'),
-    ])
-)
-
-
-#%% -----------------------------------------------------------------------
-# load county non-city issuance and create the county universe
-# -------------------------------------------------------------------------
-print('Loading 2017 county non-city long-term debt issuance...')
-
-noncity_county = (
-    pl.read_csv(noncity_file, infer_schema_length=10000)
-    .filter(pl.col('year').eq(target_year))
-    .with_columns([
-        pl.col('state').cast(pl.Utf8),
-        pl.col('county_fips').cast(pl.Utf8).str.zfill(5),
-        pl.col('county_nonmunicipal_lt_debt_issued_dollars')
-        .cast(pl.Float64)
-        .fill_null(0),
-    ])
     .select([
         'year',
-        'state',
-        'county_fips',
-        'county_nonmunicipal_governments',
-        'county_nonmunicipal_governments_with_end_debt',
-        'county_nonmunicipal_lt_debt_issued_dollars',
-    ])
-)
-
-county_keys = (
-    pl.concat([
-        city_county.select(['year', 'state', 'county_fips']),
-        noncity_county.select(['year', 'state', 'county_fips']),
+        pl.col('state').cast(pl.Utf8),
+        pl.col('county_fips').cast(pl.Utf8).str.zfill(5),
     ])
     .unique()
 )
 
-county_data = (
-    county_keys
-    .join(city_county, on=['year', 'state', 'county_fips'], how='left')
-    .join(noncity_county, on=['year', 'state', 'county_fips'], how='left')
-    .with_columns([
-        pl.col('city_governments').fill_null(0),
-        pl.col('city_governments_with_issuance').fill_null(0),
-        pl.col('city_lt_debt_issued_dollars').fill_null(0),
-        pl.col('county_nonmunicipal_governments').fill_null(0),
-        pl.col('county_nonmunicipal_governments_with_end_debt').fill_null(0),
-        pl.col('county_nonmunicipal_lt_debt_issued_dollars').fill_null(0),
+# Include counties represented only by nonmunicipal governments as well.
+noncity_county_keys = (
+    pl.read_csv(noncity_file, infer_schema_length=10000)
+    .filter(pl.col('year').eq(target_year))
+    .select([
+        'year',
+        pl.col('state').cast(pl.Utf8),
+        pl.col('county_fips').cast(pl.Utf8).str.zfill(5),
     ])
+    .unique()
 )
+
+county_data = pl.concat([city_county_keys, noncity_county_keys]).unique()
 
 
 #%% -----------------------------------------------------------------------
@@ -190,25 +141,9 @@ county_data = (
     .join(population, on='county_fips', how='left')
     .join(personal_income, on='county_fips', how='left')
     .with_columns([
-        (
-            pl.col('city_lt_debt_issued_dollars')
-            + pl.col('county_nonmunicipal_lt_debt_issued_dollars')
-        ).alias('all_local_lt_debt_issued_dollars'),
         pl.col('gdp').log().alias('ln_county_gdp'),
         pl.col('pop').log().alias('ln_county_population'),
         pl.col('pers_inc').log().alias('ln_county_pers_inc'),
-    ])
-    .with_columns([
-        (pl.col('all_local_lt_debt_issued_dollars') > 0)
-        .cast(pl.Int8)
-        .alias('any_local_lt_debt_issued'),
-        pl.when(pl.col('all_local_lt_debt_issued_dollars') > 0)
-        .then(
-            pl.col('city_lt_debt_issued_dollars')
-            / pl.col('all_local_lt_debt_issued_dollars')
-        )
-        .otherwise(None)
-        .alias('city_lt_debt_issued_share'),
     ])
     .sort(['state', 'county_fips'])
 )
@@ -220,12 +155,6 @@ county_data = (
 if county_data.select(pl.struct(['year', 'state', 'county_fips']).is_duplicated().any()).item():
     raise ValueError('County-year identifiers are not unique in the output.')
 
-if county_data.filter(
-    (pl.col('city_lt_debt_issued_share') < 0)
-    | (pl.col('city_lt_debt_issued_share') > 1)
-).height > 0:
-    raise ValueError('The city issuance share falls outside [0, 1].')
-
 county_data.write_csv(output_file)
 
 print(f'Wrote {county_data.height:,} county observations to {output_file}')
@@ -233,11 +162,5 @@ print(
     county_data.select([
         pl.col('state').n_unique().alias('states'),
         pl.col('county_fips').n_unique().alias('counties'),
-        pl.col('any_local_lt_debt_issued').sum().alias('counties_with_issuance'),
-        (pl.col('any_local_lt_debt_issued') == 0).sum().alias('counties_without_issuance'),
-        pl.col('city_lt_debt_issued_dollars').sum().alias('city_issuance_dollars'),
-        pl.col('county_nonmunicipal_lt_debt_issued_dollars')
-        .sum()
-        .alias('noncity_issuance_dollars'),
     ])
 )
