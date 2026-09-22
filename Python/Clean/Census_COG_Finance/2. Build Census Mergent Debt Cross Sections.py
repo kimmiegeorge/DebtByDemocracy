@@ -44,6 +44,9 @@ clean_census_dir = clean_data_dir / 'Census COG Finance'
 border_dir = clean_data_dir / 'Border States'
 out_dir = clean_census_dir / 'processed'
 diag_dir = clean_census_dir / 'diagnostics'
+other_table_dir = Path(os.path.expanduser(
+    '~/Dropbox/Apps/Overleaf/Voting on Bonds/tables/clean/raw'
+))
 
 out_dir.mkdir(parents=True, exist_ok=True)
 diag_dir.mkdir(parents=True, exist_ok=True)
@@ -420,6 +423,7 @@ bond_cols = [
     'amount',
     'bond_type',
     'security_code',
+    'temp_salestax',
     'go_unlim',
     'go_lim',
     'rev',
@@ -649,6 +653,85 @@ bonds = (
         ).alias('lease_rent_loan_agreement'),
     ])
 )
+
+#%% -----------------------------------------------------------------------
+# summarize other bonds before restricting to a year-end outstanding portfolio
+# -----------------------------------------------------------------------
+security_code_labels = {
+    'A': 'Double-barreled', 'B': 'Fuel/vehicle tax', 'C': 'Lease/rent',
+    'D': 'Limited GO', 'E': 'Other', 'F': 'Public improvement',
+    'G': 'Revenue', 'H': 'Sales/excise tax', 'I': 'Special assessment',
+    'J': 'Tax allocation', 'K': 'Unlimited GO', 'L': 'U.S. government',
+    'M': 'Sales agreement', 'N': 'Loan agreement', 'P': 'Tuition agreement',
+    'Q': 'Special tax', 'R': 'Mortgage loan',
+}
+
+# Labels follow the security-code tabulations in the expanded Stata build.
+# temp_salestax is the existing description flag (contains SALE and TAX).
+other_bonds = (
+    bonds
+    .filter(pl.col('bond_type').eq('other'))
+    .with_columns([
+        pl.col('security_code').fill_null('').str.strip_chars()
+        .replace('', 'Missing').alias('security_code'),
+        pl.col('temp_salestax').eq(1).fill_null(False).alias('sales_tax_flag'),
+    ])
+)
+other_summary = (
+    other_bonds
+    .group_by('security_code')
+    .agg([
+        pl.len().alias('bond_count'),
+        pl.col('amount').sum().alias('amount'),
+        pl.col('sales_tax_flag').sum().alias('sales_tax_bond_count'),
+    ])
+    .with_columns([
+        (100 * pl.col('bond_count') / pl.col('bond_count').sum()).alias('bond_pct'),
+        (pl.col('amount') / 1_000_000).alias('amount_mil'),
+        (100 * pl.col('amount') / pl.col('amount').sum()).alias('amount_pct'),
+    ])
+    .sort('security_code')
+)
+
+other_table_lines = [
+    r'\begingroup',
+    r'\centering',
+    r'\small',
+    r'\begin{tabular*}{\textwidth}{@{\extracolsep{\fill}}llrrrrr}',
+    r'\toprule',
+    r'Code & Security & Bonds & Bond \% & Amount (\$m) & Amount \% & Sales tax \\',
+    r'\midrule',
+]
+for row in other_summary.iter_rows(named=True):
+    code = row['security_code']
+    label = security_code_labels.get(code, 'Unmapped' if code != 'Missing' else 'Missing')
+    other_table_lines.append(
+        f"{code} & {label} & {row['bond_count']:,} & {row['bond_pct']:.1f} & "
+        f"{row['amount_mil']:,.1f} & {row['amount_pct']:.1f} & "
+        f"{row['sales_tax_bond_count']:,}" + r' \\'
+    )
+other_table_lines.extend([
+    r'\midrule',
+    f" & Total & {other_bonds.height:,} & "
+    + ('100.0' if other_bonds.height else '--')
+    + f" & {other_bonds['amount'].sum() / 1_000_000:,.1f} & "
+    + ('100.0' if other_bonds.height else '--')
+    + f" & {other_bonds['sales_tax_flag'].sum():,}" + r' \\',
+    r'\bottomrule',
+    r'\end{tabular*}',
+    r'\par\smallskip',
+    r'\parbox{\textwidth}{\footnotesize Notes: Cleaned bond-level observations classified as '
+    r'\texttt{other}, before the 2012/2017 outstanding-date filters. Amount is bond par amount; '
+    r'percentages are within the other category. Sales tax counts bonds whose issue description '
+    r'contains both SALE and TAX (the existing \texttt{temp\_salestax} flag); these are a subset '
+    r'of each row, not an additional category. Security code H includes sales and excise taxes.}',
+    r'\endgroup',
+])
+other_table_dir.mkdir(parents=True, exist_ok=True)
+other_table_path = other_table_dir / 'mergent_other_bonds_security_summary.tex'
+other_table_path.write_text('\n'.join(other_table_lines) + '\n')
+print(f'Wrote other-bond composition table to {other_table_path}')
+
 
 rating_issues = (
     bonds
