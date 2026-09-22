@@ -424,6 +424,8 @@ bond_cols = [
     'bond_type',
     'security_code',
     'temp_salestax',
+    'temp_excisetax',
+    'source_of_repayment',
     'go_unlim',
     'go_lim',
     'rev',
@@ -654,6 +656,52 @@ bonds = (
     ])
 )
 
+# Separate debt-composition partition: retain existing GO classifications,
+# split revenue into tax/non-tax backing, and exclude ambiguous double-barreled
+# bonds. Null categories contribute to none of the taxsplit amounts or shares.
+bonds = bonds.with_columns(
+    pl.when(
+        pl.col('security_code').eq('A').fill_null(False)
+        | pl.col('source_of_repayment').eq('A').fill_null(False)
+    )
+    .then(pl.lit(None).cast(pl.Utf8))
+    .when(pl.col('utgo'))
+    .then(pl.lit('utgo'))
+    .when(pl.col('ltgo'))
+    .then(pl.lit('ltgo'))
+    .when(
+        ~pl.col('all_go')
+        & (
+            (
+                pl.col('bond_type').eq('other')
+                & pl.col('security_code').is_in(['B', 'H', 'I', 'J', 'Q'])
+            )
+            | (
+                pl.col('security_code').eq('G')
+                & (
+                    pl.col('temp_salestax').eq(1).fill_null(False)
+                    | pl.col('temp_excisetax').eq(1).fill_null(False)
+                )
+            )
+        )
+    )
+    .then(pl.lit('revenue_tax'))
+    .when(
+        ~pl.col('all_go')
+        & (
+            pl.col('revenue')
+            | (
+                pl.col('bond_type').eq('other')
+                & pl.col('security_code').is_in(['C', 'M', 'N', 'P', 'R'])
+            )
+        )
+    )
+    .then(pl.lit('revenue_nontax'))
+    .otherwise(pl.lit(None).cast(pl.Utf8))
+    .alias('bond_type_taxsplit')
+)
+
+
 #%% -----------------------------------------------------------------------
 # summarize other bonds before restricting to a year-end outstanding portfolio
 # -----------------------------------------------------------------------
@@ -789,6 +837,27 @@ for year in target_years:
         .group_by('issuer_key')
         .agg([
             amount_expr(all_bonds, 'mergent_total_outstanding_debt'),
+            # Only classified bonds enter this partition's denominator.
+            amount_expr(
+                pl.col('bond_type_taxsplit').is_not_null(),
+                'mergent_taxsplit_outstanding_debt',
+            ),
+            amount_expr(
+                pl.col('bond_type_taxsplit').eq('utgo'),
+                'mergent_utgo_taxsplit_outstanding_debt',
+            ),
+            amount_expr(
+                pl.col('bond_type_taxsplit').eq('ltgo'),
+                'mergent_ltgo_taxsplit_outstanding_debt',
+            ),
+            amount_expr(
+                pl.col('bond_type_taxsplit').eq('revenue_tax'),
+                'mergent_revenue_tax_taxsplit_outstanding_debt',
+            ),
+            amount_expr(
+                pl.col('bond_type_taxsplit').eq('revenue_nontax'),
+                'mergent_revenue_nontax_taxsplit_outstanding_debt',
+            ),
             amount_expr(any_go_or_revenue, 'mergent_go_revenue_outstanding_debt'),
             amount_expr(all_go, 'mergent_all_go_outstanding_debt'),
             amount_expr(revenue, 'mergent_revenue_outstanding_debt'),
@@ -937,6 +1006,11 @@ for year in target_years:
 mergent_outstanding = pl.concat(mergent_years, how='diagonal')
 
 mergent_amount_cols = [
+    'mergent_taxsplit_outstanding_debt',
+    'mergent_utgo_taxsplit_outstanding_debt',
+    'mergent_ltgo_taxsplit_outstanding_debt',
+    'mergent_revenue_tax_taxsplit_outstanding_debt',
+    'mergent_revenue_nontax_taxsplit_outstanding_debt',
     'mergent_total_outstanding_debt',
     'mergent_go_revenue_outstanding_debt',
     'mergent_all_go_outstanding_debt',
@@ -1072,6 +1146,35 @@ full_panel = full_panel.with_columns([
     )
     .otherwise(None)
     .alias('frac_other_outstanding_all'),
+    # Taxsplit shares use the same four-category denominator.
+    pl.when(pl.col('mergent_taxsplit_outstanding_debt') > 0)
+    .then(
+        pl.col('mergent_utgo_taxsplit_outstanding_debt')
+        / pl.col('mergent_taxsplit_outstanding_debt')
+    )
+    .otherwise(None)
+    .alias('frac_utgo_outstanding_taxsplit'),
+    pl.when(pl.col('mergent_taxsplit_outstanding_debt') > 0)
+    .then(
+        pl.col('mergent_ltgo_taxsplit_outstanding_debt')
+        / pl.col('mergent_taxsplit_outstanding_debt')
+    )
+    .otherwise(None)
+    .alias('frac_ltgo_outstanding_taxsplit'),
+    pl.when(pl.col('mergent_taxsplit_outstanding_debt') > 0)
+    .then(
+        pl.col('mergent_revenue_tax_taxsplit_outstanding_debt')
+        / pl.col('mergent_taxsplit_outstanding_debt')
+    )
+    .otherwise(None)
+    .alias('frac_revenue_tax_outstanding_taxsplit'),
+    pl.when(pl.col('mergent_taxsplit_outstanding_debt') > 0)
+    .then(
+        pl.col('mergent_revenue_nontax_taxsplit_outstanding_debt')
+        / pl.col('mergent_taxsplit_outstanding_debt')
+    )
+    .otherwise(None)
+    .alias('frac_revenue_nontax_outstanding_taxsplit'),
 ])
 
 border_memberships = (
@@ -1180,6 +1283,18 @@ ordered_cols_base = [
     'frac_ltgo_outstanding_all',
     'frac_rev_outstanding_all',
     'frac_other_outstanding_all',
+    *[
+        f'frac_{category}_outstanding_taxsplit'
+        for category in ['utgo', 'ltgo', 'revenue_tax', 'revenue_nontax']
+    ],
+    *[
+        f'mergent_{category}_outstanding_debt{unit}'
+        for category in [
+            'taxsplit', 'utgo_taxsplit', 'ltgo_taxsplit',
+            'revenue_tax_taxsplit', 'revenue_nontax_taxsplit',
+        ]
+        for unit in ['', '_mil']
+    ],
     *[
         f'mergent_{suffix}_outstanding_debt{unit}'
         for suffix in ['go_revenue', 'all_go', 'revenue', 'other', 'utgo', 'ltgo']
