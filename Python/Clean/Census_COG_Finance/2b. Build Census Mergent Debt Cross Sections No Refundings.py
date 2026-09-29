@@ -917,7 +917,6 @@ bonds = bonds.join(rating_issues, on='issue_id', how='left')
 
 
 mergent_years = []
-seed_issuer_name_audit_years = []
 
 for year in target_years:
     as_of = date(year, 12, 31)
@@ -941,75 +940,6 @@ for year in target_years:
             ).alias('original_maturity_years')
         )
     )
-
-    # Audit the issuer crosswalk using the *same* CUSIPs and outstanding
-    # balances that feed the primary debt-stock measure.  Mergent's seeded
-    # issuer identifier can occasionally pool similarly named municipalities
-    # (for example, Dover and Andover, MA), so retain the raw issuer name and
-    # its dollar contribution for every Census--Mergent match.
-    seed_issuer_name_audit_years.append(
-        outstanding
-        .with_columns(
-            pl.col('issuer_long_name')
-            .cast(pl.Utf8)
-            .fill_null('[MISSING]')
-            .str.strip_chars()
-            .str.to_uppercase()
-            .alias('raw_issuer_long_name')
-        )
-        .group_by([
-            'issuer_key', 'seed_issuer_id', 'seed_issuer', 'state',
-            'raw_issuer_long_name',
-        ])
-        .agg([
-            pl.col('cusip').n_unique().alias('outstanding_cusips'),
-            pl.len().alias('outstanding_rows'),
-            pl.col('amount').sum().alias('outstanding_debt'),
-        ])
-        .join(
-            matches.select([
-                'issuer_key', 'gov_id', 'census_name', 'government_type_label',
-                'issuer_city_clean', 'match_type',
-            ]).unique(subset=['issuer_key'], keep='first'),
-            on='issuer_key',
-            how='inner',
-        )
-        .with_columns([
-            pl.lit(year).alias('year'),
-            pl.col('issuer_city_clean')
-            .cast(pl.Utf8)
-            .fill_null('')
-            .str.to_uppercase()
-            .str.replace_all(r'[^A-Z0-9]+', ' ')
-            .str.strip_chars()
-            .alias('audit_census_city_name'),
-            pl.col('raw_issuer_long_name')
-            .str.replace_all(r'[^A-Z0-9]+', ' ')
-            .str.strip_chars()
-            .alias('audit_raw_issuer_name'),
-        ])
-        # Use bounded spaces so DOVER is not judged present merely because it
-        # is a substring of ANDOVER.  This is a screening flag, not a claim
-        # that every nonliteral issuer label is necessarily an incorrect match.
-        .with_columns(
-            pl.concat_str([
-                pl.lit(' '), pl.col('audit_raw_issuer_name'), pl.lit(' '),
-            ])
-            .str.contains(
-                pl.concat_str([
-                    pl.lit(' '), pl.col('audit_census_city_name'), pl.lit(' '),
-                ]),
-                literal=True,
-            )
-            .alias('raw_name_contains_census_city')
-        )
-        .with_columns(
-            pl.col('audit_raw_issuer_name')
-            .str.starts_with(pl.col('audit_census_city_name'))
-            .alias('raw_name_starts_with_census_city')
-        )
-    )
-
 
     any_go_or_revenue = pl.col('all_go') | pl.col('revenue')
     all_go = pl.col('all_go')
@@ -1192,51 +1122,6 @@ for year in target_years:
     mergent_years.append(agg)
 
 mergent_outstanding = pl.concat(mergent_years, how='diagonal')
-seed_issuer_name_audit = pl.concat(seed_issuer_name_audit_years, how='diagonal')
-
-# One row per city-year makes it easy to prioritize the groups whose
-# nonmatching raw names account for material outstanding principal.  The
-# companion detail file below retains one row per raw issuer label.
-seed_issuer_name_audit_summary = (
-    seed_issuer_name_audit
-    .group_by([
-        'year', 'issuer_key', 'seed_issuer_id', 'seed_issuer', 'state',
-        'gov_id', 'census_name', 'government_type_label',
-        'issuer_city_clean', 'match_type',
-    ])
-    .agg([
-        pl.col('raw_issuer_long_name').n_unique().alias('raw_issuer_name_count'),
-        pl.col('outstanding_cusips').sum().alias('outstanding_cusips'),
-        pl.col('outstanding_rows').sum().alias('outstanding_rows'),
-        pl.col('outstanding_debt').sum().alias('outstanding_debt'),
-        pl.when(~pl.col('raw_name_contains_census_city'))
-        .then(pl.col('outstanding_debt'))
-        .otherwise(0.0)
-        .sum()
-        .alias('raw_name_nonmatching_debt'),
-        pl.when(~pl.col('raw_name_starts_with_census_city'))
-        .then(pl.col('outstanding_debt'))
-        .otherwise(0.0)
-        .sum()
-        .alias('raw_name_nonprefix_debt'),
-        pl.col('raw_name_contains_census_city').all().alias('all_raw_names_contain_census_city'),
-        pl.col('raw_name_starts_with_census_city').all().alias('all_raw_names_start_with_census_city'),
-    ])
-    .with_columns([
-        (pl.col('outstanding_debt') / 1_000_000).alias('outstanding_debt_mil'),
-        (pl.col('raw_name_nonmatching_debt') / 1_000_000).alias('raw_name_nonmatching_debt_mil'),
-        (pl.col('raw_name_nonprefix_debt') / 1_000_000).alias('raw_name_nonprefix_debt_mil'),
-        pl.when(pl.col('outstanding_debt') > 0)
-        .then(pl.col('raw_name_nonmatching_debt') / pl.col('outstanding_debt'))
-        .otherwise(None)
-        .alias('raw_name_nonmatching_debt_share'),
-        pl.when(pl.col('outstanding_debt') > 0)
-        .then(pl.col('raw_name_nonprefix_debt') / pl.col('outstanding_debt'))
-        .otherwise(None)
-        .alias('raw_name_nonprefix_debt_share'),
-    ])
-    .sort(['year', 'raw_name_nonprefix_debt_share', 'outstanding_debt'], descending=[False, True, True])
-)
 
 mergent_amount_cols = [
     'mergent_taxsplit_outstanding_debt',
@@ -1626,12 +1511,6 @@ diagnostics = (
 )
 
 diagnostics.write_csv(build_diag_dir / 'census_mergent_debt_cross_section_diagnostics.csv')
-seed_issuer_name_audit.write_csv(
-    build_diag_dir / 'census_mergent_seed_issuer_name_audit_detail.csv'
-)
-seed_issuer_name_audit_summary.write_csv(
-    build_diag_dir / 'census_mergent_seed_issuer_name_audit_summary.csv'
-)
 print(diagnostics)
 
 # %%
