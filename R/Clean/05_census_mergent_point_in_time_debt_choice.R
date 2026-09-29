@@ -11,6 +11,8 @@ source('/Users/kmunevar/Dropbox/Voting on Bonds/Code/R/Clean/00_border_pair_defi
 
 root <- '/Users/kmunevar/Dropbox/Voting on Bonds'
 tbl_dir <- '/Users/kmunevar/Dropbox/Voting on Bonds/Code/R/Clean/output/revision_tables'
+tbl_dir <- file.path(tbl_dir, 'additional_controls')
+dir.create(tbl_dir, recursive = TRUE, showWarnings = FALSE)
 processed_dir <- '/Users/kmunevar/Dropbox/Voting on Bonds/Code/R/Clean/output/processed'
 
 #----------------------------
