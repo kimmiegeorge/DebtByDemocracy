@@ -790,6 +790,12 @@ for year in target_years:
             weighted_spread_expr(ltgo, 'mergent_wavg_yield_spread_ltgo'),
             weighted_spread_expr(other, 'mergent_wavg_yield_spread_other'),
             weighted_spread_expr(lease_rent_loan_agreement, 'mergent_wavg_yield_spread_lease_rent_loan_agreement'),
+            # Match the all-bond yield spread with all-bond characteristics.
+            weighted_average_expr(
+                all_bonds,
+                'original_maturity_years',
+                'mergent_wavg_original_maturity_years_all',
+            ),
             weighted_average_expr(
                 any_go_or_revenue,
                 'original_maturity_years',
@@ -824,6 +830,11 @@ for year in target_years:
                 lease_rent_loan_agreement,
                 'original_maturity_years',
                 'mergent_wavg_original_maturity_years_lease_rent_loan_agreement',
+            ),
+            weighted_average_zero_missing_expr(
+                all_bonds,
+                'rating_issue_max',
+                'mergent_wavg_rating_all_zero_unrated',
             ),
             weighted_average_zero_missing_expr(
                 any_go_or_revenue,
@@ -868,6 +879,7 @@ for year in target_years:
                 )
                 for feature in ['insured', 'callable', 'sinkable']
                 for mask, suffix in [
+                    (all_bonds, 'all'),
                     (any_go_or_revenue, 'go_revenue'),
                     (all_go, 'all_go'),
                     (utgo, 'utgo'),
@@ -888,7 +900,7 @@ for year in target_years:
             .alias(f'mergent_none_{feature}_{suffix}')
             for feature in ['insured', 'callable', 'sinkable']
             for suffix in [
-                'go_revenue', 'all_go', 'utgo', 'ltgo', 'revenue',
+                'all', 'go_revenue', 'all_go', 'utgo', 'ltgo', 'revenue',
                 'other', 'lease_rent_loan_agreement',
             ]
         ])
@@ -899,7 +911,7 @@ for year in target_years:
             .alias(f'mergent_any_{feature}_{suffix}')
             for feature in ['insured', 'callable', 'sinkable']
             for suffix in [
-                'go_revenue', 'all_go', 'utgo', 'ltgo', 'revenue',
+                'all', 'go_revenue', 'all_go', 'utgo', 'ltgo', 'revenue',
                 'other', 'lease_rent_loan_agreement',
             ]
         ])
@@ -1176,7 +1188,6 @@ ordered_cols_base = [
     'ln_1p_county_nonmunicipal_total_debt',
     'mergent_total_outstanding_debt',
     'mergent_total_outstanding_debt_mil',
-    'mergent_wavg_yield_spread_all',
     'mergent_lease_rent_loan_agreement_outstanding_debt',
     'mergent_lease_rent_loan_agreement_outstanding_debt_mil',
     'frac_utgo_outstanding',
@@ -1219,14 +1230,14 @@ ordered_cols_base = [
         f'mergent_wavg_{feature}_{suffix}'
         for feature in ['yield_spread', 'original_maturity_years']
         for suffix in [
-            'go_revenue', 'all_go', 'utgo', 'ltgo', 'revenue',
+            'all', 'go_revenue', 'all_go', 'utgo', 'ltgo', 'revenue',
             'other', 'lease_rent_loan_agreement',
         ]
     ],
     *[
         f'mergent_wavg_rating_{suffix}_zero_unrated'
         for suffix in [
-            'go_revenue', 'all_go', 'utgo', 'ltgo', 'revenue',
+            'all', 'go_revenue', 'all_go', 'utgo', 'ltgo', 'revenue',
             'other', 'lease_rent_loan_agreement',
         ]
     ],
@@ -1234,7 +1245,7 @@ ordered_cols_base = [
         f'mergent_wavg_{feature}_{suffix}'
         for feature in ['insured', 'callable', 'sinkable']
         for suffix in [
-            'go_revenue', 'all_go', 'utgo', 'ltgo', 'revenue',
+            'all', 'go_revenue', 'all_go', 'utgo', 'ltgo', 'revenue',
             'other', 'lease_rent_loan_agreement',
         ]
     ],
@@ -1242,7 +1253,7 @@ ordered_cols_base = [
         f'mergent_none_{feature}_{suffix}'
         for feature in ['insured', 'callable', 'sinkable']
         for suffix in [
-            'go_revenue', 'all_go', 'utgo', 'ltgo', 'revenue',
+            'all', 'go_revenue', 'all_go', 'utgo', 'ltgo', 'revenue',
             'other', 'lease_rent_loan_agreement',
         ]
     ],
@@ -1250,7 +1261,7 @@ ordered_cols_base = [
         f'mergent_any_{feature}_{suffix}'
         for feature in ['insured', 'callable', 'sinkable']
         for suffix in [
-            'go_revenue', 'all_go', 'utgo', 'ltgo', 'revenue',
+            'all', 'go_revenue', 'all_go', 'utgo', 'ltgo', 'revenue',
             'other', 'lease_rent_loan_agreement',
         ]
     ],
