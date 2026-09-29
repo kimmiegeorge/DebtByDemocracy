@@ -781,6 +781,8 @@ for year in target_years:
                 lease_rent_loan_agreement,
                 'mergent_lease_rent_loan_agreement_bonds_outstanding',
             ),
+            # Include other bonds in the original-par-weighted all-bond spread.
+            weighted_spread_expr(all_bonds, 'mergent_wavg_yield_spread_all'),
             weighted_spread_expr(any_go_or_revenue, 'mergent_wavg_yield_spread_go_revenue'),
             weighted_spread_expr(revenue, 'mergent_wavg_yield_spread_revenue'),
             weighted_spread_expr(all_go, 'mergent_wavg_yield_spread_all_go'),
@@ -1174,6 +1176,7 @@ ordered_cols_base = [
     'ln_1p_county_nonmunicipal_total_debt',
     'mergent_total_outstanding_debt',
     'mergent_total_outstanding_debt_mil',
+    'mergent_wavg_yield_spread_all',
     'mergent_lease_rent_loan_agreement_outstanding_debt',
     'mergent_lease_rent_loan_agreement_outstanding_debt_mil',
     'frac_utgo_outstanding',
