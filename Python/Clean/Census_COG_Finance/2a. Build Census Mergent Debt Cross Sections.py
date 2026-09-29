@@ -83,6 +83,7 @@ partial_redemption_file = data_dir / 'Mergent' / 'Raw' / 'PARTREDM.DLM'
 # are read from the prior file as lookups; all bond classifications and
 # aggregations use the expanded file above.
 legacy_bond_file = mergent_dir / '260716_city_cusiplevel_statereq_purpose_yieldspread.dta'
+county_demographics_file = data_dir / 'BEA' / 'countydemos_1999_2026.dta'
 # Rebuilt from the expanded all-bonds file by
 # Python/Clean/Yield_Spreads/Compute Yield Spreads.py.
 yield_spread_file = clean_data_dir / 'Mergent' / 'Clean' / 'bond_level_off_yield_spread_allbonds.csv'
@@ -618,6 +619,38 @@ census_cross_section = (
 
 
 #%% -----------------------------------------------------------------------
+# attach county demographics for the year before each Census cross section
+# -----------------------------------------------------------------------
+# Read BEA levels directly instead of taking demographics from an arbitrary
+# legacy bond row. The 2012 cross section uses 2011; 2017 uses 2016.
+county_demographics = (
+    read_stata_columns(county_demographics_file, ['fips', 'year', 'gdp', 'pop', 'pers_inc'])
+    .with_columns([
+        pl.col('fips').cast(pl.Utf8).str.replace(r'\.0$', '').str.zfill(5).alias('county_fips'),
+        pl.col('year').cast(pl.Int64).alias('demographic_year'),
+        (pl.col('year').cast(pl.Int64) + 1).alias('year'),
+    ])
+    .filter(pl.col('year').is_in(target_years))
+    .with_columns([
+        pl.when(pl.col(col) > 0)
+        .then(pl.col(col).log())
+        .otherwise(None)
+        .alias(f'ln_{col}')
+        for col in ['gdp', 'pop', 'pers_inc']
+    ])
+    .select(['county_fips', 'year', 'demographic_year', 'ln_gdp', 'ln_pop', 'ln_pers_inc'])
+)
+
+# Match on the Census cross section's county and year. Unmatched or nonpositive
+# BEA values stay missing; do not substitute another year or a legacy value.
+# Census municipal population remains the separate, contemporaneous measure.
+census_cross_section = (
+    census_cross_section
+    .join(county_demographics, on=['county_fips', 'year'], how='left', validate='m:1')
+)
+
+
+#%% -----------------------------------------------------------------------
 # load Mergent bond-level data, controls, and outstanding debt measures
 # -----------------------------------------------------------------------
 print('Loading expanded Mergent bond-level file...')
@@ -738,9 +771,6 @@ legacy_control_cols = [
     'state_go_vote',
     'state_utgo_allowed',
     'state_ltgo_allowed',
-    'ln_gdp',
-    'ln_pop',
-    'ln_pers_inc',
     'glm_proactive',
 ]
 
@@ -805,9 +835,6 @@ issuer_control_cols = [
     'state_go_vote',
     'state_utgo_allowed',
     'state_ltgo_allowed',
-    'ln_gdp',
-    'ln_pop',
-    'ln_pers_inc',
     'glm_proactive',
 ]
 
@@ -2067,6 +2094,7 @@ ordered_cols_base = [
     'state_go_vote',
     'state_utgo_allowed',
     'state_ltgo_allowed',
+    'demographic_year',
     'ln_gdp',
     'ln_pop',
     'ln_pers_inc',
