@@ -692,36 +692,6 @@ bond_cols = [
 raw_bonds = read_stata_columns(bond_file, bond_cols)
 raw_bonds_before_scope = raw_bonds.height
 
-# ``new_money`` is a CUSIP-level inherited flag.  Retain an issue-level
-# classification from the *full* Mergent file, before the city-scope screen,
-# so a component excluded by that screen cannot make a mixed issue appear to
-# be a pure refunding or a pure new-money issue.  The alternative stock below
-# drops every CUSIP from an issue that contains both statuses.
-issue_new_money_composition = (
-    raw_bonds
-    .select([
-        pl.col('issue_id').cast(pl.Int64, strict=False).alias('issue_id'),
-        pl.col('new_money').cast(pl.Int8, strict=False).alias('new_money'),
-    ])
-    .filter(pl.col('issue_id').is_not_null())
-    .group_by('issue_id')
-    .agg([
-        pl.col('new_money').eq(1).any().alias('issue_has_new_money'),
-        pl.col('new_money').eq(0).any().alias('issue_has_refunding'),
-    ])
-    .with_columns(
-        (
-            pl.col('issue_has_new_money')
-            & pl.col('issue_has_refunding')
-        ).cast(pl.Int8).alias('issue_mixed_new_money')
-    )
-    .select(['issue_id', 'issue_mixed_new_money'])
-)
-print(
-    'Found '
-    f"{issue_new_money_composition['issue_mixed_new_money'].sum():,} "
-    'Mergent issues with both new-money and refunding CUSIPs.'
-)
 raw_bonds = apply_legacy_city_scope(raw_bonds)
 print(
     'Applied legacy city-scope screen: '
@@ -814,7 +784,6 @@ raw_bonds = (
         pl.col('issue_id').cast(pl.Int64),
         pl.col('cusip').cast(pl.Utf8),
     ])
-    .join(issue_new_money_composition, on='issue_id', how='left')
     .join(legacy_controls, on='issuer_key', how='left')
     .join(issuer_vote_controls, on='issuer_key', how='left')
     .join(nc_spreads, on=['issue_id', 'cusip'], how='left')
@@ -1133,48 +1102,6 @@ rating_issues = (
 
 bonds = bonds.join(rating_issues, on='issue_id', how='left')
 
-def aggregate_pure_issue_refunding_stock(outstanding, year):
-    """Aggregate a stock that excludes mixed new-money/refunding issues.
-
-    This retains a CUSIP when its Mergent issue is homogeneous: either every
-    CUSIP in the issue is marked ``new_money == 1`` or every CUSIP is marked
-    ``new_money == 0``.  It deliberately drops *all* CUSIPs from an issue that
-    contains both values; retaining just the new-money CUSIPs from a mixed
-    issue would no longer be an issue-level screen.  Principal remains the
-    primary redemption/BONDINFO-adjusted amount in ``outstanding``.
-    """
-    any_go_or_revenue = pl.col('all_go') | pl.col('revenue')
-    all_go = pl.col('all_go')
-    revenue = pl.col('revenue')
-    utgo = pl.col('utgo')
-    ltgo = pl.col('ltgo')
-    all_bonds = pl.lit(True)
-    prefix = 'mergent_pure_issue_refunding_stock'
-
-    return (
-        outstanding
-        .filter(
-            pl.col('issue_mixed_new_money').eq(0)
-            & pl.col('new_money').is_in([0, 1])
-        )
-        .group_by('issuer_key')
-        .agg([
-            amount_expr(all_bonds, f'{prefix}_total_outstanding_debt'),
-            amount_expr(any_go_or_revenue, f'{prefix}_go_revenue_outstanding_debt'),
-            amount_expr(all_go, f'{prefix}_all_go_outstanding_debt'),
-            amount_expr(revenue, f'{prefix}_revenue_outstanding_debt'),
-            amount_expr(utgo, f'{prefix}_utgo_outstanding_debt'),
-            amount_expr(ltgo, f'{prefix}_ltgo_outstanding_debt'),
-            count_expr(all_bonds, f'{prefix}_total_bonds_outstanding'),
-            count_expr(any_go_or_revenue, f'{prefix}_go_revenue_bonds_outstanding'),
-            count_expr(all_go, f'{prefix}_all_go_bonds_outstanding'),
-            count_expr(revenue, f'{prefix}_revenue_bonds_outstanding'),
-            count_expr(utgo, f'{prefix}_utgo_bonds_outstanding'),
-            count_expr(ltgo, f'{prefix}_ltgo_bonds_outstanding'),
-        ])
-        .with_columns(pl.lit(year).alias('year'))
-    )
-
 
 def aggregate_debt_composition_stock(stock, year, prefix, debt_suffix):
     """Aggregate a compact GO/revenue composition stock for the 2x2 audit.
@@ -1273,8 +1200,6 @@ def aggregate_bondinfo_balance_only_stock(eligible, year):
 
 
 mergent_years = []
-pure_issue_refunding_stock_years = []
-pure_issue_refunding_stock_diagnostics = []
 newmoney_original_par_years = []
 allbond_original_par_years = []
 newmoney_point_in_time_years = []
@@ -1447,20 +1372,6 @@ for year in target_years:
         )
     )
 
-    pure_issue_refunding_stock_diagnostics.append(
-        outstanding
-        .select([
-            pl.len().alias('outstanding_bonds'),
-            pl.col('amount').sum().alias('outstanding_debt'),
-            pl.col('issue_mixed_new_money').eq(1).sum().alias('mixed_issue_bonds_removed'),
-            pl.when(pl.col('issue_mixed_new_money').eq(1))
-            .then(pl.col('amount'))
-            .otherwise(0.0)
-            .sum()
-            .alias('mixed_issue_debt_removed'),
-        ])
-        .with_columns(pl.lit(year).alias('year'))
-    )
 
     any_go_or_revenue = pl.col('all_go') | pl.col('revenue')
     all_go = pl.col('all_go')
@@ -1641,9 +1552,6 @@ for year in target_years:
     )
 
     mergent_years.append(agg)
-    pure_issue_refunding_stock_years.append(
-        aggregate_pure_issue_refunding_stock(outstanding, year)
-    )
     # 2x2 audit, point-in-time row: retain only new-money CUSIPs while using
     # exactly the same redemption/BONDINFO balance adjustment as the primary
     # all-bond point-in-time stock.
@@ -1657,7 +1565,6 @@ for year in target_years:
     )
 
 mergent_outstanding = pl.concat(mergent_years, how='diagonal')
-pure_issue_refunding_stock = pl.concat(pure_issue_refunding_stock_years, how='diagonal')
 newmoney_original_par = pl.concat(newmoney_original_par_years, how='diagonal')
 allbond_original_par = pl.concat(allbond_original_par_years, how='diagonal')
 newmoney_point_in_time = pl.concat(newmoney_point_in_time_years, how='diagonal')
@@ -1729,14 +1636,6 @@ mergent_outstanding = mergent_outstanding.with_columns([
     for col in mergent_amount_cols
 ])
 
-pure_issue_refunding_amount_cols = [
-    f'mergent_pure_issue_refunding_stock_{suffix}_outstanding_debt'
-    for suffix in ['total', 'go_revenue', 'all_go', 'revenue', 'utgo', 'ltgo']
-]
-pure_issue_refunding_stock = pure_issue_refunding_stock.with_columns([
-    (pl.col(col) / 1_000_000).alias(col.replace('_debt', '_debt_mil'))
-    for col in pure_issue_refunding_amount_cols
-])
 
 audit_stock_specs = [
     ('mergent_newmoney_original_par', newmoney_original_par, 'debt'),
@@ -1781,7 +1680,6 @@ full_panel = (
     census_cross_section
     .join(issuers, on='issuer_key', how='left', suffix='_issuer')
     .join(mergent_outstanding, on=['issuer_key', 'year'], how='left')
-    .join(pure_issue_refunding_stock, on=['issuer_key', 'year'], how='left')
     .join(newmoney_original_par, on=['issuer_key', 'year'], how='left')
     .join(allbond_original_par, on=['issuer_key', 'year'], how='left')
     .join(newmoney_point_in_time, on=['issuer_key', 'year'], how='left')
@@ -1792,9 +1690,6 @@ for col in mergent_amount_cols:
     full_panel = full_panel.with_columns(pl.col(col).fill_null(0))
     full_panel = full_panel.with_columns(pl.col(col.replace('_debt', '_debt_mil')).fill_null(0))
 
-for col in pure_issue_refunding_amount_cols:
-    full_panel = full_panel.with_columns(pl.col(col).fill_null(0))
-    full_panel = full_panel.with_columns(pl.col(col.replace('_debt', '_debt_mil')).fill_null(0))
 
 for prefix, _, _ in audit_stock_specs:
     for col in audit_stock_amount_cols[prefix]:
@@ -1815,11 +1710,6 @@ for suffix in ['total', 'go_revenue', 'all_go', 'revenue', 'utgo', 'ltgo']:
         .fill_null(0)
     )
 
-for suffix in ['total', 'go_revenue', 'all_go', 'revenue', 'utgo', 'ltgo']:
-    full_panel = full_panel.with_columns(
-        pl.col(f'mergent_pure_issue_refunding_stock_{suffix}_bonds_outstanding')
-        .fill_null(0)
-    )
 
 # Census total debt not represented by the issuer's outstanding Mergent bonds.
 # Both input measures are in millions of dollars.
@@ -1983,33 +1873,6 @@ full_panel = full_panel.with_columns([
     .alias('frac_rev_bondinfo_balance_only_outstanding'),
 ])
 
-# Issue-level refunding robustness: retain homogeneous new-money and
-# homogeneous refunding issues, but exclude the full set of CUSIPs in any
-# issue containing both inherited ``new_money`` values.
-full_panel = full_panel.with_columns([
-    pl.when(pl.col('mergent_pure_issue_refunding_stock_go_revenue_outstanding_debt') > 0)
-    .then(
-        pl.col('mergent_pure_issue_refunding_stock_utgo_outstanding_debt')
-        / pl.col('mergent_pure_issue_refunding_stock_go_revenue_outstanding_debt')
-    )
-    .otherwise(None)
-    .alias('frac_utgo_pure_issue_refunding_stock_outstanding'),
-    pl.when(pl.col('mergent_pure_issue_refunding_stock_go_revenue_outstanding_debt') > 0)
-    .then(
-        pl.col('mergent_pure_issue_refunding_stock_ltgo_outstanding_debt')
-        / pl.col('mergent_pure_issue_refunding_stock_go_revenue_outstanding_debt')
-    )
-    .otherwise(None)
-    .alias('frac_ltgo_pure_issue_refunding_stock_outstanding'),
-    pl.when(pl.col('mergent_pure_issue_refunding_stock_go_revenue_outstanding_debt') > 0)
-    .then(
-        pl.col('mergent_pure_issue_refunding_stock_revenue_outstanding_debt')
-        / pl.col('mergent_pure_issue_refunding_stock_go_revenue_outstanding_debt')
-    )
-    .otherwise(None)
-    .alias('frac_rev_pure_issue_refunding_stock_outstanding'),
-])
-
 # Four-cell new-money/refunding × original-par/point-in-time audit.  The
 # fourth cell is the primary ``frac_*_outstanding`` series already created
 # above; these three sets of shares complete the 2x2.
@@ -2137,9 +2000,6 @@ ordered_cols_base = [
     'frac_ltgo_outstanding_all',
     'frac_rev_outstanding_all',
     'frac_other_outstanding_all',
-    'frac_utgo_pure_issue_refunding_stock_outstanding',
-    'frac_ltgo_pure_issue_refunding_stock_outstanding',
-    'frac_rev_pure_issue_refunding_stock_outstanding',
     *[
         f'frac_{category}_{share_suffix}'
         for share_suffix in [
@@ -2175,15 +2035,6 @@ ordered_cols_base = [
             'total', 'lease_rent_loan_agreement', 'go_revenue',
             'all_go', 'revenue', 'utgo', 'ltgo',
         ]
-    ],
-    *[
-        f'mergent_pure_issue_refunding_stock_{suffix}_outstanding_debt{unit}'
-        for suffix in ['total', 'go_revenue', 'all_go', 'revenue', 'utgo', 'ltgo']
-        for unit in ['', '_mil']
-    ],
-    *[
-        f'mergent_pure_issue_refunding_stock_{suffix}_bonds_outstanding'
-        for suffix in ['total', 'go_revenue', 'all_go', 'revenue', 'utgo', 'ltgo']
     ],
     *[
         f'{prefix}_{suffix}_debt{unit}'
@@ -2316,25 +2167,6 @@ seed_issuer_name_audit.write_csv(
 seed_issuer_name_audit_summary.write_csv(
     diag_dir / 'census_mergent_seed_issuer_name_audit_summary.csv'
 )
-pure_issue_refunding_stock_diagnostics = pl.concat(
-    pure_issue_refunding_stock_diagnostics,
-    how='diagonal',
-).with_columns([
-    (pl.col('outstanding_debt') / 1_000_000).alias('outstanding_debt_mil'),
-    (pl.col('mixed_issue_debt_removed') / 1_000_000).alias('mixed_issue_debt_removed_mil'),
-    pl.when(pl.col('outstanding_bonds') > 0)
-    .then(pl.col('mixed_issue_bonds_removed') / pl.col('outstanding_bonds'))
-    .otherwise(None)
-    .alias('mixed_issue_bond_share_removed'),
-    pl.when(pl.col('outstanding_debt') > 0)
-    .then(pl.col('mixed_issue_debt_removed') / pl.col('outstanding_debt'))
-    .otherwise(None)
-    .alias('mixed_issue_debt_share_removed'),
-])
-pure_issue_refunding_stock_diagnostics.write_csv(
-    diag_dir / 'census_mergent_pure_issue_refunding_stock_diagnostics.csv'
-)
 print(diagnostics)
-print(pure_issue_refunding_stock_diagnostics)
 
 # %%
