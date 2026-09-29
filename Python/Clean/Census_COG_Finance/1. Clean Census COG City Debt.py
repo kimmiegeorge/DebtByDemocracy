@@ -29,10 +29,7 @@ from pathlib import Path
 
 import polars as pl
 
-try:
-    import pandas as pd
-except ImportError:
-    pd = None
+import pandas as pd
 
 
 root = Path(os.path.expanduser('~/Dropbox/Voting on Bonds'))
@@ -653,330 +650,312 @@ flag_summary.write_csv(diagnostics_dir / 'census_cog_city_debt_item_flag_summary
 #%% -----------------------------------------------------------------------
 # Step 4: load and prepare Mergent issuers
 # -----------------------------------------------------------------------
-# Read the selected Stata columns if pandas and the source file are available.
-# A failed read skips only the Mergent diagnostic; Census outputs remain available.
-bond_pd = None
-issuers = None
-if pd is None:
-    print('pandas is not installed; skipping Mergent merge diagnostic.')
-elif not mergent_bond_file.exists():
-    print(f'Mergent bond file not found: {mergent_bond_file}')
-else:
-    print('Loading Mergent bond-level file for issuer match diagnostic...')
-    cols = [
-        'seed_issuer_id',
-        'seed_issuer',
-        'fips',
-        'state',
-        'state_name',
-        'city_go_vote',
-        'city_rev_vote',
-    ]
+# Read the issuer identifiers and voting-law columns from the Mergent bond file.
+print('Loading Mergent bond-level file for issuer match diagnostic...')
+cols = [
+    'seed_issuer_id',
+    'seed_issuer',
+    'fips',
+    'state',
+    'state_name',
+    'city_go_vote',
+    'city_rev_vote',
+]
 
-    try:
-        bond_pd = pd.read_stata(mergent_bond_file, columns=cols, convert_categoricals=False)
-    except Exception as exc:
-        print(f'Could not read Mergent Stata file; skipping merge diagnostic. Error: {exc}')
-        bond_pd = None
+bond_pd = pd.read_stata(mergent_bond_file, columns=cols, convert_categoricals=False)
 
+# Keep usable bond rows, clean identifiers, and construct a stable issuer key.
+issuers = (
+    pl.from_pandas(bond_pd)
+    .filter(
+        pl.col('seed_issuer_id').is_not_null()
+        & pl.col('seed_issuer').is_not_null()
+        & pl.col('state').is_not_null()
+    )
+    .with_columns([
+        pl.col('seed_issuer_id').cast(pl.Float64).round(1),
+        pl.col('seed_issuer').cast(pl.Utf8).str.strip_chars(),
+        pl.col('state').cast(pl.Utf8).str.to_uppercase(),
+        pl.col('fips').cast(pl.Utf8).str.replace(r'\.0$', '').str.zfill(5).alias('county_fips'),
+    ])
+    .with_columns(
+        pl.concat_str([
+            (pl.col('seed_issuer_id') * 10).round(0).cast(pl.Int64).cast(pl.Utf8),
+            pl.col('state'),
+            pl.col('seed_issuer').str.to_uppercase().str.replace_all(r'\s+', ' '),
+        ], separator='|').alias('issuer_key')
+    )
+)
 
-# Build the issuer table only when the Stata read succeeded.
-if bond_pd is not None:
-    # Keep usable bond rows, clean identifiers, and construct a stable issuer key.
-    issuers = (
-        pl.from_pandas(bond_pd)
-        .filter(
-            pl.col('seed_issuer_id').is_not_null()
-            & pl.col('seed_issuer').is_not_null()
-            & pl.col('state').is_not_null()
+# Collapse bond rows to one row per issuer, keeping the first nonmissing controls.
+issuers = (
+    issuers
+    .group_by(['issuer_key', 'seed_issuer_id', 'seed_issuer', 'state'])
+    .agg([
+        pl.col('county_fips').drop_nulls().first().alias('county_fips'),
+        pl.col('state_name').drop_nulls().first().alias('state_name'),
+        pl.col('city_go_vote').drop_nulls().first().alias('city_go_vote'),
+        pl.col('city_rev_vote').drop_nulls().first().alias('city_rev_vote'),
+    ])
+)
+
+# Identify control issuers and issuers in the UTGO-only states.
+issuers = (
+    issuers
+    .with_columns([
+        (
+            pl.col('city_go_vote').eq(0)
+            & pl.col('city_rev_vote').eq(0)
+        ).fill_null(False).cast(pl.Int8).alias('control'),
+        pl.col('state').is_in(['WA', 'MI', 'OH']).cast(pl.Int8).alias('utgo_only'),
+    ])
+)
+
+# Identify issuers subject to the all-GO voting requirement.
+issuers = (
+    issuers
+    .with_columns([
+        (
+            pl.col('city_go_vote').eq(1)
+            & pl.col('city_rev_vote').eq(0)
+            & pl.col('utgo_only').eq(0)
+        ).fill_null(False).cast(pl.Int8).alias('allgo_only'),
+    ])
+)
+
+# Build the full and alternative voting-law sample indicators.
+issuers = (
+    issuers
+    .with_columns([
+        (
+            pl.col('control').eq(1)
+            | pl.col('utgo_only').eq(1)
+            | pl.col('allgo_only').eq(1)
+        ).cast(pl.Int8).alias('insample'),
+        (
+            pl.col('control').eq(1)
+            | pl.col('allgo_only').eq(1)
+        ).cast(pl.Int8).alias('insample_allgo'),
+        (
+            pl.col('control').eq(1)
+            | pl.col('utgo_only').eq(1)
+        ).cast(pl.Int8).alias('insample_utgo_only'),
+    ])
+)
+
+# Normalize issuer names, removing state suffixes and expanding common abbreviations.
+issuers = (
+    issuers
+    .with_columns([
+        pl.struct(['seed_issuer', 'state'])
+        .map_elements(
+            lambda x: normalize_issuer_name(x['seed_issuer'], x['state']),
+            return_dtype=pl.Utf8,
         )
-        .with_columns([
-            pl.col('seed_issuer_id').cast(pl.Float64).round(1),
-            pl.col('seed_issuer').cast(pl.Utf8).str.strip_chars(),
-            pl.col('state').cast(pl.Utf8).str.to_uppercase(),
-            pl.col('fips').cast(pl.Utf8).str.replace(r'\.0$', '').str.zfill(5).alias('county_fips'),
-        ])
-        .with_columns(
-            pl.concat_str([
-                (pl.col('seed_issuer_id') * 10).round(0).cast(pl.Int64).cast(pl.Utf8),
-                pl.col('state'),
-                pl.col('seed_issuer').str.to_uppercase().str.replace_all(r'\s+', ' '),
-            ], separator='|').alias('issuer_key')
-        )
-    )
-
-    # Collapse bond rows to one row per issuer, keeping the first nonmissing controls.
-    issuers = (
-        issuers
-        .group_by(['issuer_key', 'seed_issuer_id', 'seed_issuer', 'state'])
-        .agg([
-            pl.col('county_fips').drop_nulls().first().alias('county_fips'),
-            pl.col('state_name').drop_nulls().first().alias('state_name'),
-            pl.col('city_go_vote').drop_nulls().first().alias('city_go_vote'),
-            pl.col('city_rev_vote').drop_nulls().first().alias('city_rev_vote'),
-        ])
-    )
-
-    # Identify control issuers and issuers in the UTGO-only states.
-    issuers = (
-        issuers
-        .with_columns([
-            (
-                pl.col('city_go_vote').eq(0)
-                & pl.col('city_rev_vote').eq(0)
-            ).fill_null(False).cast(pl.Int8).alias('control'),
-            pl.col('state').is_in(['WA', 'MI', 'OH']).cast(pl.Int8).alias('utgo_only'),
-        ])
-    )
-
-    # Identify issuers subject to the all-GO voting requirement.
-    issuers = (
-        issuers
-        .with_columns([
-            (
-                pl.col('city_go_vote').eq(1)
-                & pl.col('city_rev_vote').eq(0)
-                & pl.col('utgo_only').eq(0)
-            ).fill_null(False).cast(pl.Int8).alias('allgo_only'),
-        ])
-    )
-
-    # Build the full and alternative voting-law sample indicators.
-    issuers = (
-        issuers
-        .with_columns([
-            (
-                pl.col('control').eq(1)
-                | pl.col('utgo_only').eq(1)
-                | pl.col('allgo_only').eq(1)
-            ).cast(pl.Int8).alias('insample'),
-            (
-                pl.col('control').eq(1)
-                | pl.col('allgo_only').eq(1)
-            ).cast(pl.Int8).alias('insample_allgo'),
-            (
-                pl.col('control').eq(1)
-                | pl.col('utgo_only').eq(1)
-            ).cast(pl.Int8).alias('insample_utgo_only'),
-        ])
-    )
-
-    # Normalize issuer names, removing state suffixes and expanding common abbreviations.
-    issuers = (
-        issuers
-        .with_columns([
-            pl.struct(['seed_issuer', 'state'])
-            .map_elements(
-                lambda x: normalize_issuer_name(x['seed_issuer'], x['state']),
-                return_dtype=pl.Utf8,
-            )
-            .alias('issuer_city_clean')
-        ])
-    )
-
+        .alias('issuer_city_clean')
+    ])
+)
 
 
 #%% -----------------------------------------------------------------------
 # Step 5: match Mergent issuers to the 2022 Census directory
 # -----------------------------------------------------------------------
-# Match issuers only when the issuer table was successfully constructed.
-if issuers is not None:
-    # Use 2022 Census names for matching; prioritize cities over townships sharing a county/name.
-    census_names = (
-        census_panel
-        .filter(pl.col('year').eq(2022))
-        .select([
-            'gov_id',
-            'state',
-            'county_fips',
-            'census_name',
-            'government_type',
-            'government_type_label',
-            'census_city_clean',
-            'place_fips_full',
-            'population',
-            'total_end_debt_outstanding',
-            'total_end_debt_per_capita',
-        ])
-        .filter(pl.col('census_city_clean').is_not_null())
-        .with_columns([
-            pl.when(pl.col('government_type').eq('2'))
-            .then(0)
-            .when(pl.col('government_type').eq('3'))
-            .then(1)
-            .otherwise(2)
-            .alias('census_government_priority'),
-        ])
-        .sort(['state', 'county_fips', 'census_city_clean', 'census_government_priority', 'population'])
-        .unique(subset=['state', 'county_fips', 'census_city_clean'], keep='first')
-    )
+# Use 2022 Census names for matching; prioritize cities over townships sharing a county/name.
+census_names = (
+    census_panel
+    .filter(pl.col('year').eq(2022))
+    .select([
+        'gov_id',
+        'state',
+        'county_fips',
+        'census_name',
+        'government_type',
+        'government_type_label',
+        'census_city_clean',
+        'place_fips_full',
+        'population',
+        'total_end_debt_outstanding',
+        'total_end_debt_per_capita',
+    ])
+    .filter(pl.col('census_city_clean').is_not_null())
+    .with_columns([
+        pl.when(pl.col('government_type').eq('2'))
+        .then(0)
+        .when(pl.col('government_type').eq('3'))
+        .then(1)
+        .otherwise(2)
+        .alias('census_government_priority'),
+    ])
+    .sort(['state', 'county_fips', 'census_city_clean', 'census_government_priority', 'population'])
+    .unique(subset=['state', 'county_fips', 'census_city_clean'], keep='first')
+)
 
-    # First match on state, county FIPS, and normalized city name.
-    exact_county = (
-        issuers
-        .join(
-            census_names,
-            left_on=['state', 'county_fips', 'issuer_city_clean'],
-            right_on=['state', 'county_fips', 'census_city_clean'],
-            how='left',
+# First match on state, county FIPS, and normalized city name.
+exact_county = (
+    issuers
+    .join(
+        census_names,
+        left_on=['state', 'county_fips', 'issuer_city_clean'],
+        right_on=['state', 'county_fips', 'census_city_clean'],
+        how='left',
+    )
+    .with_columns(
+        pl.when(pl.col('gov_id').is_not_null())
+        .then(pl.lit('state_county_name'))
+        .otherwise(None)
+        .alias('match_type')
+    )
+)
+
+# Keep issuers without a county-level match for a second matching pass.
+unmatched = exact_county.filter(pl.col('gov_id').is_null()).select(issuers.columns)
+
+# Keep one Census candidate per state/name for the fallback match.
+census_state_names = (
+    census_names
+    .unique(subset=['state', 'census_city_clean'], keep='first')
+    .select([
+        'state',
+        'gov_id',
+        'county_fips',
+        'census_name',
+        'government_type',
+        'government_type_label',
+        'census_government_priority',
+        'census_city_clean',
+        'place_fips_full',
+        'population',
+        'total_end_debt_outstanding',
+        'total_end_debt_per_capita',
+    ])
+)
+
+# Try state and normalized name for issuers unmatched in the county-level pass.
+exact_state = (
+    unmatched
+    .join(
+        census_state_names,
+        left_on=['state', 'issuer_city_clean'],
+        right_on=['state', 'census_city_clean'],
+        how='left',
+        suffix='_census',
+    )
+    .with_columns(
+        pl.when(pl.col('gov_id').is_not_null())
+        .then(pl.lit('state_name'))
+        .otherwise(None)
+        .alias('match_type')
+    )
+)
+
+# Combine successful matches from both passes.
+matched_exact = pl.concat(
+    [
+        exact_county.filter(pl.col('gov_id').is_not_null()),
+        exact_state.filter(pl.col('gov_id').is_not_null()),
+    ],
+    how='diagonal',
+)
+
+# Resolve duplicates by match quality, law availability, government type, and issuer name.
+# Retain at most one row per Census government and per Mergent issuer.
+matched_exact = (
+    matched_exact
+    .with_columns([
+        pl.when(pl.col('match_type').eq('state_county_name'))
+        .then(0)
+        .otherwise(1)
+        .alias('match_type_priority'),
+        pl.col('city_go_vote').is_null().cast(pl.Int8).alias('law_missing_priority'),
+        pl.when(
+            pl.col('seed_issuer')
+            .str.to_uppercase()
+            .str.contains(r'\b(TWP|TOWNSHIP)\b')
         )
-        .with_columns(
-            pl.when(pl.col('gov_id').is_not_null())
-            .then(pl.lit('state_county_name'))
-            .otherwise(None)
-            .alias('match_type')
+        .then(2)
+        .when(
+            pl.col('seed_issuer')
+            .str.to_uppercase()
+            .str.contains(r'\b(VLG|VILLAGE|BORO|BOROUGH)\b')
         )
-    )
+        .then(1)
+        .otherwise(0)
+        .alias('issuer_name_priority'),
+    ])
+    .sort([
+        'gov_id',
+        'match_type_priority',
+        'law_missing_priority',
+        'census_government_priority',
+        'issuer_name_priority',
+        'seed_issuer_id',
+        'issuer_key',
+    ])
+    .unique(subset=['gov_id'], keep='first')
+    .unique(subset=['issuer_key'], keep='first')
+    .drop(['match_type_priority', 'law_missing_priority', 'census_government_priority', 'issuer_name_priority'])
+)
 
-    # Keep issuers without a county-level match for a second matching pass.
-    unmatched = exact_county.filter(pl.col('gov_id').is_null()).select(issuers.columns)
+# Keep issuers that failed both exact matching passes.
+still_unmatched = exact_state.filter(pl.col('gov_id').is_null()).select(issuers.columns)
 
-    # Keep one Census candidate per state/name for the fallback match.
-    census_state_names = (
-        census_names
-        .unique(subset=['state', 'census_city_clean'], keep='first')
-        .select([
-            'state',
-            'gov_id',
-            'county_fips',
-            'census_name',
-            'government_type',
-            'government_type_label',
-            'census_government_priority',
-            'census_city_clean',
-            'place_fips_full',
-            'population',
-            'total_end_debt_outstanding',
-            'total_end_debt_per_capita',
-        ])
-    )
+# Save the exact crosswalk consumed by 2a/2b and the unmatched-issuer diagnostic.
+matched_exact.write_csv(diagnostics_dir / 'census_cog_2022_mergent_exact_matches.csv')
+still_unmatched.write_csv(diagnostics_dir / 'census_cog_2022_mergent_unmatched.csv')
 
-    # Try state and normalized name for issuers unmatched in the county-level pass.
-    exact_state = (
-        unmatched
-        .join(
-            census_state_names,
-            left_on=['state', 'issuer_city_clean'],
-            right_on=['state', 'census_city_clean'],
-            how='left',
-            suffix='_census',
-        )
-        .with_columns(
-            pl.when(pl.col('gov_id').is_not_null())
-            .then(pl.lit('state_name'))
-            .otherwise(None)
-            .alias('match_type')
-        )
-    )
+print('Exact merge diagnostic:')
+print(f'  Mergent issuers: {issuers.height:,}')
+print(f'  exact matches: {matched_exact.select("issuer_key").n_unique():,}')
+print(f'  matched Census governments: {matched_exact.select("gov_id").n_unique():,}')
+print(f'  unmatched: {still_unmatched.height:,}')
 
-    # Combine successful matches from both passes.
-    matched_exact = pl.concat(
-        [
-            exact_county.filter(pl.col('gov_id').is_not_null()),
-            exact_state.filter(pl.col('gov_id').is_not_null()),
-        ],
-        how='diagonal',
-    )
+# Index Census names by state for suggested matches among the remaining issuers.
+fuzzy_rows = []
+census_by_state = {}
+for row in census_state_names.select(['state', 'census_city_clean', 'census_name', 'gov_id']).iter_rows(named=True):
+    if row['census_city_clean'] is None:
+        continue
+    census_by_state.setdefault(row['state'], []).append(row)
 
-    # Resolve duplicates by match quality, law availability, government type, and issuer name.
-    # Retain at most one row per Census government and per Mergent issuer.
-    matched_exact = (
-        matched_exact
-        .with_columns([
-            pl.when(pl.col('match_type').eq('state_county_name'))
-            .then(0)
-            .otherwise(1)
-            .alias('match_type_priority'),
-            pl.col('city_go_vote').is_null().cast(pl.Int8).alias('law_missing_priority'),
-            pl.when(
-                pl.col('seed_issuer')
-                .str.to_uppercase()
-                .str.contains(r'\b(TWP|TOWNSHIP)\b')
-            )
-            .then(2)
-            .when(
-                pl.col('seed_issuer')
-                .str.to_uppercase()
-                .str.contains(r'\b(VLG|VILLAGE|BORO|BOROUGH)\b')
-            )
-            .then(1)
-            .otherwise(0)
-            .alias('issuer_name_priority'),
-        ])
-        .sort([
-            'gov_id',
-            'match_type_priority',
-            'law_missing_priority',
-            'census_government_priority',
-            'issuer_name_priority',
-            'seed_issuer_id',
-            'issuer_key',
-        ])
-        .unique(subset=['gov_id'], keep='first')
-        .unique(subset=['issuer_key'], keep='first')
-        .drop(['match_type_priority', 'law_missing_priority', 'census_government_priority', 'issuer_name_priority'])
-    )
+# Suggest up to three similar names in the same state (similarity cutoff 0.82).
+# These are review candidates only; they are not added to the exact crosswalk.
+for issuer in still_unmatched.iter_rows(named=True):
+    issuer_name = issuer.get('issuer_city_clean')
+    state = issuer.get('state')
+    if issuer_name is None or state not in census_by_state:
+        continue
 
-    # Keep issuers that failed both exact matching passes.
-    still_unmatched = exact_state.filter(pl.col('gov_id').is_null()).select(issuers.columns)
-
-    # Save the exact crosswalk consumed by 2a/2b and the unmatched-issuer diagnostic.
-    matched_exact.write_csv(diagnostics_dir / 'census_cog_2022_mergent_exact_matches.csv')
-    still_unmatched.write_csv(diagnostics_dir / 'census_cog_2022_mergent_unmatched.csv')
-
-    print('Exact merge diagnostic:')
-    print(f'  Mergent issuers: {issuers.height:,}')
-    print(f'  exact matches: {matched_exact.select("issuer_key").n_unique():,}')
-    print(f'  matched Census governments: {matched_exact.select("gov_id").n_unique():,}')
-    print(f'  unmatched: {still_unmatched.height:,}')
-
-    # Index Census names by state for suggested matches among the remaining issuers.
-    fuzzy_rows = []
-    census_by_state = {}
-    for row in census_state_names.select(['state', 'census_city_clean', 'census_name', 'gov_id']).iter_rows(named=True):
-        if row['census_city_clean'] is None:
-            continue
-        census_by_state.setdefault(row['state'], []).append(row)
-
-    # Suggest up to three similar names in the same state (similarity cutoff 0.82).
-    # These are review candidates only; they are not added to the exact crosswalk.
-    for issuer in still_unmatched.iter_rows(named=True):
-        issuer_name = issuer.get('issuer_city_clean')
-        state = issuer.get('state')
-        if issuer_name is None or state not in census_by_state:
-            continue
-
-        choices = [row['census_city_clean'] for row in census_by_state[state]]
-        for candidate in difflib.get_close_matches(issuer_name, choices, n=3, cutoff=0.82):
-            match = next(row for row in census_by_state[state] if row['census_city_clean'] == candidate)
-            fuzzy_rows.append(
-                {
-                    'seed_issuer_id': issuer['seed_issuer_id'],
-                    'seed_issuer': issuer['seed_issuer'],
-                    'state': state,
-                    'county_fips': issuer['county_fips'],
-                    'issuer_city_clean': issuer_name,
-                    'candidate_gov_id': match['gov_id'],
-                    'candidate_census_name': match['census_name'],
-                    'candidate_city_clean': candidate,
-                }
-            )
-
-    # Save the candidate list, retaining the expected CSV columns even when it is empty.
-    if fuzzy_rows:
-        pl.DataFrame(fuzzy_rows).write_csv(diagnostics_dir / 'census_cog_2022_mergent_fuzzy_candidates.csv')
-    else:
-        pl.DataFrame(
-            schema={
-                'seed_issuer_id': pl.Float64,
-                'seed_issuer': pl.Utf8,
-                'state': pl.Utf8,
-                'county_fips': pl.Utf8,
-                'issuer_city_clean': pl.Utf8,
-                'candidate_gov_id': pl.Utf8,
-                'candidate_census_name': pl.Utf8,
-                'candidate_city_clean': pl.Utf8,
+    choices = [row['census_city_clean'] for row in census_by_state[state]]
+    for candidate in difflib.get_close_matches(issuer_name, choices, n=3, cutoff=0.82):
+        match = next(row for row in census_by_state[state] if row['census_city_clean'] == candidate)
+        fuzzy_rows.append(
+            {
+                'seed_issuer_id': issuer['seed_issuer_id'],
+                'seed_issuer': issuer['seed_issuer'],
+                'state': state,
+                'county_fips': issuer['county_fips'],
+                'issuer_city_clean': issuer_name,
+                'candidate_gov_id': match['gov_id'],
+                'candidate_census_name': match['census_name'],
+                'candidate_city_clean': candidate,
             }
-        ).write_csv(diagnostics_dir / 'census_cog_2022_mergent_fuzzy_candidates.csv')
+        )
+
+# Save the candidate list, retaining the expected CSV columns even when it is empty.
+if fuzzy_rows:
+    pl.DataFrame(fuzzy_rows).write_csv(diagnostics_dir / 'census_cog_2022_mergent_fuzzy_candidates.csv')
+else:
+    pl.DataFrame(
+        schema={
+            'seed_issuer_id': pl.Float64,
+            'seed_issuer': pl.Utf8,
+            'state': pl.Utf8,
+            'county_fips': pl.Utf8,
+            'issuer_city_clean': pl.Utf8,
+            'candidate_gov_id': pl.Utf8,
+            'candidate_census_name': pl.Utf8,
+            'candidate_city_clean': pl.Utf8,
+        }
+    ).write_csv(diagnostics_dir / 'census_cog_2022_mergent_fuzzy_candidates.csv')
 
 # %%
