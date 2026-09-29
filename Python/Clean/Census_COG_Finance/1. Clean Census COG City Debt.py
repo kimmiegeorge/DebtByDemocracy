@@ -384,7 +384,15 @@ def read_finance_file(zip_path, member, year, config):
     return pl.DataFrame(records, schema=finance_schema, orient='row')
 
 
-def load_cog_year(year, config):
+#%% -----------------------------------------------------------------------
+# Step 1: load and clean each Census year
+# -----------------------------------------------------------------------
+panels = []
+flag_summaries = []
+county_nonmunicipal_summaries = []
+
+for year, config in cog_years.items():
+    # Locate the directory and finance text files inside this year's ZIP archive.
     zip_path = config['zip']
     pid_member = find_zip_member(zip_path, config['pid_pattern'])
     finance_member = find_zip_member(zip_path, config['finance_pattern'])
@@ -393,9 +401,11 @@ def load_cog_year(year, config):
     print(f'  PID/GID: {pid_member}')
     print(f'  finance: {finance_member}')
 
+    # Parse identifiers/population and the six debt items using the fixed-width helpers.
     pid = read_pid_file(zip_path, pid_member, year, config)
     finance = read_finance_file(zip_path, finance_member, year, config)
 
+    # Label government types and attach state abbreviations and full county FIPS codes.
     gov_pid = (
         pid
         .with_columns([
@@ -405,6 +415,7 @@ def load_cog_year(year, config):
         ])
     )
 
+    # Keep cities and townships; normalize their names for the later issuer match.
     city_pid = (
         gov_pid
         .filter(pl.col('government_type').is_in(municipal_government_types))
@@ -414,6 +425,7 @@ def load_cog_year(year, config):
         ])
     )
 
+    # Translate the raw debt item codes into readable column names.
     debt_long = (
         finance
         .with_columns([
@@ -422,6 +434,7 @@ def load_cog_year(year, config):
         ])
     )
 
+    # Reshape debt records to one row per government and year, keeping all government types.
     all_debt_wide = (
         debt_long
         .pivot(
@@ -432,6 +445,7 @@ def load_cog_year(year, config):
         )
     )
 
+    # Attach debt to the government directory; missing debt entries are treated as zero.
     all_debt_panel = (
         gov_pid
         .join(all_debt_wide, on=['year', 'gov_id'], how='left')
@@ -442,10 +456,12 @@ def load_cog_year(year, config):
         ])
     )
 
+    # Add zero-valued columns for any debt items absent from the entire year.
     for col in debt_items.values():
         if col not in all_debt_panel.columns:
             all_debt_panel = all_debt_panel.with_columns(pl.lit(0).alias(col))
 
+    # Add long- and short-term balances to calculate beginning- and end-of-year debt.
     all_debt_panel = (
         all_debt_panel
         .with_columns([
@@ -460,6 +476,8 @@ def load_cog_year(year, config):
         ])
     )
 
+    # Sum county, special-district, and school-district debt within each county.
+    # Retain amounts in thousands and add dollar-valued versions.
     county_nonmunicipal_summary = (
         all_debt_panel
         .filter(pl.col('government_type').is_in(local_nonmunicipal_government_types))
@@ -495,11 +513,13 @@ def load_cog_year(year, config):
         .sort(['year', 'state', 'county_fips'])
     )
 
+    # Restrict the debt records to the same city/township universe as the municipal directory.
     city_debt_long = (
         debt_long
         .filter(pl.col('government_type').is_in(municipal_government_types))
     )
 
+    # Reshape municipal debt items to one row per government and year.
     city_debt_wide = (
         city_debt_long
         .pivot(
@@ -510,6 +530,7 @@ def load_cog_year(year, config):
         )
     )
 
+    # Count municipal records and debt amounts by Census reporting flag.
     flag_summary = (
         city_debt_long
         .group_by(['year', 'item_code', 'data_flag'])
@@ -519,6 +540,7 @@ def load_cog_year(year, config):
         ])
     )
 
+    # Attach municipal debt to names and population; fill missing debt items with zero.
     panel = (
         city_pid
         .join(city_debt_wide, on=['year', 'gov_id'], how='left')
@@ -529,10 +551,13 @@ def load_cog_year(year, config):
         ])
     )
 
+    # Add zero-valued columns for any debt items absent from the entire year.
     for col in debt_items.values():
         if col not in panel.columns:
             panel = panel.with_columns(pl.lit(0).alias(col))
 
+    # Calculate municipal total debt, convert thousands to dollars, and compute debt per capita.
+    # Per-capita debt is missing when population is zero or unavailable.
     panel = (
         panel
         .with_columns([
@@ -557,19 +582,87 @@ def load_cog_year(year, config):
         .sort(['state', 'county_fips', 'census_city_clean', 'year'])
     )
 
-    return panel, flag_summary, county_nonmunicipal_summary
+    # Keep this year's tables so they can be stacked after the loop.
+    panels.append(panel)
+    flag_summaries.append(flag_summary)
+    county_nonmunicipal_summaries.append(county_nonmunicipal_summary)
+
+# Stack the annual municipal tables into the 2012/2017/2022 panel.
+census_panel = (
+    pl.concat(panels, how='diagonal')
+    .sort(['state', 'county_fips', 'census_city_clean', 'year'])
+)
+
+# Stack the annual reporting-flag diagnostics.
+flag_summary = (
+    pl.concat(flag_summaries, how='diagonal')
+    .sort(['year', 'item_code', 'data_flag'])
+)
+
+# Stack the county-level nonmunicipal debt summaries.
+county_nonmunicipal_summary = (
+    pl.concat(county_nonmunicipal_summaries, how='diagonal')
+    .sort(['year', 'state', 'county_fips'])
+)
 
 
-def read_mergent_issuer_file():
-    if pd is None:
-        print('pandas is not installed; skipping Mergent merge diagnostic.')
-        return None
+#%% -----------------------------------------------------------------------
+# Step 2: summarize Census coverage
+# -----------------------------------------------------------------------
+# Summarize municipal coverage, population availability, and debt totals for each year.
+year_summary = (
+    census_panel
+    .group_by('year')
+    .agg([
+        pl.len().alias('municipal_governments'),
+        pl.col('population').is_not_null().sum().alias('nonmissing_population'),
+        (pl.col('total_end_debt_outstanding') > 0).sum().alias('municipal_governments_with_end_debt'),
+        pl.col('total_end_debt_outstanding').sum().alias('total_end_debt_thousands'),
+    ])
+    .sort('year')
+)
 
-    if not mergent_bond_file.exists():
-        print(f'Mergent bond file not found: {mergent_bond_file}')
-        return None
+# Summarize municipal counts, population, and debt within each state and year.
+state_summary = (
+    census_panel
+    .group_by(['year', 'state'])
+    .agg([
+        pl.len().alias('municipal_governments'),
+        (pl.col('total_end_debt_outstanding') > 0).sum().alias('municipal_governments_with_end_debt'),
+        pl.col('population').sum().alias('population'),
+        pl.col('total_end_debt_outstanding').sum().alias('total_end_debt_thousands'),
+    ])
+    .sort(['year', 'state'])
+)
 
-    print('Loading latest Mergent bond-level file for issuer match diagnostic...')
+print('COG year summary:')
+print(year_summary)
+
+
+#%% -----------------------------------------------------------------------
+# Step 3: save Census outputs
+# -----------------------------------------------------------------------
+# Save the municipal panel, county debt controls, and Census coverage diagnostics.
+census_panel.write_csv(processed_dir / 'census_cog_city_debt_panel.csv')
+county_nonmunicipal_summary.write_csv(processed_dir / 'census_cog_county_nonmunicipal_debt_summary.csv')
+year_summary.write_csv(diagnostics_dir / 'census_cog_city_debt_year_summary.csv')
+state_summary.write_csv(diagnostics_dir / 'census_cog_city_debt_state_summary.csv')
+flag_summary.write_csv(diagnostics_dir / 'census_cog_city_debt_item_flag_summary.csv')
+
+
+#%% -----------------------------------------------------------------------
+# Step 4: load and prepare Mergent issuers
+# -----------------------------------------------------------------------
+# Read the selected Stata columns if pandas and the source file are available.
+# A failed read skips only the Mergent diagnostic; Census outputs remain available.
+bond_pd = None
+issuers = None
+if pd is None:
+    print('pandas is not installed; skipping Mergent merge diagnostic.')
+elif not mergent_bond_file.exists():
+    print(f'Mergent bond file not found: {mergent_bond_file}')
+else:
+    print('Loading Mergent bond-level file for issuer match diagnostic...')
     cols = [
         'seed_issuer_id',
         'seed_issuer',
@@ -584,9 +677,13 @@ def read_mergent_issuer_file():
         bond_pd = pd.read_stata(mergent_bond_file, columns=cols, convert_categoricals=False)
     except Exception as exc:
         print(f'Could not read Mergent Stata file; skipping merge diagnostic. Error: {exc}')
-        return None
+        bond_pd = None
 
-    issuer = (
+
+# Build the issuer table only when the Stata read succeeded.
+if bond_pd is not None:
+    # Keep usable bond rows, clean identifiers, and construct a stable issuer key.
+    issuers = (
         pl.from_pandas(bond_pd)
         .filter(
             pl.col('seed_issuer_id').is_not_null()
@@ -606,6 +703,11 @@ def read_mergent_issuer_file():
                 pl.col('seed_issuer').str.to_uppercase().str.replace_all(r'\s+', ' '),
             ], separator='|').alias('issuer_key')
         )
+    )
+
+    # Collapse bond rows to one row per issuer, keeping the first nonmissing controls.
+    issuers = (
+        issuers
         .group_by(['issuer_key', 'seed_issuer_id', 'seed_issuer', 'state'])
         .agg([
             pl.col('county_fips').drop_nulls().first().alias('county_fips'),
@@ -613,6 +715,11 @@ def read_mergent_issuer_file():
             pl.col('city_go_vote').drop_nulls().first().alias('city_go_vote'),
             pl.col('city_rev_vote').drop_nulls().first().alias('city_rev_vote'),
         ])
+    )
+
+    # Identify control issuers and issuers in the UTGO-only states.
+    issuers = (
+        issuers
         .with_columns([
             (
                 pl.col('city_go_vote').eq(0)
@@ -620,6 +727,11 @@ def read_mergent_issuer_file():
             ).fill_null(False).cast(pl.Int8).alias('control'),
             pl.col('state').is_in(['WA', 'MI', 'OH']).cast(pl.Int8).alias('utgo_only'),
         ])
+    )
+
+    # Identify issuers subject to the all-GO voting requirement.
+    issuers = (
+        issuers
         .with_columns([
             (
                 pl.col('city_go_vote').eq(1)
@@ -627,6 +739,11 @@ def read_mergent_issuer_file():
                 & pl.col('utgo_only').eq(0)
             ).fill_null(False).cast(pl.Int8).alias('allgo_only'),
         ])
+    )
+
+    # Build the full and alternative voting-law sample indicators.
+    issuers = (
+        issuers
         .with_columns([
             (
                 pl.col('control').eq(1)
@@ -642,6 +759,11 @@ def read_mergent_issuer_file():
                 | pl.col('utgo_only').eq(1)
             ).cast(pl.Int8).alias('insample_utgo_only'),
         ])
+    )
+
+    # Normalize issuer names, removing state suffixes and expanding common abbreviations.
+    issuers = (
+        issuers
         .with_columns([
             pl.struct(['seed_issuer', 'state'])
             .map_elements(
@@ -652,13 +774,14 @@ def read_mergent_issuer_file():
         ])
     )
 
-    return issuer
 
 
-def build_merge_diagnostic(census_panel, issuers):
-    if issuers is None:
-        return
-
+#%% -----------------------------------------------------------------------
+# Step 5: match Mergent issuers to the 2022 Census directory
+# -----------------------------------------------------------------------
+# Match issuers only when the issuer table was successfully constructed.
+if issuers is not None:
+    # Use 2022 Census names for matching; prioritize cities over townships sharing a county/name.
     census_names = (
         census_panel
         .filter(pl.col('year').eq(2022))
@@ -688,6 +811,7 @@ def build_merge_diagnostic(census_panel, issuers):
         .unique(subset=['state', 'county_fips', 'census_city_clean'], keep='first')
     )
 
+    # First match on state, county FIPS, and normalized city name.
     exact_county = (
         issuers
         .join(
@@ -704,8 +828,10 @@ def build_merge_diagnostic(census_panel, issuers):
         )
     )
 
+    # Keep issuers without a county-level match for a second matching pass.
     unmatched = exact_county.filter(pl.col('gov_id').is_null()).select(issuers.columns)
 
+    # Keep one Census candidate per state/name for the fallback match.
     census_state_names = (
         census_names
         .unique(subset=['state', 'census_city_clean'], keep='first')
@@ -725,6 +851,7 @@ def build_merge_diagnostic(census_panel, issuers):
         ])
     )
 
+    # Try state and normalized name for issuers unmatched in the county-level pass.
     exact_state = (
         unmatched
         .join(
@@ -742,6 +869,7 @@ def build_merge_diagnostic(census_panel, issuers):
         )
     )
 
+    # Combine successful matches from both passes.
     matched_exact = pl.concat(
         [
             exact_county.filter(pl.col('gov_id').is_not_null()),
@@ -750,6 +878,8 @@ def build_merge_diagnostic(census_panel, issuers):
         how='diagonal',
     )
 
+    # Resolve duplicates by match quality, law availability, government type, and issuer name.
+    # Retain at most one row per Census government and per Mergent issuer.
     matched_exact = (
         matched_exact
         .with_columns([
@@ -787,8 +917,10 @@ def build_merge_diagnostic(census_panel, issuers):
         .drop(['match_type_priority', 'law_missing_priority', 'census_government_priority', 'issuer_name_priority'])
     )
 
+    # Keep issuers that failed both exact matching passes.
     still_unmatched = exact_state.filter(pl.col('gov_id').is_null()).select(issuers.columns)
 
+    # Save the exact crosswalk consumed by 2a/2b and the unmatched-issuer diagnostic.
     matched_exact.write_csv(diagnostics_dir / 'census_cog_2022_mergent_exact_matches.csv')
     still_unmatched.write_csv(diagnostics_dir / 'census_cog_2022_mergent_unmatched.csv')
 
@@ -798,6 +930,7 @@ def build_merge_diagnostic(census_panel, issuers):
     print(f'  matched Census governments: {matched_exact.select("gov_id").n_unique():,}')
     print(f'  unmatched: {still_unmatched.height:,}')
 
+    # Index Census names by state for suggested matches among the remaining issuers.
     fuzzy_rows = []
     census_by_state = {}
     for row in census_state_names.select(['state', 'census_city_clean', 'census_name', 'gov_id']).iter_rows(named=True):
@@ -805,6 +938,8 @@ def build_merge_diagnostic(census_panel, issuers):
             continue
         census_by_state.setdefault(row['state'], []).append(row)
 
+    # Suggest up to three similar names in the same state (similarity cutoff 0.82).
+    # These are review candidates only; they are not added to the exact crosswalk.
     for issuer in still_unmatched.iter_rows(named=True):
         issuer_name = issuer.get('issuer_city_clean')
         state = issuer.get('state')
@@ -827,6 +962,7 @@ def build_merge_diagnostic(census_panel, issuers):
                 }
             )
 
+    # Save the candidate list, retaining the expected CSV columns even when it is empty.
     if fuzzy_rows:
         pl.DataFrame(fuzzy_rows).write_csv(diagnostics_dir / 'census_cog_2022_mergent_fuzzy_candidates.csv')
     else:
@@ -842,82 +978,5 @@ def build_merge_diagnostic(census_panel, issuers):
                 'candidate_city_clean': pl.Utf8,
             }
         ).write_csv(diagnostics_dir / 'census_cog_2022_mergent_fuzzy_candidates.csv')
-
-
-#%% -----------------------------------------------------------------------
-# load and clean census COG files
-# -----------------------------------------------------------------------
-panels = []
-flag_summaries = []
-county_nonmunicipal_summaries = []
-
-for year, config in cog_years.items():
-    panel_year, flags_year, county_nonmunicipal_year = load_cog_year(year, config)
-    panels.append(panel_year)
-    flag_summaries.append(flags_year)
-    county_nonmunicipal_summaries.append(county_nonmunicipal_year)
-
-census_panel = (
-    pl.concat(panels, how='diagonal')
-    .sort(['state', 'county_fips', 'census_city_clean', 'year'])
-)
-
-flag_summary = (
-    pl.concat(flag_summaries, how='diagonal')
-    .sort(['year', 'item_code', 'data_flag'])
-)
-
-county_nonmunicipal_summary = (
-    pl.concat(county_nonmunicipal_summaries, how='diagonal')
-    .sort(['year', 'state', 'county_fips'])
-)
-
-
-#%% -----------------------------------------------------------------------
-# diagnostics
-# -----------------------------------------------------------------------
-year_summary = (
-    census_panel
-    .group_by('year')
-    .agg([
-        pl.len().alias('municipal_governments'),
-        pl.col('population').is_not_null().sum().alias('nonmissing_population'),
-        (pl.col('total_end_debt_outstanding') > 0).sum().alias('municipal_governments_with_end_debt'),
-        pl.col('total_end_debt_outstanding').sum().alias('total_end_debt_thousands'),
-    ])
-    .sort('year')
-)
-
-state_summary = (
-    census_panel
-    .group_by(['year', 'state'])
-    .agg([
-        pl.len().alias('municipal_governments'),
-        (pl.col('total_end_debt_outstanding') > 0).sum().alias('municipal_governments_with_end_debt'),
-        pl.col('population').sum().alias('population'),
-        pl.col('total_end_debt_outstanding').sum().alias('total_end_debt_thousands'),
-    ])
-    .sort(['year', 'state'])
-)
-
-print('COG year summary:')
-print(year_summary)
-
-
-#%% -----------------------------------------------------------------------
-# save census outputs
-# -----------------------------------------------------------------------
-census_panel.write_csv(processed_dir / 'census_cog_city_debt_panel.csv')
-county_nonmunicipal_summary.write_csv(processed_dir / 'census_cog_county_nonmunicipal_debt_summary.csv')
-year_summary.write_csv(diagnostics_dir / 'census_cog_city_debt_year_summary.csv')
-state_summary.write_csv(diagnostics_dir / 'census_cog_city_debt_state_summary.csv')
-flag_summary.write_csv(diagnostics_dir / 'census_cog_city_debt_item_flag_summary.csv')
-
-
-#%% -----------------------------------------------------------------------
-# investigate merge feasibility with Mergent issuer-level file
-# -----------------------------------------------------------------------
-issuers = read_mergent_issuer_file()
-build_merge_diagnostic(census_panel, issuers)
 
 # %%
