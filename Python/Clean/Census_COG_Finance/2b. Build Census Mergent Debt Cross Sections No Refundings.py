@@ -1,16 +1,14 @@
-"""Build paper-compatible static Census--Mergent debt cross sections.
+"""Build new-money-only Census--Mergent debt cross sections.
 
-This standalone script is the no-refunding companion to ``2a. Build Census Mergent Debt Cross
-Sections.py``.  It uses the same expanded 260923 Mergent source, Census match,
-classification rules, and output schema, but treats non-REF CUSIPs as
-outstanding at original par from offering date through contractual maturity.
-It does not use redemption events or BONDINFO outstanding balances to reduce
-the primary stock.
+For each COG year, retain CUSIPs marked new_money == 1 that have been offered
+and have not reached contractual maturity at December 31. Keep their original
+par amounts without redemption-event or reported-balance reductions. This is
+a CUSIP-level screen: new-money CUSIPs in mixed issues remain eligible.
 
-Outputs are written under ``processed/no_refundings`` so they cannot overwrite
-the redemption-adjusted production files.  Their canonical debt/share columns
-are the paper-compatible static series; the all-bond and new-money static
-comparison columns are retained as well.
+Use the same Census match, issuer controls, debt classifications, and primary
+output column names as 2a. Outputs go to processed/no_refundings and diagnostics/
+no_refundings. Script 2a separately builds the refunding-inclusive stock with
+redemption and dated BONDINFO balance adjustments.
 """
 
 #%% -----------------------------------------------------------------------
@@ -39,8 +37,7 @@ other_table_dir = Path(os.path.expanduser(
 out_dir.mkdir(parents=True, exist_ok=True)
 diag_dir.mkdir(parents=True, exist_ok=True)
 
-# Static-paper outputs are kept separate so running 2b cannot overwrite the
-# redemption-adjusted files consumed by the current analysis.
+# Save the new-money-only construction in its own output directories.
 build_out_dir = out_dir / 'no_refundings'
 build_diag_dir = diag_dir / 'no_refundings'
 build_out_dir.mkdir(parents=True, exist_ok=True)
@@ -53,14 +50,8 @@ county_nonmunicipal_file = out_dir / 'census_cog_county_nonmunicipal_debt_summar
 census_mergent_match_file = diag_dir / 'census_cog_2022_mergent_exact_matches.csv'
 border_file = border_dir / 'Border Matches All Mergent Data Expanded Set Buffer 100000.csv'
 
-# This is the primary Mergent source for every bond-level construction below.
-# Unlike the prior file, it retains refunded issuances.  Redemptions are
-# subsequently applied at the CUSIP/maturity level below to produce a
-# point-in-time debt stock.
+# Use the expanded Mergent source; the stock below retains only new-money CUSIPs.
 bond_file = mergent_dir / '260923_cusiplevel_allbonds_inclrefund.dta'
-bondinfo_file = data_dir / 'Mergent' / 'Raw' / 'BONDINFO.DLM'
-redemption_file = data_dir / 'Mergent' / 'Raw' / 'REDEMPTN.DLM'
-partial_redemption_file = data_dir / 'Mergent' / 'Raw' / 'PARTREDM.DLM'
 # The expanded file does not retain several static issuer controls. These
 # are read from the prior file as lookups; all bond classifications and
 # aggregations use the expanded file above.
@@ -125,10 +116,9 @@ def apply_legacy_city_scope(df):
 
     These exclusions were applied to *all* Mergent bonds before issuer
     matching in the paper's construction.  We reproduce them here before
-    mapping the expanded refund-inclusive file to Census cities.  The legacy
-    `drop if new_money == 0` is deliberately excluded: refunding bonds are
-    necessary for a year-end debt stock, and their predecessor principal is
-    handled by the redemption ledger instead.
+    mapping the expanded file to Census cities. The new-money restriction
+    is applied separately when constructing each year's stock, so issuer
+    matching and issuance-level rating definitions stay comparable to 2a.
     """
     issuer_name = pl.col('issuer_long_name').cast(pl.Utf8).fill_null('').str.to_uppercase()
     use_proceeds = pl.col('use_proceeds').cast(pl.Utf8).fill_null('').str.to_uppercase()
@@ -257,154 +247,6 @@ def weighted_average_zero_missing_expr(mask, value_col, name):
 
 def first_non_null_expr(col):
     return pl.col(col).drop_nulls().first().alias(col)
-
-
-def load_redemption_events():
-    """Load dated principal-reduction events at Mergent's maturity level.
-
-    `REDEMPTN.DLM` contains full redemptions, pre-refundings, and related
-    events.  `PARTREDM.DLM` contains partial calls.  Both files key to
-    BONDINFO through (`issue_id_l`, `maturity_id_l`).  Optional call schedules
-    are deliberately not used: an option to call is not an actual redemption.
-
-    Mergent's ``redemption_date_d`` often records the later contractual call
-    date for a pre-refunded or escrowed maturity.  When
-    ``ref_issue_settlement_date_d`` is available, use the earlier of it and
-    the redemption date as the effective retirement date.  Taking the minimum
-    preserves the recorded redemption date when settlement is missing or
-    implausibly later.
-
-    Mergent occasionally supplies a full-redemption event without a principal
-    amount.  For unambiguously principal-retiring event types, retain a flag
-    that removes the remaining CUSIP balance at the effective retirement date
-    rather than silently treating it as still outstanding.  Types G
-    (interest-only ETM), J (no redemption), and N (remarketing) do not reduce
-    principal.
-    """
-    full_principal_types = ['A', 'B', 'C', 'D', 'E', 'F', 'H', 'L', 'O', 'P', 'Q']
-    non_principal_types = ['G', 'J', 'N']
-
-    full_events = (
-        pl.scan_csv(
-            redemption_file,
-            separator='|',
-            null_values=[''],
-            infer_schema_length=10_000,
-        )
-        .select([
-            pl.col('issue_id_l').cast(pl.Int64, strict=False).alias('issue_id'),
-            pl.col('maturity_id_l').cast(pl.Int64, strict=False).alias('maturity_id'),
-            pl.col('redemption_date_d')
-            .cast(pl.Utf8)
-            .str.strptime(pl.Date, '%Y%m%d', strict=False)
-            .alias('redemption_date'),
-            pl.col('ref_issue_settlement_date_d')
-            .cast(pl.Utf8)
-            .str.strptime(pl.Date, '%Y%m%d', strict=False)
-            .alias('refunding_settlement_date'),
-            pl.col('redemption_amt_f').cast(pl.Float64, strict=False).alias('redemption_amount'),
-            pl.col('redemption_type_i').cast(pl.Utf8).alias('redemption_type'),
-        ])
-        .filter(
-            pl.col('issue_id').is_not_null()
-            & pl.col('maturity_id').is_not_null()
-            & ~pl.col('redemption_type').is_in(non_principal_types)
-        )
-        .with_columns([
-            pl.when(pl.col('redemption_date').is_null())
-            .then(pl.col('refunding_settlement_date'))
-            .when(pl.col('refunding_settlement_date').is_null())
-            .then(pl.col('redemption_date'))
-            .when(pl.col('refunding_settlement_date') < pl.col('redemption_date'))
-            .then(pl.col('refunding_settlement_date'))
-            .otherwise(pl.col('redemption_date'))
-            .alias('event_date'),
-            pl.col('redemption_amount').fill_null(0.0),
-            (
-                pl.col('redemption_amount').is_null()
-                & pl.col('redemption_type').is_in(full_principal_types)
-            )
-            .cast(pl.Int8)
-            .alias('unknown_full_redemption'),
-        ])
-        .filter(pl.col('event_date').is_not_null())
-        .select([
-            'issue_id', 'maturity_id', 'event_date', 'redemption_amount',
-            'unknown_full_redemption',
-        ])
-    )
-
-    partial_events = (
-        pl.scan_csv(
-            partial_redemption_file,
-            separator='|',
-            null_values=[''],
-            infer_schema_length=10_000,
-        )
-        .select([
-            pl.col('issue_id_l').cast(pl.Int64, strict=False).alias('issue_id'),
-            pl.col('maturity_id_l').cast(pl.Int64, strict=False).alias('maturity_id'),
-            pl.col('partial_call_date_d')
-            .cast(pl.Utf8)
-            .str.strptime(pl.Date, '%Y%m%d', strict=False)
-            .alias('event_date'),
-            pl.col('prtl_call_amt_f').cast(pl.Float64, strict=False).alias('redemption_amount'),
-        ])
-        .filter(
-            pl.col('issue_id').is_not_null()
-            & pl.col('maturity_id').is_not_null()
-            & pl.col('event_date').is_not_null()
-            & pl.col('redemption_amount').is_not_null()
-            & (pl.col('redemption_amount') > 0)
-        )
-        .with_columns(pl.lit(0).cast(pl.Int8).alias('unknown_full_redemption'))
-        .select([
-            'issue_id', 'maturity_id', 'event_date', 'redemption_amount',
-            'unknown_full_redemption',
-        ])
-    )
-
-    events = pl.concat([full_events, partial_events], how='vertical').collect()
-    print(f'Loaded {events.height:,} dated Mergent principal-redemption events.')
-    return events
-
-
-def load_raw_capital_purpose():
-    """Load Mergent's maturity-level new-money/refunding classification.
-
-    ``capital_purpose_c`` is the raw Mergent field, unlike the inherited
-    binary ``new_money`` field in the cleaned Stata input.  It is keyed by
-    issue and maturity, allowing a legacy-style construction to remove only
-    CUSIPs marked ``REF`` while retaining ``NEW`` maturities in a mixed issue.
-    """
-    capital_purpose = (
-        pl.scan_csv(
-            bondinfo_file,
-            separator='|',
-            null_values=[''],
-            infer_schema_length=10_000,
-        )
-        .select([
-            pl.col('issue_id_l').cast(pl.Int64, strict=False).alias('issue_id'),
-            pl.col('maturity_id_l').cast(pl.Int64, strict=False).alias('maturity_id'),
-            pl.col('capital_purpose_c')
-            .cast(pl.Utf8)
-            .str.strip_chars()
-            .str.to_uppercase()
-            .alias('capital_purpose'),
-        ])
-        .filter(
-            pl.col('issue_id').is_not_null()
-            & pl.col('maturity_id').is_not_null()
-        )
-        .unique(subset=['issue_id', 'maturity_id'], keep='first')
-        .collect()
-    )
-    print(
-        'Loaded raw Mergent capital-purpose codes for '
-        f'{capital_purpose.height:,} issue-maturity pairs.'
-    )
-    return capital_purpose
 
 
 #%% -----------------------------------------------------------------------
@@ -678,10 +520,8 @@ raw_bonds = apply_legacy_city_scope(raw_bonds)
 print(
     'Applied legacy city-scope screen: '
     f'{raw_bonds_before_scope:,} to {raw_bonds.height:,} CUSIP rows. '
-    'Refunding bonds remain eligible for the debt-stock ledger.'
+    'The year-end stock below retains only new-money CUSIPs.'
 )
-redemption_events = load_redemption_events()
-raw_capital_purpose = load_raw_capital_purpose()
 
 # Preserve the six issuance-level classification corrections applied in the
 # legacy Stata build (260716_mergent_updatestatelaw_strictrevbond.do). Mergent
@@ -923,15 +763,6 @@ bonds = (
     ])
 )
 
-# Preserve the raw Mergent maturity-level capital-purpose code separately from
-# the inherited binary `new_money` field.  A missing raw match is retained in
-# the legacy-style robustness sample; only an explicit `REF` code is excluded.
-bonds = bonds.join(
-    raw_capital_purpose,
-    on=['issue_id', 'maturity_id'],
-    how='left',
-)
-
 # Separate debt-composition partition: retain existing GO classifications,
 # split revenue into tax/non-tax backing, and exclude ambiguous double-barreled
 # bonds. Null categories contribute to none of the taxsplit amounts or shares.
@@ -994,7 +825,7 @@ security_code_labels = {
 # temp_salestax is the existing description flag (contains SALE and TAX).
 other_bonds = (
     bonds
-    .filter(pl.col('bond_type').eq('other'))
+    .filter(pl.col('bond_type').eq('other') & pl.col('new_money').eq(1))
     .with_columns([
         pl.col('security_code').fill_null('').str.strip_chars()
         .replace('', 'Missing').alias('security_code'),
@@ -1046,7 +877,7 @@ other_table_lines.extend([
     r'\endgroup',
 ])
 other_table_dir.mkdir(parents=True, exist_ok=True)
-other_table_path = other_table_dir / 'mergent_other_bonds_security_summary.tex'
+other_table_path = other_table_dir / 'mergent_newmoney_other_bonds_security_summary.tex'
 try:
     other_table_path.write_text('\n'.join(other_table_lines) + '\n')
     print(f'Wrote other-bond composition table to {other_table_path}')
@@ -1085,85 +916,23 @@ rating_issues = (
 bonds = bonds.join(rating_issues, on='issue_id', how='left')
 
 
-def aggregate_debt_composition_stock(stock, year, prefix, debt_suffix):
-    """Aggregate a compact GO/revenue composition stock for the 2x2 audit.
-
-    ``stock`` supplies either original CUSIP par (the static legacy-style
-    screen) or point-in-time outstanding principal.  The caller controls the
-    new-money/all-bonds screen.  Keeping this small aggregation separate from
-    the primary series lets the audit change only those two dimensions.
-    """
-    any_go_or_revenue = pl.col('all_go') | pl.col('revenue')
-    all_go = pl.col('all_go')
-    revenue = pl.col('revenue')
-    utgo = pl.col('utgo')
-    ltgo = pl.col('ltgo')
-    all_bonds = pl.lit(True)
-
-    return (
-        stock
-        .group_by('issuer_key')
-        .agg([
-            amount_expr(all_bonds, f'{prefix}_total_{debt_suffix}'),
-            amount_expr(any_go_or_revenue, f'{prefix}_go_revenue_{debt_suffix}'),
-            amount_expr(all_go, f'{prefix}_all_go_{debt_suffix}'),
-            amount_expr(revenue, f'{prefix}_revenue_{debt_suffix}'),
-            amount_expr(utgo, f'{prefix}_utgo_{debt_suffix}'),
-            amount_expr(ltgo, f'{prefix}_ltgo_{debt_suffix}'),
-            count_expr(all_bonds, f'{prefix}_total_bonds'),
-            count_expr(any_go_or_revenue, f'{prefix}_go_revenue_bonds'),
-            count_expr(all_go, f'{prefix}_all_go_bonds'),
-            count_expr(revenue, f'{prefix}_revenue_bonds'),
-            count_expr(utgo, f'{prefix}_utgo_bonds'),
-            count_expr(ltgo, f'{prefix}_ltgo_bonds'),
-        ])
-        .with_columns(pl.lit(year).alias('year'))
-    )
-
-
 mergent_years = []
-newmoney_original_par_years = []
-allbond_original_par_years = []
-newmoney_point_in_time_years = []
 seed_issuer_name_audit_years = []
 
 for year in target_years:
     as_of = date(year, 12, 31)
-    print(f'Computing Mergent outstanding debt as of 12/31/{year}...')
+    print(f'Computing new-money original-par debt as of 12/31/{year}...')
 
-    legacy_eligible = bonds.filter(
+    eligible_bonds = bonds.filter(
         (pl.col('offering_date') <= as_of)
         & (pl.col('maturity_date') > as_of)
     )
-    # 2x2 audit, original-par row: the exact same offer/maturity screen for
-    # new-money CUSIPs and for all CUSIPs.  No redemption or BONDINFO balance
-    # information enters either cell.
-    newmoney_original_par_years.append(
-        aggregate_debt_composition_stock(
-            legacy_eligible.filter(pl.col('new_money').eq(1)),
-            year,
-            'mergent_newmoney_original_par',
-            'debt',
-        )
-    )
-    allbond_original_par_years.append(
-        aggregate_debt_composition_stock(
-            legacy_eligible,
-            year,
-            'mergent_allbond_original_par',
-            'debt',
-        )
-    )
 
-    # Paper-compatible static construction.  Do not apply REDEMPTN,
-    # PARTREDM, or BONDINFO principal reductions: a retained CUSIP stays
-    # at original par until its contractual maturity.  Excluding only raw
-    # BONDINFO ``REF`` purposes makes this the closest like-for-like
-    # counterpart to the paper's no-refunding cross section while the
-    # parallel all-bond/new-money static variants below remain available.
+    # Keep only new-money CUSIPs at original par through contractual maturity.
+    # No redemption or BONDINFO balance reductions enter this construction.
     outstanding = (
-        legacy_eligible
-        .filter(~pl.col('capital_purpose').eq('REF'))
+        eligible_bonds
+        .filter(pl.col('new_money').eq(1))
         .with_columns(
             (
                 (pl.col('maturity_date') - pl.col('offering_date'))
@@ -1421,22 +1190,8 @@ for year in target_years:
     )
 
     mergent_years.append(agg)
-    # 2x2 audit, point-in-time row: retain only new-money CUSIPs while using
-    # exactly the same redemption/BONDINFO balance adjustment as the primary
-    # all-bond point-in-time stock.
-    newmoney_point_in_time_years.append(
-        aggregate_debt_composition_stock(
-            outstanding.filter(pl.col('new_money').eq(1)),
-            year,
-            'mergent_newmoney_point_in_time',
-            'outstanding_debt',
-        )
-    )
 
 mergent_outstanding = pl.concat(mergent_years, how='diagonal')
-newmoney_original_par = pl.concat(newmoney_original_par_years, how='diagonal')
-allbond_original_par = pl.concat(allbond_original_par_years, how='diagonal')
-newmoney_point_in_time = pl.concat(newmoney_point_in_time_years, how='diagonal')
 seed_issuer_name_audit = pl.concat(seed_issuer_name_audit_years, how='diagonal')
 
 # One row per city-year makes it easy to prioritize the groups whose
@@ -1505,32 +1260,6 @@ mergent_outstanding = mergent_outstanding.with_columns([
 ])
 
 
-audit_stock_specs = [
-    ('mergent_newmoney_original_par', newmoney_original_par, 'debt'),
-    ('mergent_allbond_original_par', allbond_original_par, 'debt'),
-    ('mergent_newmoney_point_in_time', newmoney_point_in_time, 'outstanding_debt'),
-]
-audit_stock_amount_cols = {
-    prefix: [
-        f'{prefix}_{suffix}_{debt_suffix}'
-        for suffix in ['total', 'go_revenue', 'all_go', 'revenue', 'utgo', 'ltgo']
-    ]
-    for prefix, _, debt_suffix in audit_stock_specs
-}
-newmoney_original_par = newmoney_original_par.with_columns([
-    (pl.col(col) / 1_000_000).alias(f'{col}_mil')
-    for col in audit_stock_amount_cols['mergent_newmoney_original_par']
-])
-allbond_original_par = allbond_original_par.with_columns([
-    (pl.col(col) / 1_000_000).alias(f'{col}_mil')
-    for col in audit_stock_amount_cols['mergent_allbond_original_par']
-])
-newmoney_point_in_time = newmoney_point_in_time.with_columns([
-    (pl.col(col) / 1_000_000).alias(f'{col}_mil')
-    for col in audit_stock_amount_cols['mergent_newmoney_point_in_time']
-])
-
-
 #%% -----------------------------------------------------------------------
 # merge and save full and border samples
 # -----------------------------------------------------------------------
@@ -1539,24 +1268,11 @@ full_panel = (
     census_cross_section
     .join(issuers, on='issuer_key', how='left', suffix='_issuer')
     .join(mergent_outstanding, on=['issuer_key', 'year'], how='left')
-    .join(newmoney_original_par, on=['issuer_key', 'year'], how='left')
-    .join(allbond_original_par, on=['issuer_key', 'year'], how='left')
-    .join(newmoney_point_in_time, on=['issuer_key', 'year'], how='left')
 )
 
 for col in mergent_amount_cols:
     full_panel = full_panel.with_columns(pl.col(col).fill_null(0))
     full_panel = full_panel.with_columns(pl.col(col.replace('_debt', '_debt_mil')).fill_null(0))
-
-
-for prefix, _, _ in audit_stock_specs:
-    for col in audit_stock_amount_cols[prefix]:
-        full_panel = full_panel.with_columns(pl.col(col).fill_null(0))
-        full_panel = full_panel.with_columns(pl.col(f'{col}_mil').fill_null(0))
-    for suffix in ['total', 'go_revenue', 'all_go', 'revenue', 'utgo', 'ltgo']:
-        full_panel = full_panel.with_columns(
-            pl.col(f'{prefix}_{suffix}_bonds').fill_null(0)
-        )
 
 
 # Census total debt not represented by the issuer's outstanding Mergent bonds.
@@ -1568,7 +1284,7 @@ full_panel = full_panel.with_columns(
     ).alias('total_nonmergent_census_debt_mil')
 )
 
-# Debt-composition shares used in the point-in-time debt-choice analysis. The
+# Debt-composition shares for the new-money original-par construction. The
 # original shares partition the paper's GO + strict-revenue measure. The `_wrl`
 # versions add lease/rent and loan-agreement debt to the denominator and include
 # its corresponding share. The `_all` versions use total Mergent debt,
@@ -1695,26 +1411,6 @@ full_panel = full_panel.with_columns([
     .alias('frac_revenue_nontax_outstanding_taxsplit'),
 ])
 
-# Four-cell new-money/refunding × original-par/point-in-time audit.  The
-# fourth cell is the primary ``frac_*_outstanding`` series already created
-# above; these three sets of shares complete the 2x2.
-audit_share_specs = [
-    ('mergent_newmoney_original_par', 'newmoney_original_par', 'debt'),
-    ('mergent_allbond_original_par', 'allbond_original_par', 'debt'),
-    ('mergent_newmoney_point_in_time', 'newmoney_point_in_time_outstanding', 'outstanding_debt'),
-]
-full_panel = full_panel.with_columns([
-    pl.when(pl.col(f'{prefix}_go_revenue_{debt_suffix}') > 0)
-    .then(
-        pl.col(f'{prefix}_{category}_{debt_suffix}')
-        / pl.col(f'{prefix}_go_revenue_{debt_suffix}')
-    )
-    .otherwise(None)
-    .alias(f'frac_{category}_{share_suffix}')
-    for prefix, share_suffix, debt_suffix in audit_share_specs
-    for category in ['utgo', 'ltgo', 'revenue']
-])
-
 border_memberships = (
     pl.read_csv(border_file, infer_schema_length=10000)
     .pipe(normalize_id_columns)
@@ -1823,15 +1519,6 @@ ordered_cols_base = [
     'frac_rev_outstanding_all',
     'frac_other_outstanding_all',
     *[
-        f'frac_{category}_{share_suffix}'
-        for share_suffix in [
-            'newmoney_original_par',
-            'allbond_original_par',
-            'newmoney_point_in_time_outstanding',
-        ]
-        for category in ['utgo', 'ltgo', 'revenue']
-    ],
-    *[
         f'frac_{category}_outstanding_taxsplit'
         for category in ['utgo', 'ltgo', 'revenue_tax', 'revenue_nontax']
     ],
@@ -1854,29 +1541,6 @@ ordered_cols_base = [
             'total', 'lease_rent_loan_agreement', 'go_revenue',
             'all_go', 'revenue', 'utgo', 'ltgo',
         ]
-    ],
-    *[
-        f'{prefix}_{suffix}_debt{unit}'
-        for prefix in [
-            'mergent_newmoney_original_par',
-            'mergent_allbond_original_par',
-        ]
-        for suffix in ['total', 'go_revenue', 'all_go', 'revenue', 'utgo', 'ltgo']
-        for unit in ['', '_mil']
-    ],
-    *[
-        f'mergent_newmoney_point_in_time_{suffix}_outstanding_debt{unit}'
-        for suffix in ['total', 'go_revenue', 'all_go', 'revenue', 'utgo', 'ltgo']
-        for unit in ['', '_mil']
-    ],
-    *[
-        f'{prefix}_{suffix}_bonds'
-        for prefix in [
-            'mergent_newmoney_original_par',
-            'mergent_allbond_original_par',
-            'mergent_newmoney_point_in_time',
-        ]
-        for suffix in ['total', 'go_revenue', 'all_go', 'revenue', 'utgo', 'ltgo']
     ],
     *[
         f'mergent_wavg_{feature}_{suffix}'
