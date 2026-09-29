@@ -1121,71 +1121,10 @@ def aggregate_debt_composition_stock(stock, year, prefix, debt_suffix):
     )
 
 
-def aggregate_bondinfo_balance_only_stock(eligible, year):
-    """Aggregate a point-in-time stock using BONDINFO balances only.
-
-    This is a robustness construction, not a replacement for the primary
-    redemption-ledger stock.  It retains every eligible CUSIP/maturity at
-    original par unless Mergent reports a lower ``total_mat_amt_outstanding``
-    balance dated no later than the year-end cutoff.  It deliberately does not
-    consult REDEMPTN.DLM or PARTREDM.DLM, so it does not infer any principal
-    reduction from an actual redemption event.
-    """
-    any_go_or_revenue = pl.col('all_go') | pl.col('revenue')
-    all_go = pl.col('all_go')
-    revenue = pl.col('revenue')
-    utgo = pl.col('utgo')
-    ltgo = pl.col('ltgo')
-    all_bonds = pl.lit(True)
-    prefix = 'mergent_bondinfo_balance_only'
-    as_of = date(year, 12, 31)
-
-    balance_only = (
-        eligible
-        .with_columns(
-            pl.when(
-                pl.col('total_mat_amt_outstanding').is_not_null()
-                & pl.col('total_mat_amt_outstanding_date').is_not_null()
-                & (pl.col('total_mat_amt_outstanding_date') <= as_of)
-            )
-            .then(
-                pl.min_horizontal(
-                    pl.col('amount'),
-                    pl.col('total_mat_amt_outstanding').clip(0.0, None),
-                )
-            )
-            .otherwise(pl.col('amount'))
-            .alias('amount')
-        )
-        .filter(pl.col('amount') > 0)
-    )
-
-    return (
-        balance_only
-        .group_by('issuer_key')
-        .agg([
-            amount_expr(all_bonds, f'{prefix}_total_outstanding_debt'),
-            amount_expr(any_go_or_revenue, f'{prefix}_go_revenue_outstanding_debt'),
-            amount_expr(all_go, f'{prefix}_all_go_outstanding_debt'),
-            amount_expr(revenue, f'{prefix}_revenue_outstanding_debt'),
-            amount_expr(utgo, f'{prefix}_utgo_outstanding_debt'),
-            amount_expr(ltgo, f'{prefix}_ltgo_outstanding_debt'),
-            count_expr(all_bonds, f'{prefix}_total_bonds_outstanding'),
-            count_expr(any_go_or_revenue, f'{prefix}_go_revenue_bonds_outstanding'),
-            count_expr(all_go, f'{prefix}_all_go_bonds_outstanding'),
-            count_expr(revenue, f'{prefix}_revenue_bonds_outstanding'),
-            count_expr(utgo, f'{prefix}_utgo_bonds_outstanding'),
-            count_expr(ltgo, f'{prefix}_ltgo_bonds_outstanding'),
-        ])
-        .with_columns(pl.lit(year).alias('year'))
-    )
-
-
 mergent_years = []
 newmoney_original_par_years = []
 allbond_original_par_years = []
 newmoney_point_in_time_years = []
-bondinfo_balance_only_years = []
 seed_issuer_name_audit_years = []
 
 for year in target_years:
@@ -1214,9 +1153,6 @@ for year in target_years:
             'mergent_allbond_original_par',
             'debt',
         )
-    )
-    bondinfo_balance_only_years.append(
-        aggregate_bondinfo_balance_only_stock(legacy_eligible, year)
     )
 
     # Paper-compatible static construction.  Do not apply REDEMPTN,
@@ -1501,7 +1437,6 @@ mergent_outstanding = pl.concat(mergent_years, how='diagonal')
 newmoney_original_par = pl.concat(newmoney_original_par_years, how='diagonal')
 allbond_original_par = pl.concat(allbond_original_par_years, how='diagonal')
 newmoney_point_in_time = pl.concat(newmoney_point_in_time_years, how='diagonal')
-bondinfo_balance_only = pl.concat(bondinfo_balance_only_years, how='diagonal')
 seed_issuer_name_audit = pl.concat(seed_issuer_name_audit_years, how='diagonal')
 
 # One row per city-year makes it easy to prioritize the groups whose
@@ -1595,15 +1530,6 @@ newmoney_point_in_time = newmoney_point_in_time.with_columns([
     for col in audit_stock_amount_cols['mergent_newmoney_point_in_time']
 ])
 
-bondinfo_balance_only_amount_cols = [
-    f'mergent_bondinfo_balance_only_{suffix}_outstanding_debt'
-    for suffix in ['total', 'go_revenue', 'all_go', 'revenue', 'utgo', 'ltgo']
-]
-bondinfo_balance_only = bondinfo_balance_only.with_columns([
-    (pl.col(col) / 1_000_000).alias(col.replace('_debt', '_debt_mil'))
-    for col in bondinfo_balance_only_amount_cols
-])
-
 
 #%% -----------------------------------------------------------------------
 # merge and save full and border samples
@@ -1616,7 +1542,6 @@ full_panel = (
     .join(newmoney_original_par, on=['issuer_key', 'year'], how='left')
     .join(allbond_original_par, on=['issuer_key', 'year'], how='left')
     .join(newmoney_point_in_time, on=['issuer_key', 'year'], how='left')
-    .join(bondinfo_balance_only, on=['issuer_key', 'year'], how='left')
 )
 
 for col in mergent_amount_cols:
@@ -1632,16 +1557,6 @@ for prefix, _, _ in audit_stock_specs:
         full_panel = full_panel.with_columns(
             pl.col(f'{prefix}_{suffix}_bonds').fill_null(0)
         )
-
-for col in bondinfo_balance_only_amount_cols:
-    full_panel = full_panel.with_columns(pl.col(col).fill_null(0))
-    full_panel = full_panel.with_columns(pl.col(col.replace('_debt', '_debt_mil')).fill_null(0))
-
-for suffix in ['total', 'go_revenue', 'all_go', 'revenue', 'utgo', 'ltgo']:
-    full_panel = full_panel.with_columns(
-        pl.col(f'mergent_bondinfo_balance_only_{suffix}_bonds_outstanding')
-        .fill_null(0)
-    )
 
 
 # Census total debt not represented by the issuer's outstanding Mergent bonds.
@@ -1780,32 +1695,6 @@ full_panel = full_panel.with_columns([
     .alias('frac_revenue_nontax_outstanding_taxsplit'),
 ])
 
-# BONDINFO-only robustness: use the same classification and denominator as the
-# primary debt-choice outcome, but do not use any redemption-file event.
-full_panel = full_panel.with_columns([
-    pl.when(pl.col('mergent_bondinfo_balance_only_go_revenue_outstanding_debt') > 0)
-    .then(
-        pl.col('mergent_bondinfo_balance_only_utgo_outstanding_debt')
-        / pl.col('mergent_bondinfo_balance_only_go_revenue_outstanding_debt')
-    )
-    .otherwise(None)
-    .alias('frac_utgo_bondinfo_balance_only_outstanding'),
-    pl.when(pl.col('mergent_bondinfo_balance_only_go_revenue_outstanding_debt') > 0)
-    .then(
-        pl.col('mergent_bondinfo_balance_only_ltgo_outstanding_debt')
-        / pl.col('mergent_bondinfo_balance_only_go_revenue_outstanding_debt')
-    )
-    .otherwise(None)
-    .alias('frac_ltgo_bondinfo_balance_only_outstanding'),
-    pl.when(pl.col('mergent_bondinfo_balance_only_go_revenue_outstanding_debt') > 0)
-    .then(
-        pl.col('mergent_bondinfo_balance_only_revenue_outstanding_debt')
-        / pl.col('mergent_bondinfo_balance_only_go_revenue_outstanding_debt')
-    )
-    .otherwise(None)
-    .alias('frac_rev_bondinfo_balance_only_outstanding'),
-])
-
 # Four-cell new-money/refunding × original-par/point-in-time audit.  The
 # fourth cell is the primary ``frac_*_outstanding`` series already created
 # above; these three sets of shares complete the 2x2.
@@ -1942,9 +1831,6 @@ ordered_cols_base = [
         ]
         for category in ['utgo', 'ltgo', 'revenue']
     ],
-    'frac_utgo_bondinfo_balance_only_outstanding',
-    'frac_ltgo_bondinfo_balance_only_outstanding',
-    'frac_rev_bondinfo_balance_only_outstanding',
     *[
         f'frac_{category}_outstanding_taxsplit'
         for category in ['utgo', 'ltgo', 'revenue_tax', 'revenue_nontax']
@@ -1990,15 +1876,6 @@ ordered_cols_base = [
             'mergent_allbond_original_par',
             'mergent_newmoney_point_in_time',
         ]
-        for suffix in ['total', 'go_revenue', 'all_go', 'revenue', 'utgo', 'ltgo']
-    ],
-    *[
-        f'mergent_bondinfo_balance_only_{suffix}_outstanding_debt{unit}'
-        for suffix in ['total', 'go_revenue', 'all_go', 'revenue', 'utgo', 'ltgo']
-        for unit in ['', '_mil']
-    ],
-    *[
-        f'mergent_bondinfo_balance_only_{suffix}_bonds_outstanding'
         for suffix in ['total', 'go_revenue', 'all_go', 'revenue', 'utgo', 'ltgo']
     ],
     *[
@@ -2059,18 +1936,9 @@ for year in target_years:
     full_out.write_csv(full_path)
     border_out.write_csv(border_path)
 
-    # The balance-only alternative is kept in its own file so it cannot be
-    # confused with the redemption-ledger stock used by the primary analysis.
-    if year == 2017:
-        balance_only_path = build_out_dir / (
-            'census_mergent_debt_cross_section_2017_bondinfo_balance_only.csv'
-        )
-        full_out.write_csv(balance_only_path)
 
     print(f'Wrote {full_path}: {full_out.height:,} rows')
     print(f'Wrote {border_path}: {border_out.height:,} rows')
-    if year == 2017:
-        print(f'Wrote {balance_only_path}: {full_out.height:,} rows')
 
 
 #%% -----------------------------------------------------------------------
