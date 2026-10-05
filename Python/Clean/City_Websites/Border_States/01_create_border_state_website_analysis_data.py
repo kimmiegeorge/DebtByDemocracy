@@ -17,9 +17,16 @@ input_dir_original = os.path.expanduser('~/Dropbox/Voting on Bonds/Data/Websites
 # Recovered URLs data directory
 input_dir_recovered = os.path.expanduser('~/Dropbox/Voting on Bonds/Data/Websites/Border States Website Data/WBM/Recovered URLs From Bad URLs Investigation/Processed')
 
+# Optional AL/AR supplement; keep its collection and raw results separate.
+al_ar_dir = Path(os.getenv(
+    'AL_AR_WEBSITE_DIR',
+    os.path.expanduser('~/Dropbox/Voting on Bonds/Data/Websites/Border States Website Data/AL_AR')
+)).expanduser()
+
 data_dir = '~/Dropbox/Voting on Bonds/Data'
 clean_data_dir = '/Users/kmunevar/Dropbox/Voting on Bonds/Data/Clean_Intermediate'
-os.makedirs(os.path.expanduser(f'{clean_data_dir}/Websites'), exist_ok=True)
+website_output_dir = Path(os.getenv('WEBSITE_OUTPUT_DIR', f'{clean_data_dir}/Websites')).expanduser()
+website_output_dir.mkdir(parents=True, exist_ok=True)
 project_root = next(
     parent for parent in Path(__file__).resolve().parents
     if (parent / 'Code/Config/border_state_pairs.csv').exists()
@@ -84,6 +91,17 @@ else:
     print(f"    ⚠️  Recovered res directory not found")
 
 print(f"\n  Total res files: {original_count + recovered_count}")
+
+for f in (al_ar_dir / 'WBM/Processed/res').glob('*.csv'):
+    df = pl.scan_csv(f).with_columns([
+        pl.col('parent url').cast(pl.Utf8, strict=False),
+        pl.col('URL').cast(pl.Utf8, strict=False),
+        pl.col('original_url').cast(pl.Utf8, strict=False),
+        pl.col('priority').cast(pl.Int64, strict=False),
+        pl.col('content_length').cast(pl.Int64, strict=False),
+        pl.col('text').cast(pl.Utf8, strict=False),
+    ]).select(['parent url', 'URL', 'original_url', 'priority', 'content_length', 'text'])
+    res_file_dfs.append(df)
 
 # Combine all res files
 res_files = (pl.concat(res_file_dfs, how = "diagonal")
@@ -283,6 +301,14 @@ else:
 
 print(f"\n  Total bow files: {original_bow_count + recovered_bow_count}")
 
+for f in (al_ar_dir / 'WBM/Processed/bow').glob('*.csv'):
+    bow_file_dfs.append(pl.scan_csv(f).with_columns([
+        pl.col('url').cast(pl.Utf8, strict=False),
+        pl.col('word').cast(pl.Utf8, strict=False),
+        pl.col('count').cast(pl.Int64, strict=False),
+        pl.col('original_url').cast(pl.Utf8, strict=False),
+    ]).select(['url', 'word', 'count', 'original_url']))
+
 if bow_file_dfs:
     bow_files = (pl.concat(bow_file_dfs, how="diagonal")
                 .collect(streaming=True))
@@ -405,6 +431,18 @@ sample_issuers2 = pl.read_csv(
         '~/Dropbox/Voting on Bonds/Data/Websites/Border States Website Data/Collection Files 20251009/Border_Matches_URLs_20251009.csv')
 obs_sample = pl.concat([sample_issuers1, sample_issuers2]).unique()
 obs = pl.read_csv('~/Dropbox/Voting on Bonds/Data/Websites/Border States Website Data/Expanded Border Matches Issuers Website Collected 20251008.csv')
+if (al_ar_dir / 'collected_issuers.csv').exists():
+    al_ar_issuers = pl.read_csv(al_ar_dir / 'collected_issuers.csv',
+                              schema_overrides={'City Website': pl.String})
+    # Match the existing collection schema; state and county controls continue
+    # to come from the shared Mergent/BEA merges below.
+    al_ar_issuers = al_ar_issuers.select([
+        'seed_issuer', 'seed_issuer_id', 'group', 'City Website'
+    ]).with_columns(pl.lit(0).alias('prev_collected'))
+    obs = pl.concat([obs, al_ar_issuers], how='vertical_relaxed').unique()
+    obs_sample = pl.concat([
+        obs_sample, pl.read_csv(al_ar_dir / 'urls.csv', schema_overrides={'URL': pl.String})
+    ]).unique()
 obs = (obs
        .filter(pl.col('group').is_in(paper_border_pairs))
        .filter(pl.col('City Website').is_in(obs_sample['URL'].to_list())))
@@ -448,7 +486,7 @@ website_seed_id_diagnostics.select([
     'original_seed_issuer_id',
     'updated_seed_issuer_id',
     'seed_issuer_id_update_status',
-]).write_csv(f'{clean_data_dir}/Websites/border_state_website_seed_id_update_diagnostics.csv')
+]).write_csv(f'{website_output_dir}/border_state_website_seed_id_update_diagnostics.csv')
 
 obs = (
     website_seed_id_diagnostics
@@ -471,6 +509,20 @@ obs = (obs
         .rename({'City Website': 'original_url'})
        .join(res_files_agg
              .with_columns(pl.col('year').cast(pl.Int64)), on = ['year', 'original_url'], how = 'left'))
+
+if (al_ar_dir / 'collected_issuers.csv').exists() and al_ar_issuers.height > 0:
+    # Historical host aliases must not duplicate city-year regression rows.
+    # Prefer the host with the most collected URLs in that year; break ties
+    # consistently by host name and retain one row per issuer/year/border pair.
+    supplement_names = al_ar_issuers.get_column('seed_issuer').unique().to_list()
+    supplement_obs = obs.filter(pl.col('seed_issuer').is_in(supplement_names))
+    supplement_obs = supplement_obs.sort(
+        ['total_subs', 'original_url'], descending=[True, False], nulls_last=True
+    ).unique(subset=['seed_issuer', 'seed_issuer_id', 'group', 'year'],
+             keep='first', maintain_order=True)
+    obs = pl.concat([
+        obs.filter(~pl.col('seed_issuer').is_in(supplement_names)), supplement_obs
+    ])
 
 # Diagnostic: Check match rate
 print(f"\n🔍 Merge diagnostics:")
@@ -523,7 +575,7 @@ if missing_urls.height > 0:
         .sort(['host', 'year'])
     )
     
-    missing_file = f'{clean_data_dir}/Websites/missing_url_year_pairs.csv'
+    missing_file = f'{website_output_dir}/missing_url_year_pairs.csv'
     missing_pairs.write_csv(missing_file)
     print(f"\n  💾 Exported missing URL-year pairs to:")
     print(f"     {missing_file}")
@@ -792,7 +844,7 @@ obs = (obs
 print("✅ Financial document variables added\n")
 
 #%% save
-output_file = f'{clean_data_dir}/Websites/border_state_website_data_with_recovered.csv'
+output_file = f'{website_output_dir}/border_state_website_data_with_recovered.csv'
 obs.write_csv(output_file)
 
 print("="*70)

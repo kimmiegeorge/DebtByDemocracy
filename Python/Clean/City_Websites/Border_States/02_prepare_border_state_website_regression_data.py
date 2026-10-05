@@ -19,7 +19,10 @@ paper_border_pairs = paper_pair_config.get_column('group').to_list()
 
 #%% Retain the same city-year sample used in the website regressions.
 data = pl.read_csv(
-    clean_data_dir / 'Websites/border_state_website_data_with_recovered.csv',
+    Path(os.getenv(
+        'WEBSITE_ANALYSIS_DATA',
+        str(clean_data_dir / 'Websites/border_state_website_data_with_recovered.csv')
+    )).expanduser(),
     infer_schema_length=10000
 ).filter(
     pl.col('group').is_in(paper_border_pairs),

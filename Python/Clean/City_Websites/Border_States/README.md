@@ -1,5 +1,13 @@
 # Border-State Website Analysis Data
 
+The shared scraper is now in
+`Python/Clean/City_Websites/updated-wayback-json-parsing-expanded-border-state/`.
+For the restored Alabama/Arkansas cities, use the separate
+[AL/AR collection pipeline](AL_AR/README.md). This builder automatically includes
+its approved roster and processed files when present. Set `AL_AR_WEBSITE_DIR`
+to use a different supplement location. `WEBSITE_OUTPUT_DIR` overrides step
+01's output directory for validation.
+
 Run these scripts in order from the repository root:
 
 ```sh
@@ -46,3 +54,4 @@ Paths above are relative to the project directory containing `Code/` and `Data/`
 Step 01 preserves its existing output names for other consumers. Step 02 and
 the R script both support `WEBSITE_REGRESSION_DATA` to override the prepared
 file path, for example when validating in a temporary directory.
+`WEBSITE_ANALYSIS_DATA` overrides step 02's input intermediate for validation.
