@@ -14,6 +14,12 @@ analysis, and the purpose-substitution figure shares `06_` with Table 9.
 
 ## Paper order
 
+Before running `01_websites.R`, run steps `01_` and `02_` in
+[`Python/Clean/City_Websites/Border_States`](../../Python/Clean/City_Websites/Border_States/README.md).
+Step 02 writes `border_state_website_regression_data.csv` with the sample
+restrictions, merged controls, capped counts, and regression indicators.
+If the step-01 website intermediate is already current, only step 02 is needed.
+
 1. `01_websites.R` - Tables 2 and 4; Table 1 website panel
 2. `02_media_coverage.R` - Table 3; Table 1 media panel
 3. `03_election_outcomes.R` - Tables 4 and 5; Table 1 election panel

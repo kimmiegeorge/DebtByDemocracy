@@ -6,87 +6,18 @@ library(pacman)
 p_load(data.table, dplyr, stargazer, DescTools, arrow, glue, lfe, ggplot2, gridExtra, sandwich, zoo, fixest, xtable)
 tables_wd <- "/Users/kmunevar/Dropbox/Voting on Bonds/Code/R/Clean/output/revision_tables"
 source('/Users/kmunevar/Dropbox/Voting on Bonds/Code/R/Clean/00_modify_etable_rounding.R')
-source('/Users/kmunevar/Dropbox/Voting on Bonds/Code/R/Clean/00_border_pair_definitions.R')
-tbl_dir <- "/Users/kmunevar/Dropbox/Voting on Bonds/Code/R/Clean/output/revision_tables"
+tbl_dir <- tables_wd
 
 #---------------------------------------
-data <- fread('~/Dropbox/Voting on Bonds/Data/Clean_Intermediate/Websites/border_state_website_data_with_recovered.csv')
-data <- filter_paper_border_pairs(data)
-data[, state_year := interaction(state, year, drop = TRUE)]
-
-data <- data[!is.na(total_subs)]
-data <- data[!is.na(city_go_vote)]
-data <- data[total_subs == 50]
-data <- data[seed_issuer != 'BONDUEL WIS']
-# Merge the shared full-Mergent end-of-year outstanding-debt panel. The Python
-# builder counts a CUSIP in year t when it was offered by December 31 of t and
-# matures after December 31 of t. Use a composite issuer key because
-# seed_issuer_id is reused for a few issuers in the Mergent files.
-data[, year_int := as.integer(year)]
-data[, issuer_key := paste(
-  sprintf('%.0f', round(as.numeric(seed_issuer_id) * 10)),
-  toupper(trimws(state)),
-  toupper(gsub('\\s+', ' ', trimws(seed_issuer))),
-  sep = '|'
-)]
-
-debt_panel <- fread(
-  '/Users/kmunevar/Dropbox/Voting on Bonds/Data/Clean_Intermediate/Mergent/Outstanding Debt/full_mergent_issuer_year_outstanding_debt.csv',
-  select = c(
-    'issuer_key', 'year', 'total_outstanding_debt',
-    'ln_1p_total_outstanding_debt'
-  )
-)
-debt_panel[, year_int := as.integer(year) + 1L]
-debt_panel[, year := NULL]
-setnames(
-  debt_panel,
-  c('total_outstanding_debt', 'ln_1p_total_outstanding_debt'),
-  c('total_outstanding_debt_lag1', 'ln_1p_outstanding_debt_lag1')
-)
-
-if (debt_panel[, anyDuplicated(paste(issuer_key, year_int))] > 0L) {
-  stop('The shared outstanding-debt panel has duplicate issuer-year keys.')
-}
-
-data <- debt_panel[data, on = .(issuer_key, year_int)]
-
-if (data[is.na(ln_1p_outstanding_debt_lag1), .N] > 0L) {
-  stop('The shared outstanding-debt panel is missing website issuer-years.')
-}
-
-# variable adjustments 
+# Step 02 in Python prepares sample restrictions, merged controls, winsorized
+# counts, cluster identifiers, and robustness-sample indicators.
+data <- fread(Sys.getenv(
+  "WEBSITE_REGRESSION_DATA",
+  unset = "~/Dropbox/Voting on Bonds/Data/Clean_Intermediate/Websites/border_state_website_regression_data.csv"
+))
 data[, group := as.factor(group)]
 data[, year := as.factor(year)]
-
-
-state_policy <- fread('/Users/kmunevar/Dropbox/Voting on Bonds/Data/State Monitoring Policy/state_enforcement_adoption_years.csv')
-state_policy[, AdoptionYear := ifelse(AdoptionYear == 'before_sample', 2009, AdoptionYear )]
-setnames(state_policy, 'Abbreviation', 'state')
-
-data <- state_policy[data, on = .(state)]
-data[, state_monitor := ifelse(!is.na(AdoptionYear) & year_int >= AdoptionYear, 1, 0)]
-
-
-# Use observed order statistics for the count-variable caps so winsorization
-# preserves integer-valued website disclosure counts.
-website_count_variables <- c(
-  'fiscal_url', 'fiscal_count', 'bond_url', 'bond_count',
-  'financial_pdf_urls'
-)
-for (variable in website_count_variables) {
-  website_count_caps <- quantile(
-    data[[variable]],
-    probs = c(0.01, 0.99),
-    na.rm = TRUE,
-    type = 1
-  )
-  set(
-    data,
-    j = variable,
-    value = Winsorize(data[[variable]], val = website_count_caps)
-  )
-}
+data[, state_year := as.factor(state_year)]
 
 #---------------------------------------
 # Descriptives
