@@ -56,7 +56,10 @@ from pygris import tracts
 
 data_dir = '~/Dropbox/Voting on Bonds/Data'
 clean_data_dir = '/Users/kmunevar/Dropbox/Voting on Bonds/Data/Clean_Intermediate'
-os.makedirs(os.path.expanduser(f'{clean_data_dir}/Border States'), exist_ok=True)
+border_output_dir = Path(os.path.expanduser(os.getenv(
+    'BORDER_OUTPUT_DIR', f'{clean_data_dir}/Border States'
+)))
+border_output_dir.mkdir(parents=True, exist_ok=True)
 # Use the same canonical pair universe as the paper regressions. Keeping this in
 # a shared CSV prevents the Python builder and downstream R samples from drifting.
 project_root = next(
@@ -107,9 +110,15 @@ for state in states_list:
     state_map_dict[state] = state_buffer
 
 #%%
-state_fips_codes = pl.DataFrame({'state':states_list,
-                                 'state_fips': [1, 5, 13, 21, 22, 25, 23, 26, 29, 28, 37, 33, 39, 44, 47, 50, 55, 54]})
-state_fips_codes = state_fips_codes.rows_by_key('state')
+# Key codes explicitly by state so pair exclusions cannot shift the mapping.
+state_fips_codes = {
+    'AL': 1, 'AR': 5, 'GA': 13, 'KY': 21, 'LA': 22, 'MA': 25,
+    'ME': 23, 'MI': 26, 'MO': 29, 'MS': 28, 'NC': 37, 'NH': 33,
+    'OH': 39, 'RI': 44, 'TN': 47, 'VT': 50, 'WI': 55, 'WV': 54,
+}
+missing_state_codes = set(states_list).difference(state_fips_codes)
+if missing_state_codes:
+    raise ValueError(f'Missing FIPS codes for configured states: {sorted(missing_state_codes)}')
 
 #%%
 # transform lat long FIPS into geo data frame
@@ -124,7 +133,12 @@ def merge_buffer(state):
     state_buffer = state_map_dict[state]
     state_merge = lat_long_fips.sjoin(state_buffer, how = 'inner')
     state_merge_fips = pl.DataFrame({'fips':state_merge[0]})
-    state_merge_fips = state_merge_fips.with_columns(pl.col('fips').cast(pl.String).str.slice(0, 2).alias('state_code'))
+    # County FIPS is stored as an integer for the joins. Integer division keeps
+    # the state component correct even when a leading zero has been removed:
+    # Alabama 01089 -> 1089 // 1000 = 1; Arkansas 05035 -> 5035 // 1000 = 5.
+    state_merge_fips = state_merge_fips.with_columns(
+        (pl.col('fips').cast(pl.Int64) // 1000).alias('state_code')
+    )
     return state_merge_fips
 
 state_merged_fips = {}
@@ -139,8 +153,8 @@ for pairing in state_pairs.keys():
     state1 = state_pairs[pairing][0]
     state2 = state_pairs[pairing][1]
     category = state_pairs[pairing][2]
-    state_code1 = state_fips_codes[state1][0][0]
-    state_code2 = state_fips_codes[state2][0][0]
+    state_code1 = state_fips_codes[state1]
+    state_code2 = state_fips_codes[state2]
 
     first_overlap = (state_merged_fips[state1]
         .filter(pl.col('state_code').cast(pl.Int64).eq(state_code2)))
@@ -168,7 +182,7 @@ mergent_border_matches = (mergent_full
 
 
 # save
-mergent_border_matches.write_csv(f'{clean_data_dir}/Border States/Border Matches All Mergent Data Expanded Set Buffer {BUFFER_DISTANCE}.csv')
+mergent_border_matches.write_csv(border_output_dir / f'Border Matches All Mergent Data Expanded Set Buffer {BUFFER_DISTANCE}.csv')
 #mergent_border_matches.select(['state', 'seed_issuer', 'county_name']).write_csv(f'{clean_data_dir}/Border States/Border Matches All Mergent Data Buffer {BUFFER_DISTANCE}.csv')
 #%%
 # also merge with ravenpack data
@@ -185,7 +199,7 @@ rp_issuance = (rp_issuance
                .filter(pl.col('seed_issuer_id').is_in(border_issuer_ids))
                .join(border_issuer_groups, on = 'seed_issuer_id', how = 'inner'))
 
-rp_issuance.write_csv(f'{clean_data_dir}/Border States/Border Matches RP Issuance Lvl Expanded Set Buffer {BUFFER_DISTANCE}.csv')
+rp_issuance.write_csv(border_output_dir / f'Border Matches RP Issuance Lvl Expanded Set Buffer {BUFFER_DISTANCE}.csv')
 
 # The city-month border file is not used by the submission-table regressions
 # and is very large, so do not generate it in the final table refresh.
