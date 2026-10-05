@@ -112,6 +112,28 @@ data = data.with_columns(
     .cast(pl.Int64).alias('dark_green')
 )
 
+#%% Add the full state-level policy comparison for prospective controls.
+# Retain original names, source text, and missing values. Dated policy measures
+# and GFOA period averages are repeated across years, not historical panels.
+state_comparison = pl.read_csv(
+    data_dir / 'State Policies/20260929_state_policy_comparison.csv',
+    infer_schema_length=10000
+).rename({'state_abbr': 'state'})
+if (state_comparison.height != 50
+        or state_comparison.get_column('state').null_count() > 0
+        or state_comparison.get_column('state').n_unique() != 50):
+    raise ValueError('The state-policy comparison must contain one row for each of the 50 states.')
+policy_columns = [column for column in state_comparison.columns if column != 'state']
+policy_collisions = set(policy_columns).intersection(data.columns)
+if policy_collisions:
+    raise ValueError(f'State-policy columns already exist in website data: {sorted(policy_collisions)}')
+missing_policy_states = data.select('state').unique().join(
+    state_comparison.select('state'), on='state', how='anti'
+)
+if missing_policy_states.height > 0:
+    raise ValueError(f'Website states are missing from the policy comparison: {missing_policy_states}')
+data = data.join(state_comparison, on='state', how='left', validate='m:1')
+
 #%% Save the regression-ready sample without changing the step-01 intermediate.
 output_file.parent.mkdir(parents=True, exist_ok=True)
 data.write_csv(output_file)

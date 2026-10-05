@@ -20,6 +20,15 @@ adoption dates, and caps the five disclosure counts at the sample's 1st and
 also creates the state-year cluster identifier and the subgroup indicators
 used by the revenue-vote robustness and dark-green interaction regressions.
 It reads election rules from the same clean Mergent Stata file as step 01.
+It also merges all fields from
+`Data/State Policies/20260929_state_policy_comparison.csv` by state, including
+debt-limit measures, municipal TEL severity, property-tax limits, municipal
+GAAP reporting requirements, audit indicators, and state GFOA award averages.
+Source fields and missing values are retained. These state-level measures are
+repeated across website years; dated measures are not historical policy panels.
+The current regressions still use their existing controls.
+Build this input with the scripts in
+[`State_Policy_Comparison`](../../State_Policy_Comparison/README.md).
 The shared outstanding-debt panel must already exist; step 02 stops on duplicate
 debt-panel keys or missing debt controls.
 
