@@ -47,7 +47,9 @@ Both samples also include every field from
 `Data/State Policies/20260929_state_policy_comparison.csv`, matching the expanded
 website controls: GAAP requirements, state audits, debt limits, tax and
 expenditure limits, fiscal-monitoring snapshots, and source information.
-Original policy names and missing values are preserved. These dated measures
+Original policy names and missing values are preserved. Line breaks in policy
+source text are replaced with spaces so R's `fread` infers numeric types correctly.
+These dated measures
 are state snapshots rather than historical policy panels. `state_monitor` is
 separately calculated using issuance year and
 `Data/State Monitoring Policy/state_enforcement_adoption_years.csv`, with

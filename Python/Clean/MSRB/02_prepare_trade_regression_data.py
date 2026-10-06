@@ -66,6 +66,15 @@ state_comparison = pl.read_csv(
     code_dir.parent / 'Data/State Policies/20260929_state_policy_comparison.csv',
     infer_schema_length=10000
 ).rename({'state_abbr': 'state'})
+# Embedded source-text line breaks confuse fread's sampling and can promote
+# unrelated numeric columns to character. Keep each CSV record on one line.
+policy_text_columns = [
+    column for column, dtype in state_comparison.schema.items()
+    if dtype == pl.String
+]
+state_comparison = state_comparison.with_columns(
+    pl.col(policy_text_columns).str.replace_all(r'[\r\n]+', ' ')
+)
 if (state_comparison.height != 50
         or state_comparison['state'].null_count() > 0
         or state_comparison['state'].n_unique() != 50):
