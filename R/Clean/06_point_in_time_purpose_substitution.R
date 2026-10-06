@@ -45,6 +45,7 @@ control_dict <- c(
   state_ltgo_allowed = 'LTGO Allowed',
   state_go_vote = 'State GO Vote',
   low_state_tax_privilege = 'Low Tax Priv.',
+  strict_municipal_debt_limit = 'Strict Municipal Debt Limit',
   category_amount_share_of_go_or_revenue = 'Category Amt. Share',
   category_amount_mil = 'Par of Outstanding Bonds (millions)',
   share_revenue_vs_go_amount = 'Pct Revenue'
@@ -224,35 +225,35 @@ write_revenue_amount_pie_charts(
 ppml_amount_2017_utilities <- fepois(
   category_amount_mil ~ city_go_vote + ln_gdp + ln_census_population +
     ln_pers_inc + ln_1p_county_nonmunicipal_total_debt + glm_proactive +
-    state_ltgo_allowed + state_go_vote + low_state_tax_privilege,
+    state_ltgo_allowed + state_go_vote + low_state_tax_privilege + strict_municipal_debt_limit,
   data = purpose_2017_full[purpose_category == 'utilities'],
   vcov = vcov_cluster(~state)
 )
 ppml_amount_2017_transportation <- fepois(
   category_amount_mil ~ city_go_vote + ln_gdp + ln_census_population +
     ln_pers_inc + ln_1p_county_nonmunicipal_total_debt + glm_proactive +
-    state_ltgo_allowed + state_go_vote + low_state_tax_privilege,
+    state_ltgo_allowed + state_go_vote + low_state_tax_privilege + strict_municipal_debt_limit,
   data = purpose_2017_full[purpose_category == 'transportation'],
   vcov = vcov_cluster(~state)
 )
 ppml_amount_2017_recreation <- fepois(
   category_amount_mil ~ city_go_vote + ln_gdp + ln_census_population +
     ln_pers_inc + ln_1p_county_nonmunicipal_total_debt + glm_proactive +
-    state_ltgo_allowed + state_go_vote + low_state_tax_privilege,
+    state_ltgo_allowed + state_go_vote + low_state_tax_privilege + strict_municipal_debt_limit,
   data = purpose_2017_full[purpose_category == 'recreation_amenities'],
   vcov = vcov_cluster(~state)
 )
 ppml_amount_2017_public_safety <- fepois(
   category_amount_mil ~ city_go_vote + ln_gdp + ln_census_population +
     ln_pers_inc + ln_1p_county_nonmunicipal_total_debt + glm_proactive +
-    state_ltgo_allowed + state_go_vote + low_state_tax_privilege,
+    state_ltgo_allowed + state_go_vote + low_state_tax_privilege + strict_municipal_debt_limit,
   data = purpose_2017_full[purpose_category == 'public_safety'],
   vcov = vcov_cluster(~state)
 )
 ppml_amount_2017_public_buildings <- fepois(
   category_amount_mil ~ city_go_vote + ln_gdp + ln_census_population +
     ln_pers_inc + ln_1p_county_nonmunicipal_total_debt + glm_proactive +
-    state_ltgo_allowed + state_go_vote + low_state_tax_privilege,
+    state_ltgo_allowed + state_go_vote + low_state_tax_privilege + strict_municipal_debt_limit,
   data = purpose_2017_full[purpose_category == 'other_public_buildings'],
   vcov = vcov_cluster(~state)
 )
@@ -297,7 +298,7 @@ r_rev_2017_full_other <- feols(
   share_revenue_vs_go_amount ~ city_go_vote + ln_gdp + ln_census_population +
     ln_pers_inc + ln_1p_county_nonmunicipal_total_debt + glm_proactive +
     state_ltgo_allowed +
-    state_go_vote + low_state_tax_privilege,
+    state_go_vote + low_state_tax_privilege + strict_municipal_debt_limit,
   data = purpose_2017_full[purpose_category == 'other'],
   vcov = vcov_cluster(~state)
 )
@@ -305,7 +306,7 @@ r_rev_2017_full_pub_build <- feols(
   share_revenue_vs_go_amount ~ city_go_vote + ln_gdp + ln_census_population +
     ln_pers_inc + ln_1p_county_nonmunicipal_total_debt + glm_proactive +
     state_ltgo_allowed +
-    state_go_vote + low_state_tax_privilege,
+    state_go_vote + low_state_tax_privilege + strict_municipal_debt_limit,
   data = purpose_2017_full[purpose_category == 'other_public_buildings'],
   vcov = vcov_cluster(~state)
 )
@@ -313,7 +314,7 @@ r_rev_2017_full_safety <- feols(
   share_revenue_vs_go_amount ~ city_go_vote + ln_gdp + ln_census_population +
     ln_pers_inc + ln_1p_county_nonmunicipal_total_debt + glm_proactive +
     state_ltgo_allowed +
-    state_go_vote + low_state_tax_privilege,
+    state_go_vote + low_state_tax_privilege + strict_municipal_debt_limit,
   data = purpose_2017_full[purpose_category == 'public_safety'],
   vcov = vcov_cluster(~state)
 )
@@ -321,7 +322,7 @@ r_rev_2017_full_rec <- feols(
   share_revenue_vs_go_amount ~ city_go_vote + ln_gdp + ln_census_population +
     ln_pers_inc + ln_1p_county_nonmunicipal_total_debt + glm_proactive +
     state_ltgo_allowed +
-    state_go_vote + low_state_tax_privilege,
+    state_go_vote + low_state_tax_privilege + strict_municipal_debt_limit,
   data = purpose_2017_full[purpose_category == 'recreation_amenities'],
   vcov = vcov_cluster(~state)
 )
@@ -329,7 +330,7 @@ r_rev_2017_full_trans <- feols(
   share_revenue_vs_go_amount ~ city_go_vote + ln_gdp + ln_census_population +
     ln_pers_inc + ln_1p_county_nonmunicipal_total_debt + glm_proactive +
     state_ltgo_allowed +
-    state_go_vote + low_state_tax_privilege,
+    state_go_vote + low_state_tax_privilege + strict_municipal_debt_limit,
   data = purpose_2017_full[purpose_category == 'transportation'],
   vcov = vcov_cluster(~state)
 )
@@ -337,7 +338,7 @@ r_rev_2017_full_util <- feols(
   share_revenue_vs_go_amount ~ city_go_vote + ln_gdp + ln_census_population +
     ln_pers_inc + ln_1p_county_nonmunicipal_total_debt + glm_proactive +
     state_ltgo_allowed +
-    state_go_vote + low_state_tax_privilege,
+    state_go_vote + low_state_tax_privilege + strict_municipal_debt_limit,
   data = purpose_2017_full[purpose_category == 'utilities'],
   vcov = vcov_cluster(~state)
 )
