@@ -3,61 +3,19 @@ rm(list = ls())
 library(pacman)
 p_load(data.table, dplyr, stargazer, DescTools, arrow, glue, lfe, ggplot2, gridExtra, sandwich, zoo, fixest)
 source('/Users/kmunevar/Dropbox/Voting on Bonds/Code/R/Clean/00_modify_etable_rounding.R')
-source('/Users/kmunevar/Dropbox/Voting on Bonds/Code/R/Clean/00_tax_privilege_definitions.R')
-source('/Users/kmunevar/Dropbox/Voting on Bonds/Code/R/Clean/00_border_pair_definitions.R')
-tables_wd <- "/Users/kmunevar/Dropbox/Voting on Bonds/Code/R/Clean/output/revision_tables/"
-
-#----------------------------------
-# main df
-#----------------------------------
-
-data <- fread('~/Dropbox/Voting on Bonds/Data/Clean_Intermediate/MSRB/Processed/Bond_Level_Any_Trade_Before_Maturity_with_CD_Data.csv')
-data[, seed_issuer_id := round(as.numeric(seed_issuer_id), 1)]
-data[state == 'MO', city_rev_vote := 1]
-data[state == 'RI', city_go_vote := NA]
-data <- data[city == 1 & !is.na(city_go_vote)  & go_unlim == 1 & !is.na(callable)]
-add_low_state_tax_privilege(data)
-
-# Use the exact raw customer-trade outcomes and rating-category fixed effects
-# reported in Table 6. Sensitivity variants were removed because they are not
-# used by the paper or either response document.
-outcome_sources <- paste0(
-  c(
-    'traded_before_maturity',
-    'retail_traded_before_maturity',
-    'institutional_traded_before_maturity'
-  ),
-  '_raw'
+tables_wd <- Sys.getenv(
+  "RESULTS_DIR",
+  unset = "/Users/kmunevar/Dropbox/Voting on Bonds/Code/R/Clean/output/revision_tables/"
 )
-missing_raw_outcomes <- setdiff(outcome_sources, names(data))
-if (length(missing_raw_outcomes) > 0L) {
-  stop('Missing raw trade outcomes: ', paste(missing_raw_outcomes, collapse = ', '))
-}
-data[, traded_before_maturity := get(outcome_sources[1L])]
-data[, retail_traded_before_maturity := get(outcome_sources[2L])]
-data[, institutional_traded_before_maturity := get(outcome_sources[3L])]
-data[, disclosure_control := disclosed_before_maturity]
+dir.create(tables_wd, recursive = TRUE, showWarnings = FALSE)
+# Prepared by Python/Clean/MSRB/02_prepare_trade_regression_data.py.
+regression_data_dir <- Sys.getenv(
+  'MSRB_REGRESSION_DIR',
+  unset = path.expand('~/Dropbox/Voting on Bonds/Data/Clean_Intermediate/MSRB/Regression')
+)
+data <- fread(file.path(regression_data_dir, 'trade_full_sample_regression_ready.csv'))
+border_states <- fread(file.path(regression_data_dir, 'trade_border_sample_regression_ready.csv'))
 disclosure_label <- 'Continuing Disclosure'
-
-if (!'rating_fe' %in% names(data) || any(is.na(data$rating_fe))) {
-  stop('rating_fe is required and cannot contain missing values')
-}
-
-data[, state_year := interaction(state, year, drop = TRUE)]
-#----------------------------------
-# border state
-#----------------------------------
-
-border_states <- fread('~/Dropbox/Voting on Bonds/Data/Clean_Intermediate/Border States/Border Matches All Mergent Data Expanded Set Buffer 100000.csv')
-border_states <- filter_paper_border_pairs(border_states)
-border_states <- border_states[go_unlim == 1]
-#border_states <- Wins(border_states, col_list)
-# seed_issuer_id is reused by three pairs of municipalities. State and issuer
-# name are the stable border-sample key used elsewhere in the clean R code.
-border_states <- unique(border_states[, .(state, seed_issuer, group)])
-border_states <- data[border_states, on = .(state, seed_issuer)]
-border_states <- border_states[!is.na(cusip)]
-border_states[, state_year := interaction(state, year, drop = TRUE)]
 
 #----------------------------------
 # descriptives
@@ -69,7 +27,7 @@ desc_vars <- c(
   'disclosure_control', 'ln_amount', 'ln_maturity_mths', 'callable',
   'sinkable', 'insured'
 )
-desc <- data[year > 2004 & !is.na(ln_gdp), ..desc_vars]
+desc <- data[!is.na(ln_gdp), ..desc_vars]
 
 desc_col <- desc[, lapply(.SD, function(col) {
   stats <- c(Unit = 'Bond',
@@ -166,13 +124,13 @@ r1 <- feols(traded_before_maturity ~ city_go_vote + disclosure_control + ln_amou
               callable + sinkable + insured + rating_num 
             +ln_gdp + ln_pop + ln_pers_inc   |year + purp_broad, 
             ~state, 
-            data = data[year > 2004])
+            data = data)
 
 r2 <- feols(traded_before_maturity ~ city_go_vote + low_state_tax_privilege + disclosure_control +  ln_amount +ln_maturity_mths + 
               callable + sinkable + insured + rating_num + 
             + ln_gdp + ln_pop + ln_pers_inc  |year + purp_broad, 
             ~state, 
-            data = data[year > 2004])
+            data = data)
 
 
 
@@ -183,13 +141,13 @@ r2 <- feols(traded_before_maturity ~ city_go_vote + low_state_tax_privilege + di
 r1b <- feols(traded_before_maturity ~ city_go_vote + disclosure_control + ln_amount +ln_maturity_mths + 
               callable + sinkable + insured + rating_num + ln_gdp + ln_pop + ln_pers_inc   |year + purp_broad + group, 
             ~state_year, 
-            data = border_states[year > 2004])
+            data = border_states)
 
 
 r2b <- feols(traded_before_maturity ~ city_go_vote + low_state_tax_privilege +  disclosure_control  + ln_amount +ln_maturity_mths + 
               callable + sinkable + insured + rating_num + ln_gdp + ln_pop + ln_pers_inc    |year + purp_broad + group , 
             ~state_year, 
-            data = border_states[year > 2004])
+            data = border_states)
 
 
 #----------------------------------
@@ -201,13 +159,13 @@ r1_r <- feols(retail_traded_before_maturity ~ city_go_vote + disclosure_control 
               callable + sinkable + insured + rating_num 
             +ln_gdp + ln_pop + ln_pers_inc   |year + purp_broad, 
             ~state, 
-            data = data[year > 2004])
+            data = data)
 
 r2_r <- feols(retail_traded_before_maturity ~ city_go_vote + low_state_tax_privilege +  disclosure_control  + ln_amount +ln_maturity_mths + 
               callable + sinkable + insured + rating_num + 
               + ln_gdp + ln_pop + ln_pers_inc  |year + purp_broad , 
             ~state, 
-            data = data[year > 2004])
+            data = data)
 
 
 
@@ -218,13 +176,13 @@ r2_r <- feols(retail_traded_before_maturity ~ city_go_vote + low_state_tax_privi
 r1b_r <- feols(retail_traded_before_maturity ~ city_go_vote + disclosure_control + ln_amount +ln_maturity_mths + 
                callable + sinkable + insured + rating_num + ln_gdp + ln_pop + ln_pers_inc   |year + purp_broad + group, 
             ~state_year, 
-             data = border_states[year > 2004])
+             data = border_states)
 
 
 r2b_r <- feols(retail_traded_before_maturity ~ city_go_vote + low_state_tax_privilege +  disclosure_control  + ln_amount +ln_maturity_mths + 
                callable + sinkable + insured + rating_num + ln_gdp + ln_pop + ln_pers_inc    |year + purp_broad + group , 
             ~state_year, 
-             data = border_states[year > 2004])
+             data = border_states)
 
 
 #----------------------------------
@@ -236,14 +194,14 @@ r1_i <- feols(institutional_traded_before_maturity ~ city_go_vote + disclosure_c
               callable + sinkable + insured + rating_num 
             +ln_gdp + ln_pop + ln_pers_inc   |year + purp_broad, 
             ~state, 
-            data = data[year > 2004])
+            data = data)
 
 
 r2_i <- feols(institutional_traded_before_maturity ~ city_go_vote +  low_state_tax_privilege +  disclosure_control  + ln_amount +ln_maturity_mths + 
               callable + sinkable + insured + rating_num + 
               + ln_gdp + ln_pop + ln_pers_inc  |year + purp_broad , 
             ~state, 
-            data = data[year > 2004])
+            data = data)
 
 
 
@@ -254,13 +212,13 @@ r2_i <- feols(institutional_traded_before_maturity ~ city_go_vote +  low_state_t
 r1b_i <- feols(institutional_traded_before_maturity ~ city_go_vote + disclosure_control +  ln_amount +ln_maturity_mths + 
                callable + sinkable + insured + rating_num + ln_gdp + ln_pop + ln_pers_inc   |year + purp_broad + group, 
             ~state_year, 
-             data = border_states[year > 2004])
+             data = border_states)
 
 
 r2b_i <- feols(institutional_traded_before_maturity ~ city_go_vote + low_state_tax_privilege +  disclosure_control  + ln_amount +ln_maturity_mths + 
                callable + sinkable + insured + rating_num + ln_gdp + ln_pop + ln_pers_inc    |year + purp_broad + group , 
             ~state_year, 
-             data = border_states[year > 2004])
+             data = border_states)
 
 
 r2 <- update(r2, . ~ . - rating_num | . + rating_fe)

@@ -1,12 +1,15 @@
 # 00: Babina et al. (2021, RFS), Table 2. "Low tax privilege" is defined as
 # membership in the fourth or bottom quintile of average state tax privilege.
-babina_fourth_privilege_quintile_states <- c(
-  'MD', 'AL', 'MS', 'NH', 'AZ', 'CO', 'MI', 'UT', 'PA', 'FL'
+# Share the same definitions with Python regression-data preparation.
+tax_privilege_config <- data.table::fread(
+  '/Users/kmunevar/Dropbox/Voting on Bonds/Code/Config/low_state_tax_privilege_states.csv'
 )
-
-babina_bottom_privilege_quintile_states <- c(
-  'IN', 'AK', 'DC', 'IA', 'IL', 'NV', 'OK', 'TX', 'WA', 'WI'
-)
+babina_fourth_privilege_quintile_states <- tax_privilege_config[
+  quintile == 4L, state
+]
+babina_bottom_privilege_quintile_states <- tax_privilege_config[
+  quintile == 5L, state
+]
 
 low_state_tax_privilege_states <- c(
   babina_fourth_privilege_quintile_states,

@@ -6,7 +6,7 @@ import pandas as pd
 import polars as pl
 
 
-project_dir = Path(__file__).resolve().parents[4]
+project_dir = Path(__file__).resolve().parents[5]
 data_dir = project_dir / "Data"
 clean_msrb_dir = data_dir / "Clean_Intermediate" / "MSRB" / "Processed"
 raw_trade_files = [

@@ -12,7 +12,7 @@ import polars as pl
 import pandas as pd
 from pathlib import Path
 
-project_dir = Path(__file__).resolve().parents[4]
+project_dir = Path(__file__).resolve().parents[5]
 data_dir = project_dir / 'Data'
 clean_data_dir = data_dir / 'Clean_Intermediate'
 msrb_processed_dir = clean_data_dir / 'MSRB' / 'Processed'

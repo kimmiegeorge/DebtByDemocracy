@@ -19,7 +19,7 @@ from pathlib import Path
 
 import polars as pl
 
-project_dir = Path(__file__).resolve().parents[4]
+project_dir = Path(__file__).resolve().parents[5]
 data_dir = project_dir / 'Data' / 'MSRB'
 processed_dir = project_dir / 'Data' / 'Clean_Intermediate' / 'MSRB' / 'Processed'
 processed_dir.mkdir(parents=True, exist_ok=True)

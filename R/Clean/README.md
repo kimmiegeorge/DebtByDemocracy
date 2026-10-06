@@ -36,6 +36,13 @@ for their preparation. `05_prepare_tx_regression_inputs.py` merges the full-hist
 `03_election_outcomes.R` then writes `tx_prior_overlap_failure_panel_c.tex`
 after the time-series regressions, using those prepared fields.
 
+Before running `04_trade_before_maturity.R`, run steps `01_` and `02_` in
+[`Python/Clean/MSRB`](../../Python/Clean/MSRB/README.md). They build the raw
+customer-trade/disclosure outcomes and write the full and border regression-ready
+CSVs. The R script loads those files directly, then produces descriptives and
+regression tables. Tax privilege and border-pair inclusion come from shared
+configuration files. Set `EXCLUDE_STATE` when running Python step 02 if needed.
+
 1. `01_websites.R` - Tables 2 and 4; Table 1 website panel
 2. `02_media_coverage.R` - Table 3; Table 1 media panel
 3. `03_election_outcomes.R` - Tables 4 and 5; Table 1 election panel
