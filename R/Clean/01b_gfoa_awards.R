@@ -25,53 +25,42 @@ data[, fiscal_year := as.factor(fiscal_year)]
 # regs: preserve the four existing specifications and state clustering
 #---------------------------------
 
-# City GO-vote requirement with GAAP and audit controls and fiscal-year FE.
+# Baseline COA award regression with fiscal-year fixed effects.
 r1 <- fixest::feols(
-  coa_award ~ city_go_vote + gasb_municipal_gaap_required_any +
-    nasact_audits_cities_towns_villages +
-    nasact_audits_cities_towns_villages_source_missing | fiscal_year,
+  coa_award ~ city_go_vote | fiscal_year,
   data = data,
   cluster = ~state,
   notes = FALSE
 )
 
-# Add lagged county characteristics to the GAAP and audit controls.
+# Add debt, state policies, and county controls in the website-table order.
 r2 <- fixest::feols(
-  coa_award ~ city_go_vote  + ln_county_gdp_l1 +
-    ln_county_percap_inc_l1 + ln_county_pop_l1 +
+  coa_award ~ city_go_vote + ln_1p_outstanding_debt_lag1 + state_monitor +
     gasb_municipal_gaap_required_any + nasact_audits_cities_towns_villages +
-    nasact_audits_cities_towns_villages_source_missing | fiscal_year,
+    ln_county_gdp_l1 + ln_county_pop_l1 + ln_county_percap_inc_l1 | fiscal_year,
   data = data,
   cluster = ~state,
   notes = FALSE
 )
 
-# Add current-year issuance and adoption-based fiscal monitoring.
+# Baseline PAFR award regression with fiscal-year fixed effects.
 r3 <- fixest::feols(
-  coa_award ~ city_go_vote + bond_issued_current_year + ln_county_gdp_l1 +
-    ln_county_percap_inc_l1 + ln_county_pop_l1 +
-    gasb_municipal_gaap_required_any + state_monitor + nasact_audits_cities_towns_villages | fiscal_year,
+  pafr_award ~ city_go_vote | fiscal_year,
   data = data,
   cluster = ~state,
   notes = FALSE
 )
 
-# All supermajority states have city_go_vote = 1 in this panel, so the
-# identified supermajority comparison is estimated within GO-vote states.
+# Use the same control ordering as the COA and website regressions.
 r4 <- fixest::feols(
-  pafr_award ~ supermajority + city_rev_vote + state_go_vote +
-    state_utgo_allowed + glm_proactive + low_state_tax_privilege +
-    municipal_debt_limit + municipal_debt_limit_source_missing +
-    lincoln_property_tax_rate_cap_2024 + municipal_tel_index +
-    state_monitor + gasb_municipal_gaap_required_any +
-    nasact_audits_cities_towns_villages +
-    nasact_audits_cities_towns_villages_source_missing +
-    ln_county_employment_l1 + ln_county_gdp_l1 +
-    ln_county_percap_inc_l1 + ln_county_pop_l1 | fiscal_year,
-  data = data[city_go_vote == 1L],
+  pafr_award ~ city_go_vote + ln_1p_outstanding_debt_lag1 + state_monitor +
+    gasb_municipal_gaap_required_any + nasact_audits_cities_towns_villages +
+    ln_county_gdp_l1 + ln_county_pop_l1 + ln_county_percap_inc_l1 | fiscal_year,
+  data = data,
   cluster = ~state,
   notes = FALSE
 )
+
 
 #---------------------------------
 # Output regression tables using the website etable conventions
@@ -94,7 +83,6 @@ table_call <- etable(r1, r2, r3, r4,
                 state_monitor = 'State Fiscal Monitor',
                 gasb_municipal_gaap_required_any = 'GAAP Required',
                 nasact_audits_cities_towns_villages = 'State Audit',
-                nasact_audits_cities_towns_villages_source_missing = 'State Audit Source Missing',
                 ln_1p_outstanding_debt_lag1 = 'Outstanding Debt',
                 ln_county_gdp_l1 = 'County ln(GDP)',
                 ln_county_pop_l1 = 'County ln(Pop)',
