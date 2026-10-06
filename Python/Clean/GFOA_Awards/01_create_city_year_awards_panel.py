@@ -1,7 +1,7 @@
 """Build the balanced FY2014--2020 GO-city GFOA award panel.
 
 Only unique exact normalized name/state matches count as awards. Approximate
-matches are exported for review. COA nonmatches in FY2019 remain missing.
+matches are exported for review. COA nonmatches, including FY2019, are coded zero.
 """
 #%% Paths and shared policy definitions
 import os
@@ -237,7 +237,7 @@ approximate_candidates.write_csv(output_dir / 'gfoa_award_unmatched_candidate_re
 approximate_candidates.filter(pl.col('award_program') == 'PAFR').drop('award_program').write_csv(output_dir / 'pafr_unmatched_candidate_review.csv')
 approximate_candidates.filter(pl.col('award_program') == 'COA').drop('award_program').write_csv(output_dir / 'coa_unmatched_candidate_review.csv')
 
-#%% Balanced city-year panel; preserve partial COA coverage in FY2019
+#%% Balanced city-year panel; code all nonmatches zero and retain coverage flags
 panel = city_universe.join(pl.DataFrame({'fiscal_year': panel_years}), how='cross').select(
     'city_id', 'fiscal_year', pl.exclude('city_id', 'fiscal_year')
 ).join(coa_matches.select('city_id', 'fiscal_year').unique().with_columns(pl.lit(1).alias('coa_award')),
@@ -245,7 +245,7 @@ panel = city_universe.join(pl.DataFrame({'fiscal_year': panel_years}), how='cros
     pafr_matches.select('city_id', 'fiscal_year').unique().with_columns(pl.lit(1).alias('pafr_award')),
     on=['city_id', 'fiscal_year'], how='left', validate='1:1'
 ).with_columns(
-    pl.when(pl.col('coa_award').is_not_null()).then(1).when(pl.col('fiscal_year') == 2019).then(None).otherwise(0).alias('coa_award'),
+    pl.col('coa_award').fill_null(0),
     pl.when(pl.col('fiscal_year') == 2019).then(pl.lit('partial_public_GFOA_coverage_archive_AMS_transition')).otherwise(pl.lit('public_GFOA_source_collected')).alias('coa_award_coverage'),
     pl.col('pafr_award').fill_null(0)
 ).with_columns(
@@ -321,7 +321,7 @@ regression_data.write_csv(output_dir / 'city_year_gfoa_awards_regression_data.cs
 #%% Build diagnostics and matching documentation
 pl.DataFrame({
     'metric': ['GO-city universe', 'City-years', 'Eligible COA recipient-year records',
-               'Accepted exact COA matches', 'COA-positive city-years (excluding FY2019 missing)',
+               'Accepted exact COA matches', 'COA-positive city-years',
                'Eligible PAFR recipient-year records', 'Accepted exact PAFR matches',
                'PAFR-positive city-years', 'FY range'],
     'value': [str(city_universe.height), str(panel.height),
@@ -334,7 +334,7 @@ pl.DataFrame({
 Built by Code/Python/Clean/GFOA_Awards/01_create_city_year_awards_panel.py.
 The primary panel is city_year_gfoa_awards_panel.csv, with COA, PAFR, and either-award outcomes.
 A positive is a unique exact normalized name/state match in the GO-city universe.
-COA FY2019 nonmatches are missing because public archive/AMS coverage is incomplete.
+COA nonmatches, including FY2019, are coded zero. The FY2019 partial archive/AMS coverage flag is retained.
 Fiscal years are 2014--2020, the overlapping PAFR archive and financial-sample bond years.
 Bond indicators identify issuance in t or t/t-1; the initial panel year follows the original build's zero prior-year default.
 County BEA controls and shared Mergent outstanding debt are merged at t-1.

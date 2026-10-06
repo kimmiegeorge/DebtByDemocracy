@@ -10,8 +10,8 @@ Rscript R/Clean/01b_gfoa_awards.R
 The Python step uses Polars for transformations, pyreadstat for Stata inputs,
 and rapidfuzz for edit-distance review candidates. It builds the balanced
 FY2014–2020 GO-city panel using unique exact normalized city/state award
-matches. Unmatched COA observations in FY2019 remain missing because archive
-coverage is incomplete. Approximate matches are exported for review only.
+matches. Unmatched COA observations are zero in every year, including FY2019.
+The FY2019 partial archive coverage flag remains available. Approximate matches are exported for review only.
 The historical R name-normalization, modal tie-breaking, and initial-year
 issuance definitions are preserved.
 

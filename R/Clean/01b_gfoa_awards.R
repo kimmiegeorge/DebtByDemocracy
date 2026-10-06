@@ -14,7 +14,7 @@ tbl_dir <- tables_wd
 
 #---------------------------------------
 # Python prepares the award panel, sample restrictions, merged controls, and
-# source-missing indicators. COA FY2019 nonmatches remain missing.
+# source-missing indicators. COA FY2019 nonmatches are zero.
 data <- fread(Sys.getenv(
   "GFOA_REGRESSION_DATA",
   unset = "~/Dropbox/Voting on Bonds/Data/GFOA Awards/analysis/city_year_pafr/city_year_gfoa_awards_regression_data.csv"
