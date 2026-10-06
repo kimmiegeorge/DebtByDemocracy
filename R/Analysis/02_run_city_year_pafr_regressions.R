@@ -41,18 +41,22 @@ analysis <- panel %>%
     nasact_audits_cities_towns_villages = coalesce(nasact_audits_cities_towns_villages, 0)
   )
 
-# Baseline: city GO-vote requirement with fiscal-year fixed effects.
+# City GO-vote requirement with GAAP and audit controls and fiscal-year FE.
 model_baseline <- feols(
-  coa_award ~ city_go_vote  | fiscal_year,
+  coa_award ~ city_go_vote + gasb_municipal_gaap_required_any +
+    nasact_audits_cities_towns_villages +
+    nasact_audits_cities_towns_villages_source_missing | fiscal_year,
   data = analysis,
   vcov = ~state,
   notes = FALSE
 )
 
-# Bond-data policy controls.
+# Add lagged county characteristics to the GAAP and audit controls.
 model_bond_policies <- feols(
   coa_award ~ city_go_vote  + ln_county_gdp_l1 +
-    ln_county_percap_inc_l1 + ln_county_pop_l1 | fiscal_year,
+    ln_county_percap_inc_l1 + ln_county_pop_l1 +
+    gasb_municipal_gaap_required_any + nasact_audits_cities_towns_villages +
+    nasact_audits_cities_towns_villages_source_missing | fiscal_year,
   data = analysis,
   vcov = ~state,
   notes = FALSE
