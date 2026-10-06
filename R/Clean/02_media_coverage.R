@@ -4,11 +4,12 @@ rm(list = ls())
 library(pacman)
 p_load(data.table, dplyr, stargazer, DescTools, arrow, glue, lfe, ggplot2, gridExtra, sandwich, zoo, fixest, haven, xtable)
 source('/Users/kmunevar/Dropbox/Voting on Bonds/Code/R/Clean/00_modify_etable_rounding.R')
-source('/Users/kmunevar/Dropbox/Voting on Bonds/Code/R/Clean/00_state_policy_definitions.R')
-source('/Users/kmunevar/Dropbox/Voting on Bonds/Code/R/Clean/00_border_pair_definitions.R')
-tbl_dir <- "/Users/kmunevar/Dropbox/Voting on Bonds/Code/R/Clean/output/revision_tables"
-data_wd <- "~/Dropbox/Voting on Bonds/Data/"
-clean_data_wd <- "~/Dropbox/Voting on Bonds/Data/Clean_Intermediate/"
+tbl_dir <- Sys.getenv(
+  "RESULTS_DIR",
+  unset = "/Users/kmunevar/Dropbox/Voting on Bonds/Code/R/Clean/output/revision_tables"
+)
+dir.create(tbl_dir, recursive = TRUE, showWarnings = FALSE)
+excluded_state <- Sys.getenv("EXCLUDE_STATE", unset = "")
 
 add_media_sample_headers <- function(tex) {
   if (length(tex) > 1) {
@@ -36,79 +37,52 @@ add_media_sample_headers <- function(tex) {
   return(lines)
 }
 
+add_media_border_sample_header <- function(tex) {
+  if (length(tex) > 1) {
+    tex <- paste(tex, collapse = "\n")
+  }
+  lines <- strsplit(tex, "\n", fixed = TRUE)[[1]]
+
+  lines <- lines[!grepl(
+    "^\\s*&\\s*\\\\multicolumn\\{2\\}\\{c\\}\\{Border-State Sample: Drop Dark Green\\}",
+    lines
+  )]
+
+  dep_header_idx <- grep("\\\\multicolumn\\{2\\}\\{c\\}\\{Total Articles - 12mo\\}", lines)
+  if (length(dep_header_idx) == 0) {
+    return(lines)
+  }
+
+  insert_idx <- dep_header_idx[1] + 1
+  if (insert_idx <= length(lines) && grepl("\\\\cmidrule\\(lr\\)\\{2-3\\}", lines[insert_idx])) {
+    new_header <- c(
+      "    & \\multicolumn{2}{c}{Border-State Sample: Drop Dark Green}\\\\",
+      "   \\cmidrule(lr){2-3}"
+    )
+    lines <- append(lines, new_header, after = insert_idx)
+  }
+
+  return(lines)
+}
+
 # ===============================================================================
 # DATA LOADING AND PREPARATION
 # ===============================================================================
 
-#_______________Bonds________________
- #load full data to get county
-full_data <- read_dta('~/Dropbox/Voting on Bonds/Data/Mergent/Clean/260716_city_cusiplevel_statereq_purpose_yieldspread.dta')
-full_data <- as.data.table(full_data)
-issuers <- full_data[, list(fips = first(fips), issuer_long_name = first(issuer_long_name)), .(seed_issuer_id)]
-# load news coverage 
-#issuance_lvl = fread(paste0(clean_data_wd, 'News/Issuance_Lvl_News_With_Lagged_News.csv'))
-issuance_lvl = fread(paste0(clean_data_wd, 'News/Issuance_Lvl_News_With_Lagged_News.csv'))
-issuance_lvl <- issuers[issuance_lvl, on = .(seed_issuer_id)]
-issuance_lvl[, city_rev_vote := ifelse(state == 'MO', 1, city_rev_vote)]
-issuance_lvl[, city_go_vote := ifelse(state == 'RI', NA, city_go_vote)]
+# Step 06 in Python prepares issuer metadata, sample restrictions, issuance
+# lags, logged sources, shared percentile caps, and robustness indicators.
+issuance_lvl <- fread(Sys.getenv(
+  "MEDIA_FULL_REGRESSION_DATA",
+  unset = "~/Dropbox/Voting on Bonds/Data/Clean_Intermediate/News/media_full_sample_regression_data.csv"
+))
+border_articles <- fread(Sys.getenv(
+  "MEDIA_BORDER_REGRESSION_DATA",
+  unset = "~/Dropbox/Voting on Bonds/Data/Clean_Intermediate/News/media_border_state_regression_data.csv"
+))
+# Retain the existing runtime state-exclusion option for sensitivity runs.
+if (nzchar(excluded_state)) border_articles <- border_articles[state != excluded_state]
 
-# filter to sample 
-#issuance_lvl <- issuance_lvl[!is.na(city_go_vote) & city_rev_vote == 0]
-issuance_lvl <- issuance_lvl[!is.na(city_go_vote)]
-
-issuance_lvl[, super_majority := ifelse(state %in% super_majority_states, 1, 0)]
-
-#_______________Border________________
-
-
-#border_articles <- fread('~/Dropbox/Voting on Bonds/Data/Clean_Intermediate/Border States/Border Matches RP Issuance Lvl Expanded Set Buffer 100000.csv')
-border_articles <- fread('~/Dropbox/Voting on Bonds/Data/Clean_Intermediate/Border States/Border Matches RP Issuance Lvl Expanded Set Buffer 100000.csv')
-border_articles = as.data.table(border_articles)
-#border_articles <- border_articles[category != 'grey']
-
-
-# filter to non-missing demo 
-issuance_lvl <- issuance_lvl[!is.na(ln_employment)]
-#issuance_lvl <- issuance_lvl[!is.na(rolling_sum) & !is.infinite(rolling_sum)]
-border_articles <- border_articles[!is.na(ln_employment)]
-#border_articles <- border_articles[!is.na(rolling_sum) & !is.infinite(rolling_sum)]
-
-# indicator for other bond issued in prior 12 months 
-issuance_lvl <- issuance_lvl[order(seed_issuer_id, issuance_year_month_id)]
-issuance_lvl[, lag_issuance_ym_id := shift(issuance_year_month_id, 1), .(seed_issuer_id)]
-issuance_lvl[, diff := issuance_year_month_id - lag_issuance_ym_id]
-issuance_lvl[, bond_prior_12 := ifelse(!is.na(diff) & diff <= 12, 1, 0)]
-
-border_articles <- border_articles[order(seed_issuer_id, issuance_year_month_id)]
-border_articles[, lag_issuance_ym_id := shift(issuance_year_month_id, 1), .(seed_issuer_id)]
-border_articles[, diff := issuance_year_month_id - lag_issuance_ym_id]
-border_articles[, bond_prior_12 := ifelse(!is.na(diff) & diff <=  12, 1, 0)]
-
-border_articles <- filter_paper_border_pairs(border_articles)
-border_articles[, state_year := interaction(state, year, drop = TRUE)]
-
-
-border_articles[, log_sources := log(1+unique_sources_12)]
-issuance_lvl[, log_sources := log(1+unique_sources_12)]
 #_______________Descriptives________________
-
-# Define the winsorized media outcome once from the full analysis sample and
-# apply the same integer-valued empirical percentile caps to both samples.
-# This keeps the dependent variable comparable across the full-sample and
-# border-state columns.
-media_article_caps <- quantile(
-  issuance_lvl[go_unlim_bond_issuance == 1 & rolling_sum_monthly_article_count_12 > 0, total_rp_articles_12_0],
-  probs = c(0.01, 0.99),
-  type = 1
-)
-issuance_lvl[, total_articles_12_0_win := Winsorize(
-  total_rp_articles_12_0,
-  val = media_article_caps
-)]
-border_articles[, total_articles_12_0_win := Winsorize(
-  total_rp_articles_12_0,
-  val = media_article_caps
-)]
 
 desc <- issuance_lvl[go_unlim_bond_issuance == 1 & rolling_sum_monthly_article_count_12 > 0, .(city_go_vote, total_articles_12_0_win,
                             bond_prior_12, log_sources, ln_amount,
@@ -207,8 +181,6 @@ writeLines(desc_table_output, paste0(tbl_dir, '/media_descriptives.tex'))
 
 
 #_______________Regressions ________________
-issuance_lvl[is.na(city_rev_vote), city_rev_vote := 1]
-border_articles[is.na(city_rev_vote), city_rev_vote := 1]
 
 
 
@@ -394,6 +366,87 @@ modified_output <- add_media_sample_headers(modified_output)
 modified_output <- add_panel(modified_output, 'Panel B: Regression analyses')
 
 writeLines(modified_output, paste0(tbl_dir, '/media_coverage.tex'))
+
+#===============================
+# border-state sample: drop dark green comparisons
+#===============================
+
+# Python marks complete paper pairs whose treated state requires a GO vote
+# and does not require a revenue-bond vote.
+border_articles_drop_dark_green <- border_articles[keep_drop_dark_green == 1L]
+
+r1_drop_dark_green <- fixest::fepois(total_articles_12_0_win ~city_go_vote + bond_prior_12 + log_sources +
+                        ln_amount | issuance_year_month_id + purp_broad,
+                      data = issuance_lvl[go_unlim_bond_issuance == 1 & rolling_sum_monthly_article_count_12 > 0 & dark_green == 0], 
+                      vcov = vcov_cluster(~state))
+r1_drop_dark_green_controls <- fixest::fepois(total_articles_12_0_win ~city_go_vote  + bond_prior_12 + log_sources + ln_amount + 
+                       ln_gdp + ln_pop + ln_pers_inc | issuance_year_month_id + purp_broad,
+                     data = issuance_lvl[go_unlim_bond_issuance == 1 & rolling_sum_monthly_article_count_12 > 0 & dark_green == 0], 
+                     vcov = vcov_cluster(~state))
+
+r2_drop_dark_green <- fixest::fepois(total_articles_12_0_win ~ city_go_vote + bond_prior_12 + log_sources +
+                                      ln_amount | issuance_year_month_id + group + purp_broad,
+                                    data = border_articles_drop_dark_green[
+                                      go_unlim_bond_issuance == 1 & rolling_sum_monthly_article_count_12 > 0
+                                    ],
+                                    vcov = vcov_cluster(~state_year))
+r2_drop_dark_green_controls <- fixest::fepois(total_articles_12_0_win ~ city_go_vote + bond_prior_12 + log_sources + ln_amount +
+                                               ln_gdp + ln_pop + ln_pers_inc | issuance_year_month_id + group + purp_broad,
+                                             data = border_articles_drop_dark_green[
+                                               go_unlim_bond_issuance == 1 & rolling_sum_monthly_article_count_12 > 0
+                                             ],
+                                             vcov = vcov_cluster(~state_year))
+
+table_call_drop_dark_green <- etable(r1_drop_dark_green, r1_drop_dark_green_controls, r2_drop_dark_green,r2_drop_dark_green_controls,
+       coefstat = 'tstat',
+       style.tex = style.tex(main = 'aer', fixef.suffix = ' FE', yesNo = c("Yes", "No")),
+       fitstat = c('n', 'pr2'),
+       se.below = TRUE,
+       digits = 3,
+       digits.stats = 3,
+       signif.code = c("***"=0.01, "**"=0.05, "*"=0.10),
+       tex = TRUE,
+       dict = c(total_articles_12_0_win ='Total Articles - 12mo',
+                total_rp_articles_6_0 ='Total Articles - 6mo',
+                city_go_vote = 'Vote',
+                city_rev_vote = "Rev Vote",
+                go = 'GO',
+                rolling_sum = 'City News Coverage',
+                bond_prior_12 = 'Bond Issuance - 12mo',
+                ln_amount = 'Amount',
+                ln_gdp =  'County ln(GDP)',
+                ln_num_cusip = "Num Bonds",
+                ln_pop = 'County ln(Pop)' ,
+                ln_pers_inc = 'County ln(Pers. Inc)',
+                ln_employment = 'County ln(Emp)',
+                log_sources = 'Num Sources',
+                glm_proactive = 'Proactive State',
+                state_ltgo_allowed = 'State LTGO Allowed',
+                state_go_vote = 'State GO Vote',
+                group = 'State-Border',
+                purp_broad = 'Purpose',
+                issuance_year_month_id = 'Year-Month'),
+       placement = 'H',
+       replace = TRUE)
+
+modified_output_drop_dark_green <- modify_etable_rounding(
+  table_call_drop_dark_green,
+  coef_digits = 3,
+  tstat_digits = 2
+)
+modified_output_drop_dark_green <- format_table(
+  modified_output_drop_dark_green,
+  cluster_level = c("State", "State", "State-Year", "State-Year"),
+  drop_covariance = TRUE
+)
+modified_output_drop_dark_green <- add_media_sample_headers(modified_output_drop_dark_green)
+
+
+
+writeLines(
+  modified_output_drop_dark_green,
+  paste0(tbl_dir, '/media_coverage_drop_dark_green.tex')
+)
 #===============================
 # super majority 
 #===============================

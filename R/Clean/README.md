@@ -20,6 +20,13 @@ Step 02 writes `border_state_website_regression_data.csv` with the sample
 restrictions, merged controls, capped counts, and regression indicators.
 If the step-01 website intermediate is already current, only step 02 is needed.
 
+Before running `02_media_coverage.R`, run
+[`Python/Clean/News/6. Prepare Media Coverage Regression Data.py`](../../Python/Clean/News/6.%20Prepare%20Media%20Coverage%20Regression%20Data.py).
+Step 6 writes the full and border-state media analysis CSVs with issuer metadata,
+sample restrictions, issuance lags, logged sources, shared article caps, and
+robustness-sample indicators. See the [News pipeline notes](../../Python/Clean/News/README.md)
+for input files and environment-variable overrides.
+
 1. `01_websites.R` - Tables 2 and 4; Table 1 website panel
 2. `02_media_coverage.R` - Table 3; Table 1 media panel
 3. `03_election_outcomes.R` - Tables 4 and 5; Table 1 election panel
