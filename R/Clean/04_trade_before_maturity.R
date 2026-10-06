@@ -121,14 +121,14 @@ writeLines(desc_table_output, paste0(tables_wd, '/secondary_market_descriptives.
 
 
 r1 <- feols(traded_before_maturity ~ city_go_vote + disclosure_control + ln_amount +ln_maturity_mths + 
-              callable + sinkable + insured + rating_num 
-            +ln_gdp + ln_pop + ln_pers_inc   |year + purp_broad, 
+              callable + sinkable + insured
+            +ln_gdp + ln_pop + ln_pers_inc   |year + purp_broad + rating_fe,
             ~state, 
             data = data)
 
 r2 <- feols(traded_before_maturity ~ city_go_vote + low_state_tax_privilege + disclosure_control +  ln_amount +ln_maturity_mths + 
-              callable + sinkable + insured + rating_num + 
-            + ln_gdp + ln_pop + ln_pers_inc  |year + purp_broad, 
+              callable + sinkable + insured +
+            + ln_gdp + ln_pop + ln_pers_inc  |year + purp_broad + rating_fe,
             ~state, 
             data = data)
 
@@ -139,13 +139,13 @@ r2 <- feols(traded_before_maturity ~ city_go_vote + low_state_tax_privilege + di
 #----------------------------------
 
 r1b <- feols(traded_before_maturity ~ city_go_vote + disclosure_control + ln_amount +ln_maturity_mths + 
-              callable + sinkable + insured + rating_num + ln_gdp + ln_pop + ln_pers_inc   |year + purp_broad + group, 
+              callable + sinkable + insured + ln_gdp + ln_pop + ln_pers_inc   |year + purp_broad + group + rating_fe,
             ~state_year, 
             data = border_states)
 
 
 r2b <- feols(traded_before_maturity ~ city_go_vote + low_state_tax_privilege +  disclosure_control  + ln_amount +ln_maturity_mths + 
-              callable + sinkable + insured + rating_num + ln_gdp + ln_pop + ln_pers_inc    |year + purp_broad + group , 
+              callable + sinkable + insured + ln_gdp + ln_pop + ln_pers_inc    |year + purp_broad + group + rating_fe ,
             ~state_year, 
             data = border_states)
 
@@ -156,14 +156,14 @@ r2b <- feols(traded_before_maturity ~ city_go_vote + low_state_tax_privilege +  
 
 
 r1_r <- feols(retail_traded_before_maturity ~ city_go_vote + disclosure_control + ln_amount +ln_maturity_mths + 
-              callable + sinkable + insured + rating_num 
-            +ln_gdp + ln_pop + ln_pers_inc   |year + purp_broad, 
+              callable + sinkable + insured
+            +ln_gdp + ln_pop + ln_pers_inc   |year + purp_broad + rating_fe,
             ~state, 
             data = data)
 
 r2_r <- feols(retail_traded_before_maturity ~ city_go_vote + low_state_tax_privilege +  disclosure_control  + ln_amount +ln_maturity_mths + 
-              callable + sinkable + insured + rating_num + 
-              + ln_gdp + ln_pop + ln_pers_inc  |year + purp_broad , 
+              callable + sinkable + insured +
+              + ln_gdp + ln_pop + ln_pers_inc  |year + purp_broad + rating_fe ,
             ~state, 
             data = data)
 
@@ -174,13 +174,13 @@ r2_r <- feols(retail_traded_before_maturity ~ city_go_vote + low_state_tax_privi
 #----------------------------------
 
 r1b_r <- feols(retail_traded_before_maturity ~ city_go_vote + disclosure_control + ln_amount +ln_maturity_mths + 
-               callable + sinkable + insured + rating_num + ln_gdp + ln_pop + ln_pers_inc   |year + purp_broad + group, 
+               callable + sinkable + insured + ln_gdp + ln_pop + ln_pers_inc   |year + purp_broad + group + rating_fe,
             ~state_year, 
              data = border_states)
 
 
 r2b_r <- feols(retail_traded_before_maturity ~ city_go_vote + low_state_tax_privilege +  disclosure_control  + ln_amount +ln_maturity_mths + 
-               callable + sinkable + insured + rating_num + ln_gdp + ln_pop + ln_pers_inc    |year + purp_broad + group , 
+               callable + sinkable + insured + ln_gdp + ln_pop + ln_pers_inc    |year + purp_broad + group + rating_fe ,
             ~state_year, 
              data = border_states)
 
@@ -191,15 +191,15 @@ r2b_r <- feols(retail_traded_before_maturity ~ city_go_vote + low_state_tax_priv
 
 
 r1_i <- feols(institutional_traded_before_maturity ~ city_go_vote + disclosure_control + ln_amount +ln_maturity_mths + 
-              callable + sinkable + insured + rating_num 
-            +ln_gdp + ln_pop + ln_pers_inc   |year + purp_broad, 
+              callable + sinkable + insured
+            +ln_gdp + ln_pop + ln_pers_inc   |year + purp_broad + rating_fe,
             ~state, 
             data = data)
 
 
 r2_i <- feols(institutional_traded_before_maturity ~ city_go_vote +  low_state_tax_privilege +  disclosure_control  + ln_amount +ln_maturity_mths + 
-              callable + sinkable + insured + rating_num + 
-              + ln_gdp + ln_pop + ln_pers_inc  |year + purp_broad , 
+              callable + sinkable + insured +
+              + ln_gdp + ln_pop + ln_pers_inc  |year + purp_broad + rating_fe ,
             ~state, 
             data = data)
 
@@ -210,23 +210,17 @@ r2_i <- feols(institutional_traded_before_maturity ~ city_go_vote +  low_state_t
 #----------------------------------
 
 r1b_i <- feols(institutional_traded_before_maturity ~ city_go_vote + disclosure_control +  ln_amount +ln_maturity_mths + 
-               callable + sinkable + insured + rating_num + ln_gdp + ln_pop + ln_pers_inc   |year + purp_broad + group, 
+               callable + sinkable + insured + ln_gdp + ln_pop + ln_pers_inc   |year + purp_broad + group + rating_fe,
             ~state_year, 
              data = border_states)
 
 
 r2b_i <- feols(institutional_traded_before_maturity ~ city_go_vote + low_state_tax_privilege +  disclosure_control  + ln_amount +ln_maturity_mths + 
-               callable + sinkable + insured + rating_num + ln_gdp + ln_pop + ln_pers_inc    |year + purp_broad + group , 
+               callable + sinkable + insured + ln_gdp + ln_pop + ln_pers_inc    |year + purp_broad + group + rating_fe ,
             ~state_year, 
              data = border_states)
 
 
-r2 <- update(r2, . ~ . - rating_num | . + rating_fe)
-r2_r <- update(r2_r, . ~ . - rating_num | . + rating_fe)
-r2_i <- update(r2_i, . ~ . - rating_num | . + rating_fe)
-r2b <- update(r2b, . ~ . - rating_num | . + rating_fe)
-r2b_r <- update(r2b_r, . ~ . - rating_num | . + rating_fe)
-r2b_i <- update(r2b_i, . ~ . - rating_num | . + rating_fe)
 
 
 
@@ -264,7 +258,6 @@ table_call <- etable(r2, r2_r, r2_i,
                               callable = 'Callable',
                               sinkable = 'Sinkable',
                               insured = 'Insured', 
-                              rating_num = 'Rating',
                               rating_fe = 'Rating',
                               unrated = 'Unrated',
                               ln_gdp =  'County ln(GDP)', 
@@ -323,7 +316,6 @@ table_call <- etable(r2b, r2b_r, r2b_i,
                               callable = 'Callable',
                               sinkable = 'Sinkable',
                               insured = 'Insured', 
-                              rating_num = 'Rating',
                               rating_fe = 'Rating',
                               unrated = 'Unrated',
                               ln_gdp =  'County ln(GDP)', 
