@@ -43,6 +43,14 @@ CSVs. The R script loads those files directly, then produces descriptives and
 regression tables. Tax privilege and border-pair inclusion come from shared
 configuration files. Set `EXCLUDE_STATE` when running Python step 02 if needed.
 
+Before rebuilding the purpose panels used by `06_point_in_time_purpose_substitution.R`,
+run steps 01 and 02 in
+[`Python/Clean/Purposes_Substitution`](../../Python/Clean/Purposes_Substitution/README.md).
+The active pipeline retains the full issuer cross section, including revenue-vote
+and unknown-revenue-vote states, and merges expanded state policies. Step 03
+validates every original field against the preserved pre-expansion files.
+The R script's own `insample == 1` restriction remains explicit.
+
 1. `01_websites.R` - Tables 2 and 4; Table 1 website panel
 2. `02_media_coverage.R` - Table 3; Table 1 media panel
 3. `03_election_outcomes.R` - Tables 4 and 5; Table 1 election panel
