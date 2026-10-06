@@ -1,216 +1,37 @@
 # 03: Texas election timing and outcome results (Tables 4 and 5; also Table 1 inputs)
-#---------------------------------------
+# -------------------------------------------------------------------------------
+# Data preparation is performed in:
+# Code/Python/Clean/Election_Outcomes/05_prepare_tx_regression_inputs.py
+#
+# That step assigns county FIPS and applies prior-year county controls. County
+# GDP for 2001 is the sole documented exception: the BEA series begins in 2001,
+# so that year uses the earliest available GDP value.
+
 rm(list = ls())
-library(pacman)
-p_load(data.table, dplyr, stargazer, DescTools, arrow, glue, lfe, ggplot2, gridExtra, sandwich, zoo, fixest, haven, xtable)
-source('/Users/kmunevar/Dropbox/Voting on Bonds/Code/R/Clean/00_modify_etable_rounding.R')
-tbl_dir <- "/Users/kmunevar/Dropbox/Voting on Bonds/Code/R/Clean/output/revision_tables"
-data_wd <- "~/Dropbox/Voting on Bonds/Data/"
-clean_data_wd <- "~/Dropbox/Voting on Bonds/Data/Clean_Intermediate/"
 
+root <- normalizePath(getwd(), mustWork = TRUE)
+source(file.path(root, 'Code/R/Clean/00_modify_etable_rounding.R'))
+tbl_dir <- file.path(root, 'Code/R/Clean/output/revision_tables')
+regression_data_dir <- file.path(root, 'Data/Clean_Intermediate/TX/Regression')
+dir.create(tbl_dir, recursive = TRUE, showWarnings = FALSE)
 
-# ===============================================================================
-# DATA LOADING AND PREPARATION - MEDIA FIRST
-# ===============================================================================
+city_month <- fread(file.path(regression_data_dir, 'city_month_media_regression_ready.csv'))
+election <- fread(file.path(regression_data_dir, 'election_media_regression_ready.csv'))
+website_city_year_input <- fread(file.path(regression_data_dir, 'website_city_year_regression_ready.csv'))
+website_election_input <- fread(file.path(regression_data_dir, 'website_election_regression_ready.csv'))
 
-city_month <- fread(paste0(clean_data_wd, 'TX/City_Month_Elections_News_WithFailed.csv'))
-election <- fread(paste0(clean_data_wd, 'TX/News/Election_Level_With_News_WithFailed.csv'))
 election_brb_all <- copy(election)
-election_brb_all[, abs_vote_margin := abs(vote_margin)]
 
-first_nonmissing <- function(x) {
-  x <- x[!is.na(x)]
-  if (length(x) == 0) {
-    return(x[NA_integer_][1])
-  }
-  return(x[1])
-}
-
-format_fips <- function(x) {
-  fifelse(is.na(x), NA_character_, sprintf('%05d', as.integer(x)))
-}
-
-build_actual_issue_city_year <- function(data_wd) {
-  issue_level <- as.data.table(read_dta(paste0(data_wd, 'Mergent/Clean/260716_city_cusiplevel_statereq_purpose_yieldspread.dta')))
-  issue_level <- unique(issue_level[state == 'TX' & !is.na(seed_issuer) & !is.na(year),
-                                    .(seed_issuer_key = tolower(seed_issuer),
-                                      year,
-                                      issue_id,
-                                      go_unlim,
-                                      go_lim)])
-  issue_level[, year := as.integer(year)]
-  issue_city_year <- issue_level[, .(num_issues_bond_data = uniqueN(issue_id),
-                                     num_issues_go = uniqueN(issue_id[go_unlim == 1 | go_lim == 1])),
-                                 by = .(seed_issuer_key, year)]
-  return(issue_city_year)
-}
-
-actual_issue_city_year <- build_actual_issue_city_year(data_wd)
-
-#county_demo_source <- as.data.table(read_dta(paste0(data_wd, 'BEA/countydemos_2001_2022.dta')))
-county_demo_source <- as.data.table(read_dta(paste0(data_wd, 'BEA/countydemos_1999_2026.dta')))
-
-updated_county_controls <- copy(county_demo_source)
-updated_county_controls[, fips := format_fips(fips)]
-updated_county_controls[, `:=`(
-  ln_county_pop_prior = log(pop),
-  ln_county_gdp_prior = log(gdp),
-  ln_county_pers_inc_prior = log(pers_inc),
-  ln_county_percap_inc_prior = log(percap_inc),
-  ln_county_employment_prior = log(employment)
-)]
-updated_county_controls <- updated_county_controls[, .(fips,
-                                                       year,
-                                                       ln_county_gdp_prior,
-                                                       ln_county_pop_prior,
-                                                       ln_county_pers_inc_prior,
-                                                       ln_county_percap_inc_prior,
-                                                       ln_county_employment_prior)]
-
-tx_county_fips_map <- unique(county_demo_source[grepl(', TX$', geoname),
-                                                .(County = sub(', TX$', '', geoname),
-                                                  fips = format_fips(fips))])
-tx_county_fips_map <- tx_county_fips_map[, .(fips = first_nonmissing(fips)), by = County]
-
-fill_missing_fips_from_tx_county <- function(dt, county_fips_map) {
-  dt <- copy(dt)
-  if (!all(c('County', 'fips') %in% names(dt))) {
-    return(dt)
-  }
-
-  county_fips_map <- copy(county_fips_map)
-  setnames(county_fips_map, 'fips', 'fips_from_county')
-  dt <- county_fips_map[dt, on = .(County)]
-  dt[, fips := fifelse(is.na(fips), fips_from_county, fips)]
-  dt[, fips_from_county := NULL]
-  return(dt)
-}
-
-fill_missing_county_controls_earliest <- function(dt, county_controls) {
-  dt <- copy(dt)
-  control_vars <- intersect(county_demo_vars, names(dt))
-  if (length(control_vars) == 0 || !('fips' %in% names(dt))) {
-    return(dt)
-  }
-
-  fallback <- county_controls[order(year),
-                              lapply(.SD, first_nonmissing),
-                              by = fips,
-                              .SDcols = control_vars]
-  setnames(fallback, control_vars, paste0(control_vars, '_fallback'))
-  dt <- fallback[dt, on = .(fips)]
-
-  for (var in control_vars) {
-    fallback_var <- paste0(var, '_fallback')
-    dt[is.na(get(var)), (var) := get(fallback_var)]
-  }
-  dt[, paste0(control_vars, '_fallback') := NULL]
-  return(dt)
-}
-
-add_updated_county_controls <- function(dt,
-                                        county_controls,
-                                        fips_map = NULL,
-                                        demo_year_offset = 0L) {
-  dt <- copy(dt)
-  stale_controls <- intersect(county_demo_vars, names(dt))
-  if (length(stale_controls) > 0) {
-    dt[, (stale_controls) := NULL]
-  }
-
-  if (!('fips' %in% names(dt))) {
-    if (is.null(fips_map)) {
-      stop('No fips column found and no fips_map supplied.')
-    }
-    dt[, seed_issuer_key := tolower(seed_issuer)]
-    dt <- fips_map[dt, on = .(seed_issuer_key)]
-  }
-
-  dt[, fips := format_fips(fips)]
-  dt[, county_demo_year := year + demo_year_offset]
-
-  controls_for_join <- copy(county_controls)
-  setnames(controls_for_join, 'year', 'county_demo_year')
-  dt <- controls_for_join[dt, on = .(fips, county_demo_year)]
-  dt[, county_demo_year := NULL]
-  return(dt)
-}
-
-media_election_fips_map <- city_month[!is.na(fips),
-                                      .(fips = first_nonmissing(fips)),
-                                      by = .(seed_issuer_key = tolower(seed_issuer))]
-media_election_fips_map <- media_election_fips_map[!is.na(seed_issuer_key) & seed_issuer_key != '']
-media_election_fips_map[, fips := format_fips(fips)]
-election <- add_updated_county_controls(election,
-                                        updated_county_controls,
-                                        fips_map = media_election_fips_map,
-                                        demo_year_offset = -1L)
-city_month <- city_month[seed_issuer %in% election[unique_sources_12m_prior > 0]$seed_issuer &!is.na(ln_county_employment_prior)]
-#election <- election[year >= 2010 & unique_sources_12m_prior > 0]
+# Python supplies coverage indicators, logs, county-year IDs, and vote margins.
+# The election-level regressions retain elections where pre-election source
+# diversity is positive. This matches the paper's media-analysis sample.
 election <- election[unique_sources_12m_prior > 0]
 
 
-election[, `:=` (ln_election_month_articles = log(1 + articles_election_month), 
-                 ln_2m_election_articles = log(1 + articles_2m_before_to_election), 
-                 ln_6m_election_articles = log(1 + articles_6m_before_to_election))]
-
-election[, coverage_3 := ifelse(articles_3m_before_to_election > 0, 1, 0)]
-
-election[, year_month := paste0(year, month)]
-
-election[, ln_Amount := log(Amount)]
-election[, log_sources := log(unique_sources_12m_prior)]
-
-election[, log_votes := log(votestotal)]
-election[, county_year := paste0(County, year)]
-election[, coverage_3 := ifelse(articles_3m_before_to_election > 0, 1, 0)]
-election[, coverage_6 := ifelse(articles_6m_before_to_election > 0, 1, 0)]
-
-election[, abs_vote_margin := abs(vote_margin)]
-
-election <- election[!is.na(ln_county_gdp_prior) & !is.na(unique_sources_12m_prior)]
-
-# ===============================================================================
-# DATA LOADING AND PREPARATION - CITY MONTH
-# ===============================================================================
-
-# need to filter this to cities that get coverage 
-# add bond issuance indicators for city_month data 
-
-# create ym and ym_id
-city_month[, ym := paste0(year, month)]
-yms <- unique(city_month[, .(ym)])
-yms[, ym_id := 1:.N]
-city_month <- yms[city_month, on = .(ym)]
-
-
-full_data <- read_dta('~/Dropbox/Voting on Bonds/Data/Mergent/Clean/260716_city_cusiplevel_statereq_purpose_yieldspread.dta')
-full_data <- as.data.table(full_data)
-full_data[, ym := paste0(year, month)]
-full_data <- unique(full_data[, .(seed_issuer_id, ym)])
-full_data <- yms[full_data, on = .(ym)]
-full_data[, ym := NULL]
-full_data[, bond_issuance := 1]
-
-city_month <- full_data[city_month, on = .(seed_issuer_id, ym_id)]
-city_month[, next_month_bond_issuance := ifelse(shift(bond_issuance, type = 'lead') == 1, 1, 0), .(seed_issuer_id)]
-city_month[, next_next_month_bond_issuance := ifelse(shift(bond_issuance, type = 'lead', 2) == 1, 1, 0), .(seed_issuer_id)]
-city_month[, next_next_next_month_bond_issuance := ifelse(shift(bond_issuance, type = 'lead', 3) == 1, 1, 0), .(seed_issuer_id)]
-city_month[, issuance_window := ifelse(bond_issuance == 1 |
-                                        next_month_bond_issuance == 1 |
-                                        next_next_month_bond_issuance == 1 |
-                                        next_next_next_month_bond_issuance == 1,
-                                      1, 0)]
-city_month[is.na(issuance_window), issuance_window := 0]
-
-city_month[, prev_month_election := ifelse(shift(has_bond_election, type = 'lag', 1) == 1, 1, 0), .(seed_issuer_id)]
-city_month[, next_next_month_election := ifelse(shift(has_bond_election, type = 'lead', 2) == 1, 1, 0), .(seed_issuer_id)]
-city_month[, next_next_next_month_election := ifelse(shift(has_bond_election, type = 'lead',3) == 1, 1, 0), .(seed_issuer_id)]
-city_month[, election_window := ifelse(has_bond_election == 1 | has_election_next_month ==1 | next_next_month_election == 1 | next_next_next_month_election == 1, 1, 0)]
-city_month[is.na(election_window), election_window := 0]
-city_month[, covered := ifelse(rp_article_count > 0, 1, 0)]
-
-city_month <- city_month[!is.na(ln_county_gdp_prior) & !is.na(ln_county_employment_prior)]
+city_month[, seed_issuer := tolower(trimws(seed_issuer))]
+election[, seed_issuer := tolower(trimws(seed_issuer))]
+website_city_year_input[, seed_issuer := tolower(trimws(seed_issuer))]
+website_election_input[, seed_issuer := tolower(trimws(seed_issuer))]
 
 
 # ===============================================================================
@@ -237,16 +58,10 @@ summarize_desc_cols <- function(dt, unit, labels) {
 }
 
 # City-Year Level website descriptives
-website_city_year_desc <- fread(paste0(clean_data_wd, 'Websites/Texas/time_series_website_data.csv'))
-# website_city_year_desc <- website_city_year_desc[total_subs == 50]
+website_city_year_desc <- copy(website_city_year_input)
 website_city_year_desc <- website_city_year_desc[!is.na(seed_issuer) & seed_issuer != '']
 setorder(website_city_year_desc, seed_issuer, year)
 website_city_year_desc <- unique(website_city_year_desc, by = c('seed_issuer', 'year'))
-website_city_year_desc[, seed_issuer_key := tolower(seed_issuer)]
-website_city_year_desc <- actual_issue_city_year[website_city_year_desc, on = .(seed_issuer_key, year)]
-website_city_year_desc[is.na(num_issues_bond_data), num_issues_bond_data := 0L]
-website_city_year_desc[is.na(num_issues_go), num_issues_go := 0L]
-website_city_year_desc[, issuance_year := ifelse(num_issues_bond_data > 0, 1, 0)]
 website_city_year_desc[, total_words := bond_count]
 website_city_year_desc_lag1 <- website_city_year_desc[, .(seed_issuer,
                                                           year = year + 1L,
@@ -301,7 +116,7 @@ desc_election_col <- summarize_desc_cols(
   c('Failed', 'Margin')
 )
 
-website_election_desc <- fread(paste0(clean_data_wd, 'Websites/Texas/election_level_website_data.csv'))
+website_election_desc <- copy(website_election_input)
 # Match the unrestricted Texas website-outcome regression sample: merge the
 # covered-media election file, retain nonmissing bond text, and remove the same
 # year/purpose fixed-effect singletons as the regression below.
@@ -468,11 +283,21 @@ writeLines(modified_output, paste0(tbl_dir, '/tx_failed_and_margin.tex'))
 
 
 
-city_month[, rp_article_count_win := Winsorize(rp_article_count, val = quantile(rp_article_count, probs = c(0.01, 0.99)))]
+# Keep the original paper's 2003--2024 media sample in both columns.  The
+# earlier table implicitly began in 2003 because the prior-year county
+# employment series was unavailable in 2001--02.  State the date window
+# directly so the common sample does not depend on an unused control.
+media_panel_sample <- city_month[
+  seed_issuer %in% election$seed_issuer & year >= 2003L &
+    !is.na(fips) & !is.na(ln_county_gdp_prior) &
+    !is.na(ln_county_pop_prior) & !is.na(ln_county_pers_inc_prior)
+]
 
-
-r1 <- feols(covered ~ election_window|seed_issuer_id + ym_id, data = city_month[seed_issuer %in% election[unique_sources_12m_prior > 0]$seed_issuer & !is.na(ln_county_employment_prior)], cluster = ~fips)
-r2 <- feols(covered ~ election_window + issuance_window + ln_county_gdp_prior + ln_county_pop_prior +  ln_county_pers_inc_prior |seed_issuer_id + ym_id, data = city_month[seed_issuer %in% election[unique_sources_12m_prior > 0]$seed_issuer ], cluster = ~fips)
+r1 <- feols(covered ~ election_window | seed_issuer_id + year_month_id,
+            data = media_panel_sample, cluster = ~fips)
+r2 <- feols(covered ~ election_window + issuance_window + ln_county_gdp_prior +
+              ln_county_pop_prior + ln_county_pers_inc_prior | seed_issuer_id + year_month_id,
+            data = media_panel_sample, cluster = ~fips)
 
 
 
@@ -495,7 +320,7 @@ table_call <- etable(r1, r2,
                              ln_county_pop_prior = 'County ln(Pop)', 
                              ln_county_pers_inc_prior = 'County ln(Pers. Inc)',
                              ln_county_employment_prior = 'County ln(Emp)',
-                              ym_id = 'Year-Month'),
+                              year_month_id = 'Year-Month'),
                      placement = 'H',
                      #file = paste0(tables_wd, '/media_coverage.tex'), 
                      replace = TRUE)
@@ -517,58 +342,18 @@ writeLines(modified_output, paste0(tbl_dir, '/tx_city_month_reg.tex'))
 # ===============================================================================
 # DATA LOADING AND PREPARATION - WEBSITES
 # ===============================================================================
-election_media <- election
-city_month <- fread(paste0(clean_data_wd, 'Websites/Texas/time_series_website_data.csv'))
-# city_month <- city_month[total_subs == 50]
-election <- fread(paste0(clean_data_wd, 'Websites/Texas/election_level_website_data.csv'))
-election[, fips := format_fips(fips)]
-election <- fill_missing_fips_from_tx_county(election, tx_county_fips_map)
-
-election <- add_updated_county_controls(election,
-                                        updated_county_controls,
-                                        demo_year_offset = -1L)
-election <- fill_missing_county_controls_earliest(election, updated_county_controls)
+election_media <- copy(election)
+website_city_year <- copy(website_city_year_input)
+election <- copy(website_election_input)
 # ===============================================================================
 # REGRESSION - WEBSITE TIME SERIES
 # ===============================================================================
 
-website_city_year <- city_month[!is.na(seed_issuer) & seed_issuer != '']
+website_city_year <- website_city_year[!is.na(seed_issuer) & seed_issuer != '']
 setorder(website_city_year, seed_issuer, year)
 website_city_year <- unique(website_city_year, by = c('seed_issuer', 'year'))
 
-website_city_year[, seed_issuer_key := tolower(seed_issuer)]
-
-website_fips_map <- election[!is.na(fips),
-                             .(fips = first_nonmissing(fips)),
-                             by = .(seed_issuer_key = tolower(seed_issuer))]
-
-media_fips_map <- fread(paste0(clean_data_wd, 'TX/City_Month_Elections_News_WithFailed.csv'))
-media_fips_map <- media_fips_map[!is.na(fips),
-                                 .(fips = first_nonmissing(fips)),
-                                 by = .(seed_issuer_key = tolower(seed_issuer))]
-
-fips_map <- rbindlist(list(website_fips_map, media_fips_map), use.names = TRUE, fill = TRUE)
-fips_map <- fips_map[!is.na(seed_issuer_key) & seed_issuer_key != '']
-fips_map <- fips_map[, .(fips = first_nonmissing(fips)), by = seed_issuer_key]
-fips_map[, fips := format_fips(fips)]
-
-county_controls <- copy(updated_county_controls)
-
-website_city_year <- fips_map[website_city_year, on = .(seed_issuer_key)]
-website_city_year <- county_controls[website_city_year, on = .(fips, year)]
-website_city_year <- actual_issue_city_year[website_city_year, on = .(seed_issuer_key, year)]
-website_city_year[is.na(num_issues_bond_data), num_issues_bond_data := 0L]
-website_city_year[is.na(num_issues_go), num_issues_go := 0L]
-website_city_year[, issuance_window := ifelse(num_issues_bond_data > 0, 1, 0)]
-
 website_city_year[, total_words := bond_count ]
-website_city_year_lag2 <- website_city_year[, .(seed_issuer,
-                                                year = year + 2L,
-                                                total_words_lag2 = total_words)]
-website_city_year <- website_city_year_lag2[website_city_year, on = .(seed_issuer, year)]
-website_city_year[, delta_bond_debt_count := total_words - total_words_lag2]
-website_city_year[, positive_delta_bond_debt := ifelse(delta_bond_debt_count > 0, 1, 0)]
-
 website_city_year_lag1 <- website_city_year[, .(seed_issuer,
                                                 year = year + 1L,
                                                 total_words_lag1 = total_words)]
@@ -580,7 +365,7 @@ website_city_year[, positive_delta_bond_debt1 := ifelse(delta_bond_debt_count1 >
 r1 <- feols(positive_delta_bond_debt1 ~ election | seed_issuer + year,
                     data = website_city_year[!is.na(fips)], cluster = ~fips)
 
-r2 <- feols(positive_delta_bond_debt1 ~ election + issuance_window + ln_county_gdp_prior + ln_county_pop_prior + ln_county_pers_inc_prior | seed_issuer + year,
+r2 <- feols(positive_delta_bond_debt1 ~ election + issuance_year + ln_county_gdp_prior + ln_county_pop_prior + ln_county_pers_inc_prior | seed_issuer + year,
                     data = website_city_year[!is.na(fips)], cluster = ~fips)
 
 table_call <- etable(r1, r2,
@@ -594,7 +379,7 @@ table_call <- etable(r1, r2,
                      tex = TRUE,
                      dict = c(positive_delta_bond_debt1 = 'Increase in Bond Text',
                               election = 'Election Year',
-                              issuance_window = 'Bond Issuance Year',
+                              issuance_year = 'Bond Issuance Year',
                               ln_county_gdp_prior = 'County ln(GDP)',
                               ln_county_pop_prior = 'County ln(Pop)',
                               ln_county_pers_inc_prior = 'County ln(Pers. Inc)',
@@ -631,7 +416,7 @@ r1_poisson <- fepois(
 )
 
 r2_poisson <- fepois(
-  bond_count ~ election + issuance_window + ln_county_gdp_prior +
+  bond_count ~ election + issuance_year + ln_county_gdp_prior +
     ln_county_pop_prior + ln_county_pers_inc_prior | seed_issuer + year,
   data = website_city_year_poisson,
   cluster = ~fips
@@ -650,7 +435,7 @@ table_call <- etable(
   dict = c(
     bond_count = 'Bond Count',
     election = 'Election Year',
-    issuance_window = 'Bond Issuance Year',
+    issuance_year = 'Bond Issuance Year',
     ln_county_gdp_prior = 'County ln(GDP)',
     ln_county_pop_prior = 'County ln(Pop)',
     ln_county_pers_inc_prior = 'County ln(Pers. Inc)',
@@ -688,11 +473,6 @@ election[, covered_3 := ifelse(articles_2m_before_to_election > 0, 1, 0)]
 
 
 election[, abs_vote_margin := abs(vote_margin)]
-election[, bond_debt_count := bond_count + debt_count]
-
-# THIS IS LOOKING GOOD - check county demo variables
-
-election[, log_bond_debt_count := log(1  + bond_count)]
 election[, high_bond_count := ifelse(bond_count > median(bond_count, na.rm = TRUE), 1, 0)]
 
 
