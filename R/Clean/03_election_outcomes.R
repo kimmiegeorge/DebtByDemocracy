@@ -25,8 +25,6 @@ election <- fread(file.path(regression_data_dir, 'election_media_regression_read
 website_city_year_input <- fread(file.path(regression_data_dir, 'website_city_year_regression_ready.csv'))
 website_election_input <- fread(file.path(regression_data_dir, 'website_election_regression_ready.csv'))
 
-election_brb_all <- copy(election)
-
 # Python supplies coverage indicators, logs, county-year IDs, and vote margins.
 # The election-level regressions retain elections where pre-election source
 # diversity is positive. This matches the paper's media-analysis sample.
@@ -42,39 +40,40 @@ website_election_input[, seed_issuer := tolower(trimws(seed_issuer))]
 # DESCRIPTIVES - COMBINED
 # ===============================================================================
 
+# Descriptives use complete inputs to the controlled specifications. Retain
+# singleton groups and observations without within-group outcome variation.
 # City-Year Level website descriptives
-# Python supplies a unique city-year panel and calendar-year text changes.
-website_city_year_desc <- copy(website_city_year_input)
+city_year_desc_vars <- c(
+  'positive_delta_bond_debt1', 'election', 'issuance_year',
+  'ln_county_gdp_prior', 'ln_county_pop_prior', 'ln_county_pers_inc_prior',
+  'seed_issuer', 'year', 'fips'
+)
+desc_city_year <- website_city_year_input[
+  complete.cases(website_city_year_input[, ..city_year_desc_vars]),
+  .(positive_delta_bond_debt1, election, issuance_year)
+]
 
-desc_city_year <- website_city_year_desc[!is.na(positive_delta_bond_debt1),
-                                         .(seed_issuer,
-                                           year,
-                                           positive_delta_bond_debt1,
-                                           election,
-                                           issuance_year)]
-
-# Match fixest's iterative removal of singleton city and year fixed effects.
-repeat {
-  rows_before <- nrow(desc_city_year)
-  eligible_cities <- desc_city_year[, .N, by = seed_issuer][N > 1L, seed_issuer]
-  eligible_years <- desc_city_year[, .N, by = year][N > 1L, year]
-  desc_city_year <- desc_city_year[
-    seed_issuer %in% eligible_cities & year %in% eligible_years
-  ]
-  if (nrow(desc_city_year) == rows_before) break
-}
-
-desc_city_year[, c('seed_issuer', 'year') := NULL]
 desc_city_year_col <- summarize_desc_cols(
   desc_city_year,
   'City-Year',
   c('Increase in Bond Text', 'Election Year', 'Bond Issuance Year')
 )
 
-# City-Month Level descriptives
-desc_city_month <- city_month[, .(covered, 
-                                   election_window,
-                                   issuance_window)]
+# City-Month Level descriptives: retain the regression's date/city restrictions.
+media_panel_sample <- city_month[
+  seed_issuer %in% election$seed_issuer & year >= 2003L &
+    !is.na(fips) & !is.na(ln_county_gdp_prior) &
+    !is.na(ln_county_pop_prior) & !is.na(ln_county_pers_inc_prior)
+]
+city_month_desc_vars <- c(
+  'covered', 'election_window', 'issuance_window',
+  'ln_county_gdp_prior', 'ln_county_pop_prior', 'ln_county_pers_inc_prior',
+  'seed_issuer_id', 'year_month_id', 'fips'
+)
+desc_city_month <- media_panel_sample[
+  complete.cases(media_panel_sample[, ..city_month_desc_vars]),
+  .(covered, election_window, issuance_window)
+]
 
 desc_city_month_col <- summarize_desc_cols(
   desc_city_month,
@@ -82,47 +81,40 @@ desc_city_month_col <- summarize_desc_cols(
   c('Bond Coverage', 'Election [0, +3]', 'Bond Issuance [0, +3]')
 )
 
-# Election Level descriptives
-desc_election <- election_brb_all[year >= 2000 & year <= 2021,
-                                  .(failed,
-                                    abs_vote_margin)]
+# Election Level descriptives: common complete media-election inputs.
+election_desc_vars <- c(
+  'failed', 'abs_vote_margin', 'coverage_3', 'ln_Amount',
+  'unique_sources_12m_prior', 'ln_county_gdp_prior', 'ln_county_pop_prior',
+  'ln_county_pers_inc_prior', 'year', 'purp_broad_new', 'County'
+)
+election_desc_sample <- election[
+  complete.cases(election[, ..election_desc_vars]) & is.finite(ln_Amount)
+]
+desc_election <- election_desc_sample[, .(failed = as.integer(failed), abs_vote_margin)]
 desc_election_col <- summarize_desc_cols(
   desc_election,
   'Election',
   c('Failed', 'Margin')
 )
 
-website_election_desc <- copy(website_election_input)
-# Match the unrestricted Texas website-outcome regression sample: merge the
-# covered-media election file, retain nonmissing bond text, and remove the same
-# year/purpose fixed-effect singletons as the regression below.
-website_election_desc <- election[, .(
-  GovernmentName,
-  ElectionDate,
-  PropNumber,
-  unique_sources_12m_prior,
-  articles_2m_before_to_election
-)][website_election_desc, on = .(GovernmentName, ElectionDate, PropNumber)]
-website_election_desc[, high_bond_count := ifelse(
-  bond_count > median(bond_count, na.rm = TRUE),
-  1,
-  0
-)]
-website_desc_sample_model <- feols(
-  failed ~ high_bond_count | year + purp_broad_new,
-  data = website_election_desc,
-  cluster = ~County,
-  fixef.rm = 'singleton',
-  notes = FALSE
+# Website-election descriptives: complete controlled-model inputs, with no
+# auxiliary regression or fixed-effect sample trimming.
+website_election_desc_vars <- c(
+  'bond_count', 'failed', 'vote_margin', 'ln_amount', 'ln_county_gdp_prior',
+  'ln_county_pop_prior', 'ln_county_pers_inc_prior', 'year', 'purp_broad_new', 'County'
 )
-desc_bond_text <- website_election_desc[obs(website_desc_sample_model), .(bond_count)]
+desc_bond_text <- website_election_input[
+  complete.cases(website_election_input[, ..website_election_desc_vars]) &
+    is.finite(ln_amount),
+  .(bond_count)
+]
 desc_bond_text_col <- summarize_desc_cols(
   desc_bond_text,
   'Election',
   c('Bond Count')
 )
 
-desc_election_coverage <- election[, .(
+desc_election_coverage <- election_desc_sample[, .(
   coverage_3,
   ln_Amount,
   unique_sources_12m_prior
@@ -258,16 +250,6 @@ writeLines(modified_output, paste0(tbl_dir, '/tx_failed_and_margin.tex'))
 
 
 
-
-# Keep the original paper's 2003--2024 media sample in both columns.  The
-# earlier table implicitly began in 2003 because the prior-year county
-# employment series was unavailable in 2001--02.  State the date window
-# directly so the common sample does not depend on an unused control.
-media_panel_sample <- city_month[
-  seed_issuer %in% election$seed_issuer & year >= 2003L &
-    !is.na(fips) & !is.na(ln_county_gdp_prior) &
-    !is.na(ln_county_pop_prior) & !is.na(ln_county_pers_inc_prior)
-]
 
 r1 <- feols(covered ~ election_window | seed_issuer_id + year_month_id,
             data = media_panel_sample, cluster = ~fips)
