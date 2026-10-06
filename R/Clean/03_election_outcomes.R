@@ -12,6 +12,7 @@ rm(list = ls())
 library(pacman)
 p_load(data.table, fixest, xtable)
 source('/Users/kmunevar/Dropbox/Voting on Bonds/Code/R/Clean/00_modify_etable_rounding.R')
+source('/Users/kmunevar/Dropbox/Voting on Bonds/Code/R/Clean/00_helper_functions.R')
 tbl_dir <- Sys.getenv(
   "RESULTS_DIR",
   unset = "/Users/kmunevar/Dropbox/Voting on Bonds/Code/R/Clean/output/revision_tables"
@@ -41,25 +42,6 @@ website_election_input[, seed_issuer := tolower(trimws(seed_issuer))]
 # ===============================================================================
 # DESCRIPTIVES - COMBINED
 # ===============================================================================
-
-summarize_desc_cols <- function(dt, unit, labels) {
-  desc_col <- dt[, lapply(.SD, function(col) {
-    stats <- c(Unit = unit,
-               Mean = mean(col, na.rm = TRUE),
-               Std = sd(col, na.rm = TRUE),
-               Min = min(col, na.rm = TRUE),
-               p1 = quantile(col, probs = 0.01, na.rm = TRUE),
-               Median = median(col, na.rm = TRUE),
-               p99 = quantile(col, probs = 0.99, na.rm = TRUE),
-               Max = max(col, na.rm = TRUE),
-               N = sum(!is.na(col)))
-    return(stats)
-  }), .SDcols = colnames(dt)]
-  desc_col <- data.table::transpose(desc_col, keep.names = "variable")
-  colnames(desc_col) <- c("Variable", "Unit", "Mean", "Std", "Min", "P1", "Median", "P99", "Max", "N")
-  desc_col[, Variable := labels]
-  return(desc_col)
-}
 
 # City-Year Level website descriptives
 website_city_year_desc <- copy(website_city_year_input)

@@ -1,6 +1,26 @@
 # 00: Shared descriptive-table and media-header helpers.
 # Load after data.table in the analysis scripts.
 
+# Summarize a descriptive panel while keeping its unit and variable labels.
+summarize_desc_cols <- function(dt, unit, labels) {
+  desc_col <- dt[, lapply(.SD, function(col) {
+    stats <- c(Unit = unit,
+               Mean = mean(col, na.rm = TRUE),
+               Std = sd(col, na.rm = TRUE),
+               Min = min(col, na.rm = TRUE),
+               p1 = quantile(col, probs = 0.01, na.rm = TRUE),
+               Median = median(col, na.rm = TRUE),
+               p99 = quantile(col, probs = 0.99, na.rm = TRUE),
+               Max = max(col, na.rm = TRUE),
+               N = sum(!is.na(col)))
+    return(stats)
+  }), .SDcols = colnames(dt)]
+  desc_col <- data.table::transpose(desc_col, keep.names = "variable")
+  colnames(desc_col) <- c("Variable", "Unit", "Mean", "Std", "Min", "P1", "Median", "P99", "Max", "N")
+  desc_col[, Variable := labels]
+  return(desc_col)
+}
+
 diff_table <- function(dt, group_var, vars) {
   out <- lapply(vars, function(v) {
     # t-test for difference
