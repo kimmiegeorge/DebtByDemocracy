@@ -8,6 +8,8 @@ in 2001 and contains no 2000 or earlier values.
 The election-media output also includes coverage indicators, article and
 financial logs, county-year identifiers, and absolute vote margins. All
 elections remain in the export; analysis sample restrictions remain in R.
+The website city-year output is normalized and unique by city-year, and
+includes preceding-calendar-year bond text, its change, and an increase flag.
 """
 
 from pathlib import Path
@@ -334,6 +336,28 @@ website_year = website_year.join(
     on=["seed_issuer_key", "year"],
     how="left",
 ).with_columns(pl.col("issuance_year").fill_null(0).cast(pl.Int8))
+# Normalize and retain the first row per city-year, matching the website
+# descriptives and regressions. Join the preceding calendar year explicitly
+# so a gap in observed years does not become a one-year lag.
+website_year = website_year.with_columns(issuer_key().alias("seed_issuer"))
+website_year = website_year.filter(
+    pl.col("seed_issuer").is_not_null() & (pl.col("seed_issuer") != "")
+).sort(["seed_issuer", "year"], maintain_order=True).unique(
+    subset=["seed_issuer", "year"], keep="first", maintain_order=True
+).with_columns(pl.col("bond_count").alias("total_words"))
+website_year_lag1 = website_year.select(
+    "seed_issuer",
+    (pl.col("year") + 1).alias("year"),
+    pl.col("total_words").alias("total_words_lag1"),
+)
+website_year = website_year.join(
+    website_year_lag1, on=["seed_issuer", "year"], how="left",
+    validate="1:1", maintain_order="left",
+).with_columns(
+    (pl.col("total_words") - pl.col("total_words_lag1")).alias("delta_bond_debt_count1")
+).with_columns(
+    (pl.col("delta_bond_debt_count1") > 0).cast(pl.Int32).alias("positive_delta_bond_debt1")
+)
 write_output(website_year, WEBSITE_YEAR_OUTPUT)
 
 

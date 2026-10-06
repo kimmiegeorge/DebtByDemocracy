@@ -35,7 +35,6 @@ election <- election[unique_sources_12m_prior > 0]
 
 city_month[, seed_issuer := tolower(trimws(seed_issuer))]
 election[, seed_issuer := tolower(trimws(seed_issuer))]
-website_city_year_input[, seed_issuer := tolower(trimws(seed_issuer))]
 website_election_input[, seed_issuer := tolower(trimws(seed_issuer))]
 
 
@@ -44,17 +43,8 @@ website_election_input[, seed_issuer := tolower(trimws(seed_issuer))]
 # ===============================================================================
 
 # City-Year Level website descriptives
+# Python supplies a unique city-year panel and calendar-year text changes.
 website_city_year_desc <- copy(website_city_year_input)
-website_city_year_desc <- website_city_year_desc[!is.na(seed_issuer) & seed_issuer != '']
-setorder(website_city_year_desc, seed_issuer, year)
-website_city_year_desc <- unique(website_city_year_desc, by = c('seed_issuer', 'year'))
-website_city_year_desc[, total_words := bond_count]
-website_city_year_desc_lag1 <- website_city_year_desc[, .(seed_issuer,
-                                                          year = year + 1L,
-                                                          total_words_lag1 = total_words)]
-website_city_year_desc <- website_city_year_desc_lag1[website_city_year_desc, on = .(seed_issuer, year)]
-website_city_year_desc[, delta_bond_debt_count1 := total_words - total_words_lag1]
-website_city_year_desc[, positive_delta_bond_debt1 := ifelse(delta_bond_debt_count1 > 0, 1, 0)]
 
 desc_city_year <- website_city_year_desc[!is.na(positive_delta_bond_debt1),
                                          .(seed_issuer,
@@ -334,19 +324,6 @@ election <- copy(website_election_input)
 # ===============================================================================
 # REGRESSION - WEBSITE TIME SERIES
 # ===============================================================================
-
-website_city_year <- website_city_year[!is.na(seed_issuer) & seed_issuer != '']
-setorder(website_city_year, seed_issuer, year)
-website_city_year <- unique(website_city_year, by = c('seed_issuer', 'year'))
-
-website_city_year[, total_words := bond_count ]
-website_city_year_lag1 <- website_city_year[, .(seed_issuer,
-                                                year = year + 1L,
-                                                total_words_lag1 = total_words)]
-website_city_year <- website_city_year_lag1[website_city_year, on = .(seed_issuer, year)]
-website_city_year[, delta_bond_debt_count1 := total_words - total_words_lag1]
-website_city_year[, positive_delta_bond_debt1 := ifelse(delta_bond_debt_count1 > 0, 1, 0)]
-
 
 r1 <- feols(positive_delta_bond_debt1 ~ election | seed_issuer + year,
                     data = website_city_year[!is.na(fips)], cluster = ~fips)
