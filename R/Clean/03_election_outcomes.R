@@ -9,10 +9,14 @@
 
 rm(list = ls())
 
-root <- normalizePath(getwd(), mustWork = TRUE)
-source(file.path(root, 'Code/R/Clean/00_modify_etable_rounding.R'))
-tbl_dir <- file.path(root, 'Code/R/Clean/output/revision_tables')
-regression_data_dir <- file.path(root, 'Data/Clean_Intermediate/TX/Regression')
+library(pacman)
+p_load(data.table, fixest, xtable)
+source('/Users/kmunevar/Dropbox/Voting on Bonds/Code/R/Clean/00_modify_etable_rounding.R')
+tbl_dir <- Sys.getenv(
+  "RESULTS_DIR",
+  unset = "/Users/kmunevar/Dropbox/Voting on Bonds/Code/R/Clean/output/revision_tables"
+)
+regression_data_dir <- path.expand('~/Dropbox/Voting on Bonds/Data/Clean_Intermediate/TX/Regression')
 dir.create(tbl_dir, recursive = TRUE, showWarnings = FALSE)
 
 city_month <- fread(file.path(regression_data_dir, 'city_month_media_regression_ready.csv'))
