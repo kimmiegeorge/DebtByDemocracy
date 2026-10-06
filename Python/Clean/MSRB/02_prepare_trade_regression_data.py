@@ -59,6 +59,47 @@ regression_columns = [
 ]
 data = data.select(regression_columns)
 
+#%% Expanded state-policy controls, using the same source as the website sample
+# Preserve every comparison field, its original name, source text, and missing
+# values. Dated policy snapshots and award averages are repeated across years.
+state_comparison = pl.read_csv(
+    code_dir.parent / 'Data/State Policies/20260929_state_policy_comparison.csv',
+    infer_schema_length=10000
+).rename({'state_abbr': 'state'})
+if (state_comparison.height != 50
+        or state_comparison['state'].null_count() > 0
+        or state_comparison['state'].n_unique() != 50):
+    raise ValueError('The state-policy comparison must contain one row for each of the 50 states.')
+policy_columns = [column for column in state_comparison.columns if column != 'state']
+policy_collisions = set(policy_columns).intersection(data.columns)
+if policy_collisions:
+    raise ValueError(f'State-policy columns already exist: {sorted(policy_collisions)}')
+missing_policy_states = data.select('state').unique().join(
+    state_comparison.select('state'), on='state', how='anti'
+)
+if missing_policy_states.height > 0:
+    raise ValueError(f'Trade states are missing from the policy comparison: {missing_policy_states}')
+data = data.join(
+    state_comparison, on='state', how='left', validate='m:1', maintain_order='left'
+)
+
+# Fiscal monitoring varies by bond issuance year; match the website convention
+# that before_sample adoption is 2009 and states absent from this list are zero.
+monitor_adoption = pl.read_csv(
+    code_dir.parent / 'Data/State Monitoring Policy/state_enforcement_adoption_years.csv'
+).select(
+    pl.col('Abbreviation').alias('state'),
+    pl.col('AdoptionYear').replace('before_sample', '2009').cast(pl.Int64)
+    .alias('AdoptionYear')
+)
+data = data.join(
+    monitor_adoption, on='state', how='left', validate='m:1', maintain_order='left'
+).with_columns(
+    (pl.col('year') >= pl.col('AdoptionYear')).fill_null(False)
+    .cast(pl.Int64).alias('state_monitor')
+)
+regression_columns += policy_columns + ['AdoptionYear', 'state_monitor']
+
 #%% Border sample, preserving one bond row for each matching border group
 border_matches = pl.read_csv(
     clean_data_dir / 'Border States/Border Matches All Mergent Data Expanded Set Buffer 100000.csv',

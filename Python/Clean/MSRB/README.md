@@ -43,6 +43,15 @@ creates the three outcome aliases, disclosure control, low-tax-privilege
 indicator, and state-year cluster; and matches paper border pairs by state and
 issuer name. Bonds belonging to multiple border pairs retain one row per pair.
 Missing regression controls remain for `fixest` to handle per specification.
+Both samples also include every field from
+`Data/State Policies/20260929_state_policy_comparison.csv`, matching the expanded
+website controls: GAAP requirements, state audits, debt limits, tax and
+expenditure limits, fiscal-monitoring snapshots, and source information.
+Original policy names and missing values are preserved. These dated measures
+are state snapshots rather than historical policy panels. `state_monitor` is
+separately calculated using issuance year and
+`Data/State Monitoring Policy/state_enforcement_adoption_years.csv`, with
+`before_sample` treated as 2009, consistent with the website preparation.
 R loads these files and starts with descriptive statistics.
 
 `MSRB_PROCESSED_DIR` overrides the step-01 output/step-02 input directory.
