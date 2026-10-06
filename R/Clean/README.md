@@ -7,6 +7,7 @@ analysis, and the purpose-substitution figure shares `06_` with Table 9.
 
 ## Shared setup
 
+- `00_helper_functions.R` - shared mean-difference tables and media headers
 - `00_border_pair_definitions.R`
 - `00_modify_etable_rounding.R`
 - `00_state_policy_definitions.R`

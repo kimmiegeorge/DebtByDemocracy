@@ -15,12 +15,12 @@ and election requirements from the Mergent Stata file. It reads:
 - `Data/Mergent/Clean/260716_city_cusiplevel_statereq_purpose_yieldspread.dta`
 - `Data/Clean_Intermediate/News/Issuance_Lvl_News_With_Lagged_News.csv`
 - `Data/Clean_Intermediate/Border States/Border Matches RP Issuance Lvl Expanded Set Buffer 100000.csv`
-- `Config/border_state_pairs.csv` and `R/Clean/00_state_policy_definitions.R`
+- `Config/border_state_pairs.csv`
 
 It writes to `Data/Clean_Intermediate/News`:
 
 - `media_full_sample_regression_data.csv`: full issuance sample with issuer
-  FIPS/name, nonmissing GO-vote and employment restrictions, supermajority,
+  FIPS/name, nonmissing GO-vote and employment restrictions,
   prior-issuance indicators, logged sources, capped article counts, the existing
   revenue-vote missing-value convention, and the dark-green indicator.
 - `media_border_state_regression_data.csv`: employment-complete paper border
@@ -39,4 +39,6 @@ to R `quantile(type = 1)`. The original input files are left intact.
 inputs; `RESULTS_DIR` overrides table output. R retains the runtime
 `EXCLUDE_STATE` option for border-sample sensitivity runs, so state exclusions
 do not require rebuilding the prepared data. Descriptives, explicit regressions,
-and table formatting remain in R.
+and table formatting remain in R. Supermajority membership is assigned in R
+from `00_state_policy_definitions.R`; shared table helpers are loaded from
+`00_helper_functions.R`.

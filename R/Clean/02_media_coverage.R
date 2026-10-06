@@ -4,66 +4,14 @@ rm(list = ls())
 library(pacman)
 p_load(data.table, dplyr, stargazer, DescTools, arrow, glue, lfe, ggplot2, gridExtra, sandwich, zoo, fixest, haven, xtable)
 source('/Users/kmunevar/Dropbox/Voting on Bonds/Code/R/Clean/00_modify_etable_rounding.R')
+source('/Users/kmunevar/Dropbox/Voting on Bonds/Code/R/Clean/00_helper_functions.R')
+source('/Users/kmunevar/Dropbox/Voting on Bonds/Code/R/Clean/00_state_policy_definitions.R')
 tbl_dir <- Sys.getenv(
   "RESULTS_DIR",
   unset = "/Users/kmunevar/Dropbox/Voting on Bonds/Code/R/Clean/output/revision_tables"
 )
 dir.create(tbl_dir, recursive = TRUE, showWarnings = FALSE)
 excluded_state <- Sys.getenv("EXCLUDE_STATE", unset = "")
-
-add_media_sample_headers <- function(tex) {
-  if (length(tex) > 1) {
-    tex <- paste(tex, collapse = "\n")
-  }
-  lines <- strsplit(tex, "\n", fixed = TRUE)[[1]]
-
-  lines <- lines[!grepl("^\\s*Full Sample\\s*&\\s*\\\\multicolumn\\{4\\}\\{c\\}\\{2\\}", lines)]
-  lines <- lines[!grepl("^\\s*Border-State Sample\\s*&\\s*\\\\multicolumn\\{4\\}\\{c\\}\\{2\\}", lines)]
-
-  dep_header_idx <- grep("\\\\multicolumn\\{4\\}\\{c\\}\\{Total Articles - 12mo\\}", lines)
-  if (length(dep_header_idx) == 0) {
-    return(lines)
-  }
-
-  insert_idx <- dep_header_idx[1] + 1
-  if (insert_idx <= length(lines) && grepl("\\\\cmidrule\\(lr\\)\\{2-5\\}", lines[insert_idx])) {
-    new_header <- c(
-      "    & \\multicolumn{2}{c}{Full Sample} & \\multicolumn{2}{c}{Border-State Sample}\\\\",
-      "   \\cmidrule(lr){2-3}\\cmidrule(lr){4-5}"
-    )
-    lines <- append(lines, new_header, after = insert_idx)
-  }
-
-  return(lines)
-}
-
-add_media_border_sample_header <- function(tex) {
-  if (length(tex) > 1) {
-    tex <- paste(tex, collapse = "\n")
-  }
-  lines <- strsplit(tex, "\n", fixed = TRUE)[[1]]
-
-  lines <- lines[!grepl(
-    "^\\s*&\\s*\\\\multicolumn\\{2\\}\\{c\\}\\{Border-State Sample: Drop Dark Green\\}",
-    lines
-  )]
-
-  dep_header_idx <- grep("\\\\multicolumn\\{2\\}\\{c\\}\\{Total Articles - 12mo\\}", lines)
-  if (length(dep_header_idx) == 0) {
-    return(lines)
-  }
-
-  insert_idx <- dep_header_idx[1] + 1
-  if (insert_idx <= length(lines) && grepl("\\\\cmidrule\\(lr\\)\\{2-3\\}", lines[insert_idx])) {
-    new_header <- c(
-      "    & \\multicolumn{2}{c}{Border-State Sample: Drop Dark Green}\\\\",
-      "   \\cmidrule(lr){2-3}"
-    )
-    lines <- append(lines, new_header, after = insert_idx)
-  }
-
-  return(lines)
-}
 
 # ===============================================================================
 # DATA LOADING AND PREPARATION
@@ -79,6 +27,9 @@ border_articles <- fread(Sys.getenv(
   "MEDIA_BORDER_REGRESSION_DATA",
   unset = "~/Dropbox/Voting on Bonds/Data/Clean_Intermediate/News/media_border_state_regression_data.csv"
 ))
+# Shared policy definitions remain in R.
+issuance_lvl[, super_majority := as.integer(state %in% super_majority_states)]
+
 # Retain the existing runtime state-exclusion option for sensitivity runs.
 if (nzchar(excluded_state)) border_articles <- border_articles[state != excluded_state]
 
@@ -183,48 +134,6 @@ writeLines(desc_table_output, paste0(tbl_dir, '/media_descriptives.tex'))
 #_______________Regressions ________________
 
 
-
-
-diff_table <- function(dt, group_var, vars) {
-  out <- lapply(vars, function(v) {
-    # t-test for difference
-    ttest <- t.test(get(v) ~ get(group_var), data = dt)
-    
-    # compute group means
-    means <- dt[, .(
-      mean_0 = mean(get(v)[get(group_var) == 0], na.rm = TRUE),
-      mean_1 = mean(get(v)[get(group_var) == 1], na.rm = TRUE)
-    )]
-    
-    # extract stats
-    pval <- ttest$p.value
-    tstat <- round(ttest$statistic, 2)
-    
-    # significance stars
-    stars <- if (pval < 0.01) "***"
-    else if (pval < 0.05) "**"
-    else if (pval < 0.1) "*"
-    else ""
-    
-    data.table(
-      variable = v,
-      mean_0 = means$mean_0,
-      mean_1 = means$mean_1,
-      diff = round(means$mean_1 - means$mean_0, 2),
-      tstat = tstat,
-      stars = stars
-    )
-  })
-  
-  res <- rbindlist(out)
-  
-  # format columns
-  res[, mean_0 := round(mean_0, 2)]
-  res[, mean_1 := round(mean_1, 2)]
-  res[, diff_fmt := sprintf("%.2f%s (%.2f)", diff, stars, abs(tstat))]
-  
-  return(res)
-}
 
 
 vars <- c(

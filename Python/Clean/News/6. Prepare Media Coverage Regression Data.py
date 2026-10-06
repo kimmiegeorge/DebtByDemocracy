@@ -1,7 +1,6 @@
 """Prepare full and border-state RavenPack data for R/Clean/02_media_coverage.R."""
 #%% Paths and sample configuration
 import os
-import re
 from pathlib import Path
 
 import polars as pl
@@ -18,8 +17,6 @@ output_dir.mkdir(parents=True, exist_ok=True)
 border_pair_config = pl.read_csv(code_dir / 'Config/border_state_pairs.csv')
 paper_pair_config = border_pair_config.filter(pl.col('include_in_paper') == 1)
 paper_border_pairs = paper_pair_config.get_column('group').to_list()
-supermajority_text = (code_dir / 'R/Clean/00_state_policy_definitions.R').read_text()
-supermajority_states = re.findall(r"'([A-Z]{2})'", supermajority_text)
 
 #%% Issuer metadata and election requirements from the full Mergent bond file
 # pyreadstat only decodes Stata; all tabular transformations use Polars.
@@ -49,9 +46,6 @@ issuance_lvl = issuance_lvl.join(
 ).select('seed_issuer_id', 'fips', 'issuer_long_name',
          *[column for column in news_columns if column != 'seed_issuer_id']).filter(
     pl.col('city_go_vote').is_not_null(), pl.col('ln_employment').is_not_null()
-).with_columns(
-    pl.col('state').is_in(supermajority_states).fill_null(False)
-    .cast(pl.Int64).alias('super_majority')
 )
 border_articles = pl.read_csv(
     clean_data_dir / 'Border States/Border Matches RP Issuance Lvl Expanded Set Buffer 100000.csv',

@@ -6,6 +6,7 @@ library(pacman)
 p_load(data.table, dplyr, stargazer, DescTools, arrow, glue, lfe, ggplot2, gridExtra, sandwich, zoo, fixest, xtable)
 tables_wd <- "/Users/kmunevar/Dropbox/Voting on Bonds/Code/R/Clean/output/revision_tables"
 source('/Users/kmunevar/Dropbox/Voting on Bonds/Code/R/Clean/00_modify_etable_rounding.R')
+source('/Users/kmunevar/Dropbox/Voting on Bonds/Code/R/Clean/00_helper_functions.R')
 tbl_dir <- tables_wd
 
 #---------------------------------------
@@ -114,52 +115,6 @@ writeLines(desc_table_output, paste0(tbl_dir, "/website_descriptives.tex"))
 #---------------------------------
 # Output differences
 #---------------------------------
-
-
-diff_table <- function(dt, group_var, vars) {
-  out <- lapply(vars, function(v) {
-    # t-test for difference
-    ttest <- t.test(get(v) ~ get(group_var), data = dt)
-    
-    # compute group means
-    means <- dt[, .(
-      mean_0 = mean(get(v)[get(group_var) == 0], na.rm = TRUE),
-      mean_1 = mean(get(v)[get(group_var) == 1], na.rm = TRUE)
-    )]
-    
-    # extract stats
-    pval <- ttest$p.value
-    tstat <- round(ttest$statistic, 2)
-    
-    # significance stars
-    stars <- if (pval < 0.01) "***"
-    else if (pval < 0.05) "**"
-    else if (pval < 0.1) "*"
-    else ""
-    
-    data.table(
-      variable = v,
-      mean_0 = means$mean_0,
-      mean_1 = means$mean_1,
-      diff = round(means$mean_1 - means$mean_0, 2),
-      tstat = tstat,
-      pval = pval,
-      n_0 = sum(!is.na(dt[get(group_var) == 0, get(v)])),
-      n_1 = sum(!is.na(dt[get(group_var) == 1, get(v)])),
-      stars = stars
-    )
-  })
-  
-  res <- rbindlist(out)
-  
-  # format columns
-  res[, mean_0 := round(mean_0, 2)]
-  res[, mean_1 := round(mean_1, 2)]
-  res[, diff_fmt := sprintf("%.2f%s (%.2f)", get("diff"), stars, abs(tstat))]
-  
-  
-  return(res)
-}
 
 
 vars <- c("bond_url", "bond_count",
