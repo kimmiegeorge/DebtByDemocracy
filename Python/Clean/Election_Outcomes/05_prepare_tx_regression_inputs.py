@@ -10,6 +10,8 @@ financial logs, county-year identifiers, and absolute vote margins. All
 elections remain in the export; analysis sample restrictions remain in R.
 The website city-year output is normalized and unique by city-year, and
 includes preceding-calendar-year bond text, its change, and an increase flag.
+The city-month and website city-year panels include prior overlapping-ISD
+failure exposure for Table 4 Panel C (80% city-area overlap, 360-month history).
 """
 
 from pathlib import Path
@@ -29,6 +31,8 @@ WEBSITE_YEAR_INPUT = CLEAN / "Websites" / "Texas" / "time_series_website_data.cs
 WEBSITE_ELECTION_INPUT = CLEAN / "Websites" / "Texas" / "election_level_website_data.csv"
 COUNTY_DEMOS_INPUT = DATA / "BEA" / "countydemos_1999_2026.csv"
 ISSUANCE_INPUT = DATA / "Mergent" / "Clean" / "260716_city_cusiplevel_statereq_purpose_yieldspread.dta"
+CITY_MONTH_ISD_INPUT = CLEAN / "TX/Election_Exposure/city_month_high_overlap_isd_failure_exposure.csv"
+WEBSITE_YEAR_ISD_INPUT = CLEAN / "TX/Election_Exposure/website_city_year_high_overlap_isd_failure_exposure.csv"
 
 CITY_MONTH_OUTPUT = OUTPUT / "city_month_media_regression_ready.csv"
 ELECTION_MEDIA_OUTPUT = OUTPUT / "election_media_regression_ready.csv"
@@ -56,6 +60,8 @@ def check_inputs() -> None:
         WEBSITE_ELECTION_INPUT,
         COUNTY_DEMOS_INPUT,
         ISSUANCE_INPUT,
+        CITY_MONTH_ISD_INPUT,
+        WEBSITE_YEAR_ISD_INPUT,
     ]:
         if not path.exists():
             raise FileNotFoundError(f"Missing input: {path}")
@@ -301,6 +307,18 @@ issuer_fips = pl.concat(
 city_month = add_fips(city_month_source, issuer_fips)
 city_month = add_prior_year_county_controls(city_month, county_controls)
 city_month = add_city_month_windows(city_month, issue_month)
+# Panel C uses prior failures of ISDs with at least 80% city-area overlap,
+# over the recorded history (360 months), excluding the current event date.
+city_month_isd = read_intermediate_csv(CITY_MONTH_ISD_INPUT).select(
+    issuer_key().alias("seed_issuer_key"), "year", "month",
+    pl.col("prior_failure_any_360m").cast(pl.Int32).alias("prior_isd_failure"),
+)
+city_month = city_month.join(
+    city_month_isd, on=["seed_issuer_key", "year", "month"], how="left",
+    validate="1:1", maintain_order="left",
+)
+if city_month.get_column("prior_isd_failure").null_count():
+    raise ValueError("Some city-months did not merge to the prior ISD failure panel.")
 write_output(city_month, CITY_MONTH_OUTPUT)
 
 
@@ -357,6 +375,24 @@ website_year = website_year.join(
     (pl.col("total_words") - pl.col("total_words_lag1")).alias("delta_bond_debt_count1")
 ).with_columns(
     (pl.col("delta_bond_debt_count1") > 0).cast(pl.Int32).alias("positive_delta_bond_debt1")
+)
+# Exposure is evaluated before city elections in election years and on
+# December 1 otherwise. Preserve unavailable historical boundary coverage
+# as missing rather than silently classifying a city as unexposed.
+website_year_isd = read_intermediate_csv(WEBSITE_YEAR_ISD_INPUT).select(
+    issuer_key("seed_key").alias("seed_issuer"), "year",
+    pl.col("prior_failure_any_360m").cast(pl.Int32).alias("prior_isd_failure"),
+    pl.col("spatial_exposure_observed_360m").cast(pl.Int32).alias("spatial_exposure_observed"),
+)
+website_year = website_year.join(
+    website_year_isd, on=["seed_issuer", "year"], how="left",
+    validate="1:1", maintain_order="left",
+)
+if website_year.get_column("spatial_exposure_observed").null_count():
+    raise ValueError("Some website city-years did not merge to the prior ISD failure panel.")
+website_year = website_year.with_columns(
+    pl.when(pl.col("spatial_exposure_observed") == 1)
+    .then(pl.col("prior_isd_failure")).otherwise(None).alias("prior_isd_failure")
 )
 write_output(website_year, WEBSITE_YEAR_OUTPUT)
 

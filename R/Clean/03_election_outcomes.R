@@ -412,6 +412,66 @@ writeLines(
 
 
 
+# ===============================================================================
+# PANEL C: PRIOR OVERLAPPING-ISD FAILURE
+# ===============================================================================
+# Python supplies prior_isd_failure (80% city-area overlap, full recorded
+# history). Use the same controls and fixed effects as the time-series models.
+r_website_prior_isd <- feols(
+  positive_delta_bond_debt1 ~ election * prior_isd_failure + issuance_year +
+    ln_county_gdp_prior + ln_county_pop_prior + ln_county_pers_inc_prior |
+    seed_issuer + year,
+  data = website_city_year[!is.na(fips) & !is.na(prior_isd_failure)],
+  cluster = ~fips
+)
+r_media_prior_isd <- feols(
+  covered ~ election_window * prior_isd_failure + issuance_window +
+    ln_county_gdp_prior + ln_county_pop_prior + ln_county_pers_inc_prior |
+    seed_issuer + year_month_id,
+  data = media_panel_sample[!is.na(prior_isd_failure)],
+  cluster = ~fips
+)
+
+panel_c_table <- etable(
+  r_website_prior_isd, r_media_prior_isd,
+  coefstat = 'tstat',
+  keep_raw = 'election|prior_isd_failure',
+  order_raw = c(
+    '^election$', '^election:prior_isd_failure$',
+    '^election_window$', '^election_window:prior_isd_failure$',
+    '^prior_isd_failure$'
+  ),
+  style.tex = style.tex(main = 'aer', fixef.suffix = ' FE', yesNo = c('Yes', 'No')),
+  fitstat = c('n', 'ar2'),
+  se.below = TRUE,
+  digits = 3,
+  digits.stats = 3,
+  signif.code = c('***' = 0.01, '**' = 0.05, '*' = 0.10),
+  tex = TRUE,
+  dict = c(
+    positive_delta_bond_debt1 = 'Increase in Bond Text',
+    covered = 'Bond Coverage',
+    election = 'Election Year',
+    prior_isd_failure = 'Prior ISD Failure',
+    `election:prior_isd_failure` = 'Election Year $\\times$ Prior ISD Failure',
+    election_window = 'Election [0, +3]',
+    `election_window:prior_isd_failure` = 'Election [0, +3] $\\times$ Prior ISD Failure',
+    seed_issuer = 'City', year = 'Year', year_month_id = 'Year-Month'
+  ),
+  extralines = list('County controls' = c('Yes', 'Yes')),
+  placement = 'H',
+  replace = TRUE
+)
+modified_output <- modify_etable_rounding(panel_c_table, coef_digits = 3, tstat_digits = 2)
+modified_output <- format_table(modified_output, cluster_level = 'County')
+modified_output <- add_panel(
+  modified_output,
+  'Panel C: City behavior after an overlapping ISD bond failure',
+  ncols = 3
+)
+writeLines(modified_output, file.path(tbl_dir, 'tx_prior_overlap_failure_panel_c.tex'))
+
+
 # merge media with election website 
 election <- election_media[, .(GovernmentName, ElectionDate, PropNumber, unique_sources_12m_prior, articles_2m_before_to_election)][election, on = .(GovernmentName, ElectionDate, PropNumber)]
 election[, covered_3 := ifelse(articles_2m_before_to_election > 0, 1, 0)]

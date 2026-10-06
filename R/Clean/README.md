@@ -28,6 +28,14 @@ sample restrictions, issuance lags, logged sources, shared article caps, and
 robustness-sample indicators. See the [News pipeline notes](../../Python/Clean/News/README.md)
 for input files and environment-variable overrides.
 
+Before rebuilding the Texas regression inputs, the 80%-overlap ISD exposure
+files must exist in `Data/Clean_Intermediate/TX/Election_Exposure`. See
+[`Python/Clean/TX_Election_Exposure`](../../Python/Clean/TX_Election_Exposure/README.md)
+for their preparation. `05_prepare_tx_regression_inputs.py` merges the full-history
+`prior_isd_failure` measure into the city-month and website city-year CSVs.
+`03_election_outcomes.R` then writes `tx_prior_overlap_failure_panel_c.tex`
+after the time-series regressions, using those prepared fields.
+
 1. `01_websites.R` - Tables 2 and 4; Table 1 website panel
 2. `02_media_coverage.R` - Table 3; Table 1 media panel
 3. `03_election_outcomes.R` - Tables 4 and 5; Table 1 election panel
