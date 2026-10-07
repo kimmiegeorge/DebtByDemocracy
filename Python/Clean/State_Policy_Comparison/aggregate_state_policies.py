@@ -118,17 +118,33 @@ def make_debt_data() -> pd.DataFrame:
     debt["debt_limit_exempts_revenue_bonds"] = debt["debt_limit_exceptions"].str.contains("revenue bond", case=False, na=False).astype("Int64")
     debt.loc[debt["municipal_debt_limit"].isna() | debt["municipal_debt_limit"].eq(0), "debt_limit_exempts_revenue_bonds"] = pd.NA
 
-    strict = clean_columns(source_rows(DEBT_FILE, "Output_Full", 1))
-    strict = strict.loc[strict["State"].notna(), ["State", "Stricter debt limit (def. as <= 5% if market or <= 10% if below-market)"]]
-    strict = strict.rename(columns={
+    threshold = clean_columns(source_rows(DEBT_FILE, "Output_Full", 1))
+    threshold = threshold.loc[
+        threshold["State"].notna(),
+        ["State", "Stricter debt limit (def. as <= 5% if market or <= 10% if below-market)"],
+    ].rename(columns={
         "State": "state_abbr",
-        "Stricter debt limit (def. as <= 5% if market or <= 10% if below-market)": "strict_municipal_debt_limit",
+        "Stricter debt limit (def. as <= 5% if market or <= 10% if below-market)": "meets_strict_debt_limit_threshold",
     })
-    strict["state_abbr"] = strict["state_abbr"].str.strip()
-    debt = debt.merge(strict, on="state_abbr", how="left", validate="one_to_one")
+    threshold["state_abbr"] = threshold["state_abbr"].str.strip()
+    debt = debt.merge(threshold, on="state_abbr", how="left", validate="one_to_one")
+
+    # A strict limit must satisfy both criteria: the workbook's percentage
+    # cutoff (<=5% at market value or <=10% at below-market value) and a legal
+    # prohibition on exceeding the cap. A low limit that can be overridden is
+    # not classified as strict.
+    debt["strict_municipal_debt_limit"] = pd.Series(pd.NA, index=debt.index, dtype="Int64")
+    debt.loc[debt["meets_strict_debt_limit_threshold"].eq(0), "strict_municipal_debt_limit"] = 0
+    known_strictness = (
+        debt["meets_strict_debt_limit_threshold"].eq(1)
+        & debt["debt_limit_can_be_exceeded"].notna()
+    )
+    debt.loc[known_strictness, "strict_municipal_debt_limit"] = (
+        debt.loc[known_strictness, "debt_limit_can_be_exceeded"].eq(0).astype("Int64")
+    )
     # Code Nebraska as non-strict to match the main debt-choice regressions.
     debt.loc[debt["state_abbr"].eq("NE"), "strict_municipal_debt_limit"] = 0
-    return debt
+    return debt.drop(columns="meets_strict_debt_limit_threshold")
 
 
 def make_monitor_data() -> pd.DataFrame:
@@ -288,7 +304,7 @@ def render_table(state: pd.DataFrame) -> str:
         ("States", None, "count"),
         ("Debt-limit variables", None, "category"),
         ("Any municipal debt limit", "municipal_debt_limit", "share"),
-        ("Strict municipal debt limit", "strict_municipal_debt_limit", "share"),
+        ("Strict municipal debt limit (threshold and cannot be exceeded)", "strict_municipal_debt_limit", "share"),
         ("Debt limit can be exceeded", "debt_limit_can_be_exceeded", "share"),
         ("Tax-related variables", None, "category"),
         ("Property-tax levy cap", "lincoln_property_tax_levy_cap_2024", "share"),

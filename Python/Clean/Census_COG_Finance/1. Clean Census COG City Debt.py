@@ -437,7 +437,7 @@ for year, config in cog_years.items():
         .pivot(
             values='amount_thousands',
             index=['year', 'gov_id'],
-            columns='debt_item',
+            on ='debt_item', # type: ignore
             aggregate_function='first',
         )
     )
@@ -522,7 +522,7 @@ for year, config in cog_years.items():
         .pivot(
             values='amount_thousands',
             index=['year', 'gov_id'],
-            columns='debt_item',
+            on ='debt_item',
             aggregate_function='first',
         )
     )

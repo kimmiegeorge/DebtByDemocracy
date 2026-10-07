@@ -87,6 +87,96 @@ The table is descriptive.  It does not interpret the seven non-referendum
 states as a random sample, and it does not include the 16 states whose city GO
 rules vary by city, project, or financing category.
 
+## Definitions for the reviewer comparison table
+
+`20260929_state_policy_comparison_table.tex` compares the 33 states with a
+uniform city GO-bond rule: 26 states where voter approval is required and 7
+where it is not.  It excludes states whose rule varies by city, project, or
+financing type, as well as states without a classifiable rule.  "GO" means a
+municipal general-obligation bond; it does not refer to revenue bonds.  The
+first two columns are group means, and the final column is the GO-vote-required
+mean minus the no-GO-vote-requirement mean.  Percentages are percentage-point
+differences in the last column.  Bracketed `N` values are the number of states
+with nonmissing data for that row, so they can be smaller than the 26 or 7
+states in the comparison group.
+
+### Debt-limit variables
+
+* **Any municipal debt limit.** Indicator equal to one when the statutory
+  debt-limit workbook codes the state as having a municipal debt limit.  States
+  coded `Depends` or `N/A` are missing rather than treated as having no limit.
+* **Strict municipal debt limit (threshold and cannot be exceeded).** Indicator
+  equal to one only when the workbook's threshold is at most 5 percent at a
+  close-to-market valuation (or at most 10 percent at a below-market
+  valuation) **and** the cap cannot be exceeded.  A low cap with an available
+  override is therefore not strict.  Nebraska is coded zero because its rule
+  varies across cities, consistent with the main debt-choice analyses.
+* **Debt limit can be exceeded.** Indicator equal to one when the statutory
+  workbook explicitly codes the municipal limit as exceedable.  The row does
+  not require that the override be by referendum; the separate raw field
+  `debt_limit_voter_override` retains that distinction.
+
+### Tax-related variables
+
+* **Property-tax levy cap.** Indicator for a state-imposed cap on annual
+  increases in the property-tax levy, using the Lincoln Institute's 2024
+  classification.  It is a state policy feature and is not restricted to a
+  city's particular tax base or fiscal year.
+* **Referendum required to exceed property-tax levy cap.** Indicator equal to
+  one only where the Lincoln source classifies the override mechanism as a
+  referendum.  It is zero for no levy limit, no override, a governing-body
+  override, and a choice between referendum and governing-body override.  It
+  is consequently a measure of a *referendum-only* override, not of whether a
+  voter ever approves a tax increase.
+* **Broad municipal revenue/expenditure cap.** Indicator for a state limit on
+  municipal revenues, expenditures, or both that extends beyond the property
+  tax.  The Lincoln source identifies six states where the limit applies to
+  municipalities (whether alone or with counties and/or school districts), as
+  of 2022.
+* **Truth-in-Taxation requirement.** Indicator for a state included in the
+  Lincoln source's 2024 Truth-in-Taxation summary.  These laws require public
+  disclosure and hearings around proposed property-tax increases; states differ
+  in whether they also require a rollback-rate calculation, mailed notice, or
+  a governing-body vote.
+* **Governing-body vote for tax increase.** Indicator for a state where the
+  Lincoln source reports that the local governing body must vote to exceed the
+  Truth-in-Taxation rollback rate (or, for Arizona, to approve a covered
+  increase).  This is distinct from a voter referendum.
+
+### Financial reporting and oversight variables
+
+* **State fiscal monitor in place by 2020.** Indicator equal to one when the
+  fiscal-monitoring adoption file, based on Nakhmurina (2024), identifies the
+  policy as adopted before the study period or no later than 2020.  Fiscal
+  monitoring is a state process that regularly reviews local-government
+  financial information for signs of distress.
+* **Municipal GAAP required.** Indicator equal to one when GASB's municipal
+  table categorizes the state as either `GAAP required` or `GAAP required with
+  exception`.  It is not limited to unconditional requirements; the output
+  retains the more restrictive no-exception version separately.
+* **State auditor audits cities/towns/villages.** Indicator equal to one when
+  the NASACT 2023 table places a checkmark in the cities/towns/villages column.
+  It means that the state auditor audits at least some such governments, not
+  necessarily all of them; several source cells report partial coverage.
+* **COA recipient rate among GO-bond cities (annual mean).** For each fiscal
+  year, the share of cities in the project's GO-bond city universe that receive
+  GFOA's Certificate of Achievement for Excellence in Financial Reporting
+  (COA), averaged across available FY2014--2020 state-year rates.  FY2019 is
+  omitted because the public COA archive/awards-management-system transition
+  has incomplete coverage, so the usual denominator is six years.
+* **PAFR recipient rate among GO-bond cities (annual mean).** The analogous
+  annual-average recipient rate for GFOA's Popular Annual Financial Reporting
+  (PAFR) Award, over FY2014--2020.  PAFR is observed in all seven years.  Both
+  award rates are unweighted averages of state annual rates; because the city
+  universe is balanced within state, they equal the corresponding pooled
+  city-year rates.
+
+The tax and reporting-policy measures are source-year snapshots (principally
+2023--25, with the budget-limit measure referring to 2022), whereas the award
+rates cover FY2014--20.  The table should therefore be described as a
+descriptive comparison of policy environments, not as a time-aligned policy
+panel or causal estimate.
+
 ## Website regression data
 
 After rebuilding the state-policy output, run

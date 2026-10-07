@@ -1,19 +1,24 @@
-"""Build Census--Mergent debt cross sections from the paper's July city data.
+'''
+Build Census-Mergent municipal debt cross sections for COG years.
 
-Use the preserved submission's 260716 city CUSIP dataset, existing issuance
-ratings and voting-law controls, and original NC yield-spread input. Bonds
-remain at original par from offering through contractual maturity; no
-redemption or BONDINFO balance adjustments enter this construction.
+For each target year, this script creates one row per matched Mergent issuer.
+It keeps Census of Governments debt and population measures for that year and
+adds Mergent bond-level debt outstanding as of December 31 of the same year.
 
-Keep two extensions to the submitted construction: county demographics are
-matched to the year before each cross section, and additional other-debt,
-lease/rent/loan, and tax-backed/non-tax revenue categories are reported.
-The July file's blank bond-type rows are retained as other debt; they do not
-enter the paper's GO/revenue totals or weighted averages.
+Mergent debt outstanding treats a bond as outstanding when:
+    offering_date <= December 31 of target year
+    maturity_date > December 31 of target year
 
-Outputs go to processed/no_refundings and diagnostics/no_refundings. Script
-2a separately constructs the refunding-inclusive, redemption-adjusted stock.
-"""
+Weighted-average yield spreads use amount outstanding as weights and exclude
+bonds with missing offering_yield_spread from the denominator.
+
+Weighted-average ratings use amount outstanding as weights after replacing a
+missing issuance-level rating with zero. The issuance-level measure is the
+maximum bond-level rating_num within an issuance. The script reconstructs it
+from the raw Moody's, S&P, and Fitch fields using the prior Stata rules.
+Unrated issuances therefore remain in both the numerator (with a zero
+contribution) and denominator.
+'''
 
 #%% -----------------------------------------------------------------------
 # set up
@@ -21,8 +26,13 @@ Outputs go to processed/no_refundings and diagnostics/no_refundings. Script
 import os
 from datetime import date
 from pathlib import Path
-import pandas as pd
+
 import polars as pl
+
+try:
+    import pandas as pd
+except ImportError:
+    pd = None
 
 
 root = Path(os.path.expanduser('~/Dropbox/Voting on Bonds'))
@@ -41,12 +51,6 @@ other_table_dir = Path(os.path.expanduser(
 out_dir.mkdir(parents=True, exist_ok=True)
 diag_dir.mkdir(parents=True, exist_ok=True)
 
-# Save the July-sample construction in its own output directories.
-build_out_dir = out_dir / 'no_refundings'
-build_diag_dir = diag_dir / 'no_refundings'
-build_out_dir.mkdir(parents=True, exist_ok=True)
-build_diag_dir.mkdir(parents=True, exist_ok=True)
-
 target_years = [2012, 2017]
 
 census_panel_file = out_dir / 'census_cog_city_debt_panel.csv'
@@ -54,22 +58,52 @@ county_nonmunicipal_file = out_dir / 'census_cog_county_nonmunicipal_debt_summar
 census_mergent_match_file = diag_dir / 'census_cog_2022_mergent_exact_matches.csv'
 border_file = border_dir / 'Border Matches All Mergent Data Expanded Set Buffer 100000.csv'
 
-# Use the exact city-bond source and NC spread input from the submitted script.
-# The July dataset already contains its sample screens and issuance ratings.
-bond_file = mergent_dir / '260716_city_cusiplevel_statereq_purpose_yieldspread.dta'
-county_demographics_file = data_dir / 'BEA' / 'countydemos_1999_2026.dta'
-yield_spread_file = clean_data_dir / 'Mergent' / 'Clean' / 'bond_level_off_yield_spread.csv'
-state_policy_file = data_dir / 'State Policies' / '20260929_state_policy_comparison.csv'
+# This is the primary Mergent source for every bond-level construction below.
+# It includes all bonds associated with the matched city issuers, including
+# valid issuer-name matches added in `newmatch`.
+bond_file = mergent_dir / '260917_city_cusiplevel_finsample_allbonds.dta'
+# The expanded file does not retain several static issuer controls. These
+# are read from the prior file as lookups; all bond classifications and
+# aggregations use the expanded file above.
+legacy_bond_file = mergent_dir / '260716_city_cusiplevel_statereq_purpose_yieldspread.dta'
+# Rebuilt from the expanded all-bonds file by
+# Python/Clean/Yield_Spreads/Compute Yield Spreads.py.
+yield_spread_file = clean_data_dir / 'Mergent' / 'Clean' / 'bond_level_off_yield_spread_allbonds.csv'
 
 high_state_tax_privilege_states = {
     'CA', 'OR', 'HI', 'VT', 'RI', 'MT', 'ME', 'NJ', 'MN', 'NC', 'ID', 'NY',
     'AR', 'SC', 'NE', 'OH', 'WV', 'NM', 'DE',
 }
 
+moody_rating_num = {
+    'Aaa': 16, 'Aa1': 15, 'Aa2': 14, 'Aa3': 13, 'A1': 12, 'A2': 11,
+    'A3': 10, 'Baa1': 9, 'Baa2': 8, 'Baa3': 7, 'Ba1': 6, 'Ba2': 5,
+    'Ba3': 4, 'WR': 1,
+}
+
+sp_rating_num = {
+    'AAA': 16, 'AA+': 15, 'AA': 14, 'AA-': 13, 'A+': 12, 'A': 11,
+    'A-': 10, 'BBB+': 9, 'BBB': 8, 'BBB-': 7, 'BB+': 6, 'BB': 5,
+    'BB-': 4, 'B+': 3, 'B': 2,
+}
+
+fitch_rating_num = {
+    'AAA': 16, 'AA+': 15, 'AA': 14, 'AA-': 13, 'A+': 12, 'A': 11,
+    'A-': 10, 'BBB+': 9, 'BBB': 8, 'BBB-': 7, 'BB+': 6, 'BB': 5,
+    'BB-': 4, 'B+': 3, 'B': 2, 'W': 1,
+}
+
+
 #%% -----------------------------------------------------------------------
 # helpers
 # -----------------------------------------------------------------------
+def require_pandas() -> None:
+    if pd is None:
+        raise ImportError('pandas is required to read the Mergent Stata files.')
+
+
 def read_stata_columns(path, columns):
+    require_pandas()
     return pl.from_pandas(pd.read_stata(path, columns=columns, convert_categoricals=False))
 
 
@@ -295,7 +329,6 @@ county_nonmunicipal = (
     ])
 )
 
-# join by state-county-name match
 census_county = (
     county_matches
     .join(
@@ -306,8 +339,6 @@ census_county = (
 )
 
 matched_census_keys = census_county.select(['year', 'gov_id']).unique()
-
-# for remaining, join by state-name match
 remaining_census = census_panel.join(
     matched_census_keys,
     on=['year', 'gov_id'],
@@ -377,41 +408,9 @@ census_cross_section = (
 
 
 #%% -----------------------------------------------------------------------
-# attach county demographics for the year before each Census cross section
-# -----------------------------------------------------------------------
-# Read BEA levels directly instead of taking demographics from an arbitrary
-# legacy bond row. The 2012 cross section uses 2011; 2017 uses 2016.
-county_demographics = (
-    read_stata_columns(county_demographics_file, ['fips', 'year', 'gdp', 'pop', 'pers_inc'])
-    .with_columns([
-        pl.col('fips').cast(pl.Utf8).str.replace(r'\.0$', '').str.zfill(5).alias('county_fips'),
-        pl.col('year').cast(pl.Int64).alias('demographic_year'),
-        (pl.col('year').cast(pl.Int64) + 1).alias('year'),
-    ])
-    .filter(pl.col('year').is_in(target_years))
-    .with_columns([
-        pl.when(pl.col(col) > 0)
-        .then(pl.col(col).log())
-        .otherwise(None)
-        .alias(f'ln_{col}')
-        for col in ['gdp', 'pop', 'pers_inc']
-    ])
-    .select(['county_fips', 'year', 'demographic_year', 'ln_gdp', 'ln_pop', 'ln_pers_inc'])
-)
-
-# Match on the Census cross section's county and year. Unmatched or nonpositive
-# BEA values stay missing; do not substitute another year or a legacy value.
-# Census municipal population remains the separate, contemporaneous measure.
-census_cross_section = (
-    census_cross_section
-    .join(county_demographics, on=['county_fips', 'year'], how='left', validate='m:1')
-)
-
-
-#%% -----------------------------------------------------------------------
 # load Mergent bond-level data, controls, and outstanding debt measures
 # -----------------------------------------------------------------------
-print('Loading July city Mergent bond-level file...')
+print('Loading expanded Mergent bond-level file...')
 bond_cols = [
     'cusip',
     'issue_id',
@@ -419,37 +418,90 @@ bond_cols = [
     'seed_issuer',
     'state',
     'fips',
-    'state_name',
     'offering_date',
     'maturity_date',
     'amount',
     'bond_type',
     'security_code',
-    'source_of_repayment',
     'temp_salestax',
     'temp_excisetax',
+    'source_of_repayment',
     'go_unlim',
     'go_lim',
     'rev',
     'insured',
     'callable',
     'sinkable',
-    'rating_issue_max',
+    'rated',
+    'rating_f',
+    'rating_m',
+    'rating_s',
     'city_go_vote',
     'city_rev_vote',
+]
+
+raw_bonds = read_stata_columns(bond_file, bond_cols)
+
+# Preserve the six issuance-level classification corrections applied in the
+# legacy Stata build (260716_mergent_updatestatelaw_strictrevbond.do). Mergent
+# reports varying security codes within these issuances, so the corrections
+# must be made before any GO/revenue or UTGO/LTGO aggregation.
+issue_id = pl.col('issue_id').cast(pl.Int64, strict=False)
+raw_bonds = raw_bonds.with_columns([
+    pl.when(issue_id.is_in([766088, 1223949, 642811, 640435]))
+    .then(pl.lit(1))
+    .when(issue_id.is_in([34328, 572223]))
+    .then(pl.lit(0))
+    .otherwise(pl.col('go_unlim'))
+    .alias('go_unlim'),
+    pl.when(issue_id.is_in([34328, 572223]))
+    .then(pl.lit(1))
+    .when(issue_id.is_in([766088, 642811, 640435]))
+    .then(pl.lit(0))
+    .otherwise(pl.col('go_lim'))
+    .alias('go_lim'),
+    pl.when(issue_id.eq(1223949))
+    .then(pl.lit(0))
+    .otherwise(pl.col('rev'))
+    .alias('rev'),
+    pl.when(issue_id.eq(1223949))
+    .then(pl.lit('go'))
+    .otherwise(pl.col('bond_type'))
+    .alias('bond_type'),
+])
+
+# Preserve static issuer controls from the legacy file while the expanded
+# file supplies every bond-level classification and characteristic.
+legacy_control_cols = [
+    'seed_issuer_id',
+    'seed_issuer',
+    'state',
+    'fips',
+    'state_name',
     'nh_city',
     'state_go_vote',
     'state_utgo_allowed',
     'state_ltgo_allowed',
+    'ln_gdp',
+    'ln_pop',
+    'ln_pers_inc',
     'glm_proactive',
 ]
 
-# Sample restrictions, GO/revenue classifications, ratings, and issuer controls
-# are already in this source. Do not reapply the expanded-file screens or
-# reconstruct ratings from raw agency fields.
-raw_bonds = read_stata_columns(bond_file, bond_cols)
+print('Loading legacy issuer-control lookup...')
+legacy_controls = (
+    read_stata_columns(legacy_bond_file, legacy_control_cols)
+    .pipe(normalize_id_columns)
+    .group_by('issuer_key')
+    .agg([
+        first_non_null_expr(col)
+        for col in legacy_control_cols
+        if col not in {'seed_issuer_id', 'seed_issuer', 'state', 'fips'}
+    ])
+)
 
-# Match the submitted script's NC spread series using issue ID and CUSIP.
+# The NC spread is rebuilt for the expanded all-bonds universe by
+# Python/Clean/Yield_Spreads/Compute Yield Spreads.py.
 nc_spreads = (
     pl.read_csv(yield_spread_file, infer_schema_length=10000)
     .select([
@@ -467,6 +519,7 @@ raw_bonds = (
         pl.col('issue_id').cast(pl.Int64),
         pl.col('cusip').cast(pl.Utf8),
     ])
+    .join(legacy_controls, on='issuer_key', how='left')
     .join(nc_spreads, on=['issue_id', 'cusip'], how='left')
     .with_columns(
         pl.col('offering_yield_spread_nc').alias('offering_yield_spread')
@@ -485,6 +538,9 @@ issuer_control_cols = [
     'state_go_vote',
     'state_utgo_allowed',
     'state_ltgo_allowed',
+    'ln_gdp',
+    'ln_pop',
+    'ln_pers_inc',
     'glm_proactive',
 ]
 
@@ -534,30 +590,53 @@ issuers = (
     ])
 )
 
-# Preserve the submitted GO/revenue universe and keep otherwise unclassified
-# July-file bonds for the additional debt categories. In this source, those
-# rows have a blank bond_type and no GO/revenue flag; classify them as other.
 bonds = (
     raw_bonds
     .pipe(normalize_id_columns)
     .with_columns([
         pl.col('issue_id').cast(pl.Int64, strict=False),
         pl.col('amount').cast(pl.Float64),
-        pl.col('rating_issue_max').cast(pl.Float64).fill_null(0),
         pl.col('offering_yield_spread').cast(pl.Float64),
         pl.col('offering_yield_spread_nc').cast(pl.Float64),
         pl.col('security_code').cast(pl.Utf8),
-        pl.col('bond_type').cast(pl.Utf8).fill_null('').str.strip_chars()
-        .replace('', 'other').alias('bond_type'),
+        pl.col('bond_type').cast(pl.Utf8),
         pl.col('go_unlim').fill_null(0).cast(pl.Int8, strict=False),
         pl.col('go_lim').fill_null(0).cast(pl.Int8, strict=False),
-        pl.col('rev').fill_null(0).cast(pl.Int8, strict=False),
+        pl.col('rated').fill_null(0).cast(pl.Int8, strict=False),
         pl.col('insured').fill_null(0).cast(pl.Int8, strict=False),
         pl.col('callable').fill_null(0).cast(pl.Int8, strict=False),
         pl.col('sinkable').fill_null(0).cast(pl.Int8, strict=False),
+        pl.col('rating_f').cast(pl.Utf8).str.strip_chars(),
+        pl.col('rating_m').cast(pl.Utf8).str.strip_chars(),
+        pl.col('rating_s').cast(pl.Utf8).str.strip_chars(),
         pl.col('offering_date').cast(pl.Date),
         pl.col('maturity_date').cast(pl.Date),
     ])
+    # The historical Stata rating construction found Moody's and S&P stored
+    # in the opposite raw fields, so preserve that correction here.
+    .with_columns([
+        pl.col('rating_s').alias('rating_m'),
+        pl.col('rating_m').alias('rating_s'),
+    ])
+    .with_columns(
+        pl.when(pl.col('rating_m').eq('#Aaa'))
+        .then(pl.lit('Aaa'))
+        .otherwise(pl.col('rating_m'))
+        .alias('rating_m')
+    )
+    .with_columns(
+        pl.coalesce([
+            pl.col('rating_m').replace_strict(moody_rating_num, default=None),
+            pl.col('rating_s').replace_strict(sp_rating_num, default=None),
+            pl.col('rating_f').replace_strict(fitch_rating_num, default=None),
+        ]).cast(pl.Float64).alias('rating_num')
+    )
+    .with_columns(
+        pl.when(pl.col('rated').eq(0))
+        .then(pl.lit(0.0))
+        .otherwise(pl.col('rating_num'))
+        .alias('rating_num')
+    )
     .filter(
         pl.col('seed_issuer_id').is_not_null()
         & pl.col('amount').is_not_null()
@@ -566,13 +645,13 @@ bonds = (
         & pl.col('maturity_date').is_not_null()
     )
     .with_columns([
-        (pl.col('go_unlim').eq(1) | pl.col('go_lim').eq(1)).alias('all_go'),
-        pl.col('go_unlim').eq(1).alias('utgo'),
-        pl.col('go_lim').eq(1).alias('ltgo'),
-        pl.col('rev').eq(1).alias('revenue'),
+        pl.col('bond_type').eq('go').alias('all_go'),
+        (pl.col('bond_type').eq('go') & pl.col('go_unlim').eq(1)).alias('utgo'),
+        (pl.col('bond_type').eq('go') & pl.col('go_lim').eq(1)).alias('ltgo'),
+        pl.col('bond_type').eq('rev').alias('revenue'),
         (
             pl.col('security_code').is_in(['C', 'N'])
-            & ~(pl.col('go_unlim').eq(1) | pl.col('go_lim').eq(1))
+            & ~pl.col('bond_type').eq('go')
         ).alias('lease_rent_loan_agreement'),
     ])
 )
@@ -635,7 +714,7 @@ security_code_labels = {
     'Q': 'Special tax', 'R': 'Mortgage loan',
 }
 
-# Labels describe the security codes retained in the July city dataset.
+# Labels follow the security-code tabulations in the expanded Stata build.
 # temp_salestax is the existing description flag (contains SALE and TAX).
 other_bonds = (
     bonds
@@ -691,33 +770,50 @@ other_table_lines.extend([
     r'\endgroup',
 ])
 other_table_dir.mkdir(parents=True, exist_ok=True)
-other_table_path = other_table_dir / 'mergent_newmoney_other_bonds_security_summary.tex'
-try:
-    other_table_path.write_text('\n'.join(other_table_lines) + '\n')
-    print(f'Wrote other-bond composition table to {other_table_path}')
-except PermissionError:
-    # The linked Overleaf directory is outside the project workspace in some
-    # environments.  It is an auxiliary table only, so do not prevent the
-    # reproducible cross-section data build from completing when unavailable.
-    print(f'Skipped auxiliary other-bond table (no permission): {other_table_path}')
+other_table_path = other_table_dir / 'mergent_other_bonds_security_summary.tex'
+other_table_path.write_text('\n'.join(other_table_lines) + '\n')
+print(f'Wrote other-bond composition table to {other_table_path}')
 
+
+rating_issues = (
+    bonds
+    .group_by('issue_id')
+    .agg([
+        pl.col('rating_num').max().alias('rating_issue_max_raw'),
+        pl.col('insured').max().alias('insured_issue'),
+    ])
+    .with_columns([
+        (
+            pl.col('rating_issue_max_raw').eq(0)
+            & pl.col('insured_issue').eq(0)
+        ).cast(pl.Int8).alias('issue_unrated'),
+        pl.when(
+            pl.col('rating_issue_max_raw').eq(0)
+            & pl.col('insured_issue').eq(1)
+        )
+        .then(pl.lit(16.0))
+        .when(pl.col('rating_issue_max_raw').eq(0))
+        .then(pl.lit(None).cast(pl.Float64))
+        .otherwise(pl.col('rating_issue_max_raw'))
+        .alias('rating_issue_max'),
+    ])
+    .select(['issue_id', 'issue_unrated', 'rating_issue_max'])
+)
+
+bonds = bonds.join(rating_issues, on='issue_id', how='left')
 
 mergent_years = []
 
 for year in target_years:
     as_of = date(year, 12, 31)
-    print(f'Computing July-sample original-par debt as of 12/31/{year}...')
+    print(f'Computing Mergent outstanding debt as of 12/31/{year}...')
 
-    eligible_bonds = bonds.filter(
-        (pl.col('offering_date') <= as_of)
-        & (pl.col('maturity_date') > as_of)
-    )
-
-    # Use the submitted offering/maturity screen with original par amounts.
-    # The July source already supplies the paper sample; no new-money screen
-    # is added here, and no redemption or reported-balance reductions apply.
     outstanding = (
-        eligible_bonds
+        bonds
+        .filter(
+            (pl.col('offering_date') <= as_of)
+            & (pl.col('maturity_date') > as_of)
+        )
         .with_columns(
             (
                 (pl.col('maturity_date') - pl.col('offering_date'))
@@ -782,8 +878,6 @@ for year in target_years:
                 lease_rent_loan_agreement,
                 'mergent_lease_rent_loan_agreement_bonds_outstanding',
             ),
-            # Include other bonds in the original-par-weighted all-bond spread.
-            weighted_spread_expr(all_bonds, 'mergent_wavg_yield_spread_all'),
             weighted_spread_expr(any_go_or_revenue, 'mergent_wavg_yield_spread_go_revenue'),
             weighted_spread_expr(revenue, 'mergent_wavg_yield_spread_revenue'),
             weighted_spread_expr(all_go, 'mergent_wavg_yield_spread_all_go'),
@@ -791,12 +885,6 @@ for year in target_years:
             weighted_spread_expr(ltgo, 'mergent_wavg_yield_spread_ltgo'),
             weighted_spread_expr(other, 'mergent_wavg_yield_spread_other'),
             weighted_spread_expr(lease_rent_loan_agreement, 'mergent_wavg_yield_spread_lease_rent_loan_agreement'),
-            # Match the all-bond yield spread with all-bond characteristics.
-            weighted_average_expr(
-                all_bonds,
-                'original_maturity_years',
-                'mergent_wavg_original_maturity_years_all',
-            ),
             weighted_average_expr(
                 any_go_or_revenue,
                 'original_maturity_years',
@@ -831,11 +919,6 @@ for year in target_years:
                 lease_rent_loan_agreement,
                 'original_maturity_years',
                 'mergent_wavg_original_maturity_years_lease_rent_loan_agreement',
-            ),
-            weighted_average_zero_missing_expr(
-                all_bonds,
-                'rating_issue_max',
-                'mergent_wavg_rating_all_zero_unrated',
             ),
             weighted_average_zero_missing_expr(
                 any_go_or_revenue,
@@ -880,7 +963,6 @@ for year in target_years:
                 )
                 for feature in ['insured', 'callable', 'sinkable']
                 for mask, suffix in [
-                    (all_bonds, 'all'),
                     (any_go_or_revenue, 'go_revenue'),
                     (all_go, 'all_go'),
                     (utgo, 'utgo'),
@@ -901,7 +983,7 @@ for year in target_years:
             .alias(f'mergent_none_{feature}_{suffix}')
             for feature in ['insured', 'callable', 'sinkable']
             for suffix in [
-                'all', 'go_revenue', 'all_go', 'utgo', 'ltgo', 'revenue',
+                'go_revenue', 'all_go', 'utgo', 'ltgo', 'revenue',
                 'other', 'lease_rent_loan_agreement',
             ]
         ])
@@ -912,7 +994,7 @@ for year in target_years:
             .alias(f'mergent_any_{feature}_{suffix}')
             for feature in ['insured', 'callable', 'sinkable']
             for suffix in [
-                'all', 'go_revenue', 'all_go', 'utgo', 'ltgo', 'revenue',
+                'go_revenue', 'all_go', 'utgo', 'ltgo', 'revenue',
                 'other', 'lease_rent_loan_agreement',
             ]
         ])
@@ -948,49 +1030,16 @@ mergent_outstanding = mergent_outstanding.with_columns([
 #%% -----------------------------------------------------------------------
 # merge and save full and border samples
 # -----------------------------------------------------------------------
-print('Merging Census, Mergent outstanding debt, controls, and state policies...')
+print('Merging Census, Mergent outstanding debt, and controls...')
 full_panel = (
     census_cross_section
     .join(issuers, on='issuer_key', how='left', suffix='_issuer')
     .join(mergent_outstanding, on=['issuer_key', 'year'], how='left')
 )
 
-# The state-policy build has one observation per two-letter state code and
-# retains both display-ready indicators and the source-level policy fields.
-# Drop only its duplicate state-name label; the cross section already carries
-# its canonical state_name field.  Keeping the rest makes every policy
-# variable available in both the full and border cross sections.
-state_policy = (
-    pl.read_csv(state_policy_file, infer_schema_length=10000)
-    .with_columns(pl.col('state_abbr').cast(pl.Utf8).str.to_uppercase())
-    .drop('state_name')
-    .rename({'state_abbr': 'state'})
-)
-if state_policy.height != 50 or state_policy.select(pl.col('state').n_unique()).item() != 50:
-    raise ValueError('State-policy file must contain one row for each of the 50 states.')
-
-state_policy_cols = [column for column in state_policy.columns if column != 'state']
-policy_collisions = set(state_policy_cols).intersection(full_panel.columns)
-if policy_collisions:
-    raise ValueError(f'State-policy columns already exist in cross section: {sorted(policy_collisions)}')
-
-full_panel = full_panel.join(state_policy, on='state', how='left', validate='m:1')
-if full_panel.select(pl.col('state_policy_build_date').is_null().any()).item():
-    missing_policy_states = (
-        full_panel
-        .filter(pl.col('state_policy_build_date').is_null())
-        .select('state')
-        .unique()
-        .sort('state')
-        .to_series()
-        .to_list()
-    )
-    raise ValueError(f'Missing state-policy match for states: {missing_policy_states}')
-
 for col in mergent_amount_cols:
     full_panel = full_panel.with_columns(pl.col(col).fill_null(0))
     full_panel = full_panel.with_columns(pl.col(col.replace('_debt', '_debt_mil')).fill_null(0))
-
 
 # Census total debt not represented by the issuer's outstanding Mergent bonds.
 # Both input measures are in millions of dollars.
@@ -1001,7 +1050,7 @@ full_panel = full_panel.with_columns(
     ).alias('total_nonmergent_census_debt_mil')
 )
 
-# Debt-composition shares for the July-sample original-par construction. The
+# Debt-composition shares used in the point-in-time debt-choice analysis. The
 # original shares partition the paper's GO + strict-revenue measure. The `_wrl`
 # versions add lease/rent and loan-agreement debt to the denominator and include
 # its corresponding share. The `_all` versions use total Mergent debt,
@@ -1192,7 +1241,6 @@ ordered_cols_base = [
     'state_go_vote',
     'state_utgo_allowed',
     'state_ltgo_allowed',
-    'demographic_year',
     'ln_gdp',
     'ln_pop',
     'ln_pers_inc',
@@ -1263,14 +1311,14 @@ ordered_cols_base = [
         f'mergent_wavg_{feature}_{suffix}'
         for feature in ['yield_spread', 'original_maturity_years']
         for suffix in [
-            'all', 'go_revenue', 'all_go', 'utgo', 'ltgo', 'revenue',
+            'go_revenue', 'all_go', 'utgo', 'ltgo', 'revenue',
             'other', 'lease_rent_loan_agreement',
         ]
     ],
     *[
         f'mergent_wavg_rating_{suffix}_zero_unrated'
         for suffix in [
-            'all', 'go_revenue', 'all_go', 'utgo', 'ltgo', 'revenue',
+            'go_revenue', 'all_go', 'utgo', 'ltgo', 'revenue',
             'other', 'lease_rent_loan_agreement',
         ]
     ],
@@ -1278,7 +1326,7 @@ ordered_cols_base = [
         f'mergent_wavg_{feature}_{suffix}'
         for feature in ['insured', 'callable', 'sinkable']
         for suffix in [
-            'all', 'go_revenue', 'all_go', 'utgo', 'ltgo', 'revenue',
+            'go_revenue', 'all_go', 'utgo', 'ltgo', 'revenue',
             'other', 'lease_rent_loan_agreement',
         ]
     ],
@@ -1286,7 +1334,7 @@ ordered_cols_base = [
         f'mergent_none_{feature}_{suffix}'
         for feature in ['insured', 'callable', 'sinkable']
         for suffix in [
-            'all', 'go_revenue', 'all_go', 'utgo', 'ltgo', 'revenue',
+            'go_revenue', 'all_go', 'utgo', 'ltgo', 'revenue',
             'other', 'lease_rent_loan_agreement',
         ]
     ],
@@ -1294,7 +1342,7 @@ ordered_cols_base = [
         f'mergent_any_{feature}_{suffix}'
         for feature in ['insured', 'callable', 'sinkable']
         for suffix in [
-            'all', 'go_revenue', 'all_go', 'utgo', 'ltgo', 'revenue',
+            'go_revenue', 'all_go', 'utgo', 'ltgo', 'revenue',
             'other', 'lease_rent_loan_agreement',
         ]
     ],
@@ -1302,7 +1350,6 @@ ordered_cols_base = [
     'border_group_count',
     'border_group',
     'border_category',
-    *state_policy_cols,
 ]
 
 ordered_cols = [col for col in ordered_cols_base if col in full_panel.columns]
@@ -1312,12 +1359,11 @@ for year in target_years:
     full_out = full_panel.filter(pl.col('year').eq(year)).select(ordered_cols)
     border_out = border_panel.filter(pl.col('year').eq(year)).select(border_ordered_cols)
 
-    full_path = build_out_dir / f'census_mergent_debt_cross_section_{year}.csv'
-    border_path = build_out_dir / f'census_mergent_debt_cross_section_{year}_border_sample.csv'
+    full_path = out_dir / f'census_mergent_debt_cross_section_{year}.csv'
+    border_path = out_dir / f'census_mergent_debt_cross_section_{year}_border_sample.csv'
 
     full_out.write_csv(full_path)
     border_out.write_csv(border_path)
-
 
     print(f'Wrote {full_path}: {full_out.height:,} rows')
     print(f'Wrote {border_path}: {border_out.height:,} rows')
@@ -1343,7 +1389,5 @@ diagnostics = (
     .sort('year')
 )
 
-diagnostics.write_csv(build_diag_dir / 'census_mergent_debt_cross_section_diagnostics.csv')
+diagnostics.write_csv(diag_dir / 'census_mergent_debt_cross_section_diagnostics.csv')
 print(diagnostics)
-
-# %%

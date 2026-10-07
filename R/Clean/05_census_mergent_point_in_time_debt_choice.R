@@ -16,7 +16,6 @@ tbl_dir <- Sys.getenv(
   "RESULTS_DIR",
   unset = "/Users/kmunevar/Dropbox/Voting on Bonds/Code/R/Clean/output/revision_tables"
 )
-tbl_dir <- file.path(tbl_dir, "additional_controls")
 dir.create(tbl_dir, recursive = TRUE, showWarnings = FALSE)
 # Save tables that include other bonds in their own subfolder.
 tbl_dir_other <- file.path(tbl_dir, "with_other")
