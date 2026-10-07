@@ -7,7 +7,7 @@ rm(list = ls())
 library(pacman)
 p_load(data.table, DescTools, arrow, fixest, haven, xtable)
 
-source('/Users/kmunevar/Dropbox/Voting on Bonds/Code/R/Clean/00_modify_etable_rounding.R')
+source("/Users/kmunevar/Dropbox/Voting on Bonds/Code/R/Clean/00_modify_etable_rounding.R")
 
 tbl_dir <- Sys.getenv(
   "RESULTS_DIR",
@@ -32,8 +32,8 @@ issuance_lvl <- fread(Sys.getenv(
   unset = "/Users/kmunevar/Dropbox/Voting on Bonds/Data/Clean_Intermediate/DPC Data/News/dpc_media_regression_data.csv"
 ))
 
-issuance_lvl[, city_rev_vote := fifelse(state == 'MO', 1, city_rev_vote)]
-issuance_lvl[, city_go_vote := fifelse(state == 'RI', NA_real_, city_go_vote)]
+issuance_lvl[, city_rev_vote := fifelse(state == "MO", 1, city_rev_vote)]
+issuance_lvl[, city_go_vote := fifelse(state == "RI", NA_real_, city_go_vote)]
 issuance_lvl <- issuance_lvl[!is.na(city_go_vote)]
 issuance_lvl <- issuance_lvl[!is.na(ln_employment)]
 
@@ -65,15 +65,15 @@ dpc_base_sample[, dpc_total_articles_12_0_win := Winsorize(
 )]
 
 model_vars <- c(
-  'dpc_total_articles_12_0_win',
-  'city_go_vote',
-  'bond_prior_12',
-  'ln_amount',
-  'ln_gdp',
-  'ln_pop',
-  'ln_pers_inc',
-  'issuance_year_month_id',
-  'purp_broad'
+  "dpc_total_articles_12_0_win",
+  "city_go_vote",
+  "bond_prior_12",
+  "ln_amount",
+  "ln_gdp",
+  "ln_pop",
+  "ln_pers_inc",
+  "issuance_year_month_id",
+  "purp_broad"
 )
 
 # Use a common full-control regression sample for Panels A and B so the
@@ -133,15 +133,15 @@ desc_col <- desc[, lapply(.SD, function(col) {
 desc_col <- transpose(desc_col, keep.names = "Variable")
 colnames(desc_col) <- c("Variable", "Mean", "Std", "Min", "P1", "Median", "P99", "Max", "N")
 
-desc_col[, Variable := 'Total Articles (DPC) - 12mo']
-desc_col[, Mean := sprintf('%.2f', as.numeric(Mean))]
-desc_col[, Std := sprintf('%.2f', as.numeric(Std))]
-desc_col[, Min := sprintf('%.2f', as.numeric(Min))]
-desc_col[, P1 := sprintf('%.2f', as.numeric(P1))]
-desc_col[, Median := sprintf('%.2f', as.numeric(Median))]
-desc_col[, P99 := sprintf('%.2f', as.numeric(P99))]
-desc_col[, Max := sprintf('%.2f', as.numeric(Max))]
-desc_col[, N := format(as.integer(N), big.mark = ',')]
+desc_col[, Variable := "Total Articles (DPC) - 12mo"]
+desc_col[, Mean := sprintf("%.2f", as.numeric(Mean))]
+desc_col[, Std := sprintf("%.2f", as.numeric(Std))]
+desc_col[, Min := sprintf("%.2f", as.numeric(Min))]
+desc_col[, P1 := sprintf("%.2f", as.numeric(P1))]
+desc_col[, Median := sprintf("%.2f", as.numeric(Median))]
+desc_col[, P99 := sprintf("%.2f", as.numeric(P99))]
+desc_col[, Max := sprintf("%.2f", as.numeric(Max))]
+desc_col[, N := format(as.integer(N), big.mark = ",")]
 
 latex_table <- xtable(desc_col)
 
@@ -181,7 +181,7 @@ for (i in seq_along(panel_a)) {
   }
 }
 
-panel_a <- add_panel(panel_a, 'Panel A: Descriptive statistics', ncols = 9)
+panel_a <- add_panel(panel_a, "Panel A: Descriptive statistics", ncols = 9)
 
 
 # ===============================================================================
@@ -196,33 +196,33 @@ total_article_pval <- total_article_ttest$p.value
 total_article_tstat <- as.numeric(total_article_ttest$statistic)
 
 total_article_stars <- if (total_article_pval < 0.01) {
-  '***'
+  "***"
 } else if (total_article_pval < 0.05) {
-  '**'
+  "**"
 } else if (total_article_pval < 0.1) {
-  '*'
+  "*"
 } else {
-  ''
+  ""
 }
 
 total_article_diff <- mean(total_article_1, na.rm = TRUE) - mean(total_article_0, na.rm = TRUE)
 
 diff_tbl <- data.table(
-  Variable = 'Total Articles (DPC) - 12mo',
-  `Mean (Vote = 0)` = sprintf('%.2f', mean(total_article_0, na.rm = TRUE)),
-  `Mean (Vote = 1)` = sprintf('%.2f', mean(total_article_1, na.rm = TRUE)),
+  Variable = "Total Articles (DPC) - 12mo",
+  `Mean (Vote = 0)` = sprintf("%.2f", mean(total_article_0, na.rm = TRUE)),
+  `Mean (Vote = 1)` = sprintf("%.2f", mean(total_article_1, na.rm = TRUE)),
   Difference =
     paste0(
-      sprintf('%.2f', total_article_diff),
+      sprintf("%.2f", total_article_diff),
       total_article_stars,
-      ' (',
-      sprintf('%.2f', abs(total_article_tstat)),
-      ')'
+      " (",
+      sprintf("%.2f", abs(total_article_tstat)),
+      ")"
     )
 )
 
 latex_table <- xtable(diff_tbl)
-align(latex_table) <- c('l', 'l', 'c', 'c', 'c')
+align(latex_table) <- c("l", "l", "c", "c", "c")
 
 panel_b <- capture.output(
   print(
@@ -260,7 +260,7 @@ for (i in seq_along(panel_b)) {
   }
 }
 
-panel_b <- add_panel(panel_b, 'Panel B: Mean values by vote requirement', ncols = 4)
+panel_b <- add_panel(panel_b, "Panel B: Mean values by vote requirement", ncols = 4)
 
 
 # ===============================================================================
@@ -270,26 +270,26 @@ panel_b <- add_panel(panel_b, 'Panel B: Mean values by vote requirement', ncols 
 table_call <- etable(
   r1, r2,
   headers = list("Total Articles (DPC) - 12mo" = 2),
-  coefstat = 'tstat',
-  style.tex = style.tex(main = 'aer', fixef.suffix = ' FE', yesNo = c("Yes", "No")),
-  fitstat = c('n', 'pr2'),
+  coefstat = "tstat",
+  style.tex = style.tex(main = "aer", fixef.suffix = " FE", yesNo = c("Yes", "No")),
+  fitstat = c("n", "pr2"),
   se.below = TRUE,
   digits = 3,
   digits.stats = 3,
   signif.code = c("***" = 0.01, "**" = 0.05, "*" = 0.10),
   tex = TRUE,
   dict = c(
-    dpc_total_articles_12_0_win = 'Total Articles (DPC) - 12mo',
-    city_go_vote = 'Vote',
-    bond_prior_12 = 'Bond Issuance - 12mo',
-    ln_amount = 'Amount',
-    ln_gdp = 'County ln(GDP)',
-    ln_pop = 'County ln(Pop)',
-    ln_pers_inc = 'County ln(Pers. Inc)',
-    purp_broad = 'Purpose',
-    issuance_year_month_id = 'Year-Month'
+    dpc_total_articles_12_0_win = "Total Articles (DPC) - 12mo",
+    city_go_vote = "Vote",
+    bond_prior_12 = "Bond Issuance - 12mo",
+    ln_amount = "Amount",
+    ln_gdp = "County ln(GDP)",
+    ln_pop = "County ln(Pop)",
+    ln_pers_inc = "County ln(Pers. Inc)",
+    purp_broad = "Purpose",
+    issuance_year_month_id = "Year-Month"
   ),
-  placement = 'H',
+  placement = "H",
   replace = TRUE
 )
 
@@ -304,22 +304,22 @@ panel_c <- panel_c[!grepl(
   "^[[:space:]]*Total Articles \\(DPC\\) - 12mo[[:space:]]*&[[:space:]]*\\\\multicolumn\\{2\\}\\{c\\}\\{2\\}",
   panel_c
 )]
-panel_c <- add_panel(panel_c, 'Panel C: Regression analyses', ncols = 3)
+panel_c <- add_panel(panel_c, "Panel C: Regression analyses", ncols = 3)
 
 
 # ===============================================================================
 # Save table
 # ===============================================================================
 
-output_file <- paste0(tbl_dir, '/media_coverage_dpc.tex')
+output_file <- paste0(tbl_dir, "/media_coverage_dpc.tex")
 writeLines(
   c(
     panel_a,
-    '',
-    '\\vspace{-0.75em}',
+    "",
+    "\\vspace{-0.75em}",
     panel_b,
-    '',
-    '\\vspace{-0.75em}',
+    "",
+    "\\vspace{-0.75em}",
     panel_c
   ),
   output_file

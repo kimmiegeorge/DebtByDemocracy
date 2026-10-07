@@ -5,12 +5,14 @@
 # Analyses:
 #   1a. Website disclosure: omit one of the 14 state-border pairs at a time.
 #   1b. Website disclosure: omit all pairs linked to one control state at a time.
-#   2. Media coverage (full sample): omit one control state at a time.
-#   3. Secondary-market retail trading (full sample): omit one control state.
-#   4. Fraction UTGO (2017 point-in-time, combined treatment sample): omit one
-#      control state at a time.
-#   5. Total weighted-average yield spread (2017 point-in-time, full sample):
-#      omit one control state at a time.
+#   2. Media coverage: full-sample control-state LOO plus border-pair and
+#      border-control-state LOO.
+#   3. Secondary-market retail trading: full-sample control-state LOO plus
+#      border-pair and border-control-state LOO.
+#   4. Fraction UTGO: full-sample control-state LOO plus border-pair and
+#      border-control-state LOO.
+#   5. Total weighted-average yield spread: full-sample control-state LOO plus
+#      border-pair and border-control-state LOO.
 #
 # The script mirrors the controlled specifications in the production scripts.
 # It writes the response-ready summary table. Only the Vote coefficient is
@@ -82,6 +84,43 @@ assert_control_states <- function(data, analysis_label) {
     )
   }
   invisible(TRUE)
+}
+
+# Assign the canonical no-referendum state to each border pair.  State LOO in
+# a border design removes every pair linked to that state (e.g., all Tennessee
+# pairs), while pair LOO removes one pair at a time.
+add_border_control_state <- function(
+  data,
+  group_column = 'group',
+  inclusion_column = 'include_in_paper'
+) {
+  pair_controls <- copy(border_pair_config[get(inclusion_column) == 1L])
+  pair_controls[, control_state := fifelse(
+    state1 %chin% control_states, state1,
+    fifelse(state2 %chin% control_states, state2, NA_character_)
+  )]
+  pair_controls[, n_control_states :=
+    as.integer(state1 %chin% control_states) + as.integer(state2 %chin% control_states)]
+  if (pair_controls[n_control_states != 1L, .N] > 0L) {
+    stop('Each included border pair must contain exactly one canonical control state.')
+  }
+
+  output <- copy(data)
+  output[, control_state := pair_controls$control_state[
+    match(as.character(get(group_column)), pair_controls$group)
+  ]]
+  if (output[is.na(control_state), .N] > 0L) {
+    stop('Some border observations could not be assigned to a control state.')
+  }
+  output
+}
+
+included_border_control_states <- function(inclusion_column = 'include_in_paper') {
+  pair_controls <- add_border_control_state(
+    border_pair_config[get(inclusion_column) == 1L, .(group)],
+    inclusion_column = inclusion_column
+  )
+  control_states[control_states %chin% unique(pair_controls$control_state)]
 }
 
 extract_vote_result <- function(
@@ -269,10 +308,10 @@ write_summary_table <- function(summary, raw_output_file, processed_output_file)
 
   note_text <- paste0(
     'This table summarizes the coefficient on \\textit{Vote} from the controlled ',
-    'specification for each outcome. The website analyses separately omit one ',
-    'state-border pair and all pairs linked to one represented control state at ',
-    'a time; all other analyses omit one of the seven full-sample control states ',
-    'at a time. LOO range is the minimum and maximum coefficient across omissions. ',
+    'specification for each outcome. Full-sample rows separately omit one of the ',
+    'seven control states. Border rows separately omit one state-border pair and ',
+    'all pairs linked to one represented control state at a time. LOO range is the ',
+    'minimum and maximum coefficient across omissions. ',
     'Same sign and significance columns report the number of omissions satisfying ',
     'each criterion. Max. $p$-value is the largest p-value across the leave-one-out ',
     'estimates. Standard errors retain the clustering used in the main tables. ',
@@ -500,10 +539,68 @@ media_results <- run_leave_one_out(
   omit_column = 'state',
   omit_labels = control_state_labels,
   fit_model = fit_media,
-  analysis = 'Media coverage',
+  analysis = 'Media coverage: full sample',
   outcome = 'total_articles_12_0_win',
   outcome_short = 'Total Articles - 12mo',
   omission_type = 'Control state'
+)
+
+media_border <- fread(file.path(
+  root, 'Data', 'Clean_Intermediate', 'Border States',
+  'Border Matches RP Issuance Lvl Expanded Set Buffer 100000.csv'
+))
+media_border[state == 'MO', city_rev_vote := 1]
+media_border[state == 'RI', city_go_vote := NA_real_]
+media_border <- media_border[!is.na(city_go_vote) & !is.na(ln_employment)]
+setorder(media_border, seed_issuer_id, issuance_year_month_id)
+media_border[, lag_issuance_ym_id := shift(issuance_year_month_id, 1L),
+  by = seed_issuer_id]
+media_border[, issuance_gap := issuance_year_month_id - lag_issuance_ym_id]
+media_border[, bond_prior_12 := as.integer(
+  !is.na(issuance_gap) & issuance_gap <= 12
+)]
+media_border[, log_sources := log1p(unique_sources_12)]
+media_border[, total_articles_12_0_win := DescTools::Winsorize(
+  total_rp_articles_12_0, val = media_caps
+)]
+media_border <- filter_paper_border_pairs(media_border)
+media_border <- add_border_control_state(media_border)
+media_border[, state_year := interaction(state, year, drop = TRUE)]
+media_border <- media_border[
+  go_unlim_bond_issuance == 1 & rolling_sum_monthly_article_count_12 > 0
+]
+media_border_control_states <- included_border_control_states()
+
+fit_media_border <- function(model_data) {
+  fepois(
+    total_articles_12_0_win ~ city_go_vote + bond_prior_12 + log_sources +
+      ln_amount + ln_gdp + ln_pop + ln_pers_inc |
+      issuance_year_month_id + group + purp_broad,
+    data = model_data,
+    vcov = vcov_cluster(~state_year)
+  )
+}
+media_border_pair_results <- run_leave_one_out(
+  data = media_border,
+  omit_units = paper_border_pairs,
+  omit_column = 'group',
+  omit_labels = website_pair_labels,
+  fit_model = fit_media_border,
+  analysis = 'Media coverage - Border: pair LOO',
+  outcome = 'total_articles_12_0_win',
+  outcome_short = 'Total Articles - 12mo',
+  omission_type = 'State-border pair'
+)
+media_border_state_results <- run_leave_one_out(
+  data = media_border,
+  omit_units = media_border_control_states,
+  omit_column = 'control_state',
+  omit_labels = control_state_labels,
+  fit_model = fit_media_border,
+  analysis = 'Media coverage - Border: state LOO',
+  outcome = 'total_articles_12_0_win',
+  outcome_short = 'Total Articles - 12mo',
+  omission_type = 'Control state and linked border pairs'
 )
 
 # -----------------------------------------------------------------------------
@@ -551,10 +648,57 @@ trade_results <- run_leave_one_out(
   omit_column = 'state',
   omit_labels = control_state_labels,
   fit_model = fit_trade,
-  analysis = 'Secondary-market trading',
+  analysis = 'Secondary-market trading: full sample',
   outcome = 'retail_traded_before_maturity',
   outcome_short = 'Retail Trade',
   omission_type = 'Control state'
+)
+
+trade_border_matches <- fread(file.path(
+  root, 'Data', 'Clean_Intermediate', 'Border States',
+  'Border Matches All Mergent Data Expanded Set Buffer 100000.csv'
+))
+trade_border_matches <- filter_paper_border_pairs(trade_border_matches)
+trade_border_matches <- unique(
+  trade_border_matches[go_unlim == 1, .(state, seed_issuer, group)]
+)
+trade_border <- trade[trade_border_matches, on = .(state, seed_issuer)]
+trade_border <- trade_border[!is.na(cusip) & year > 2004 & !is.na(rating_fe)]
+trade_border <- add_border_control_state(trade_border)
+trade_border[, state_year := interaction(state, year, drop = TRUE)]
+trade_border_control_states <- included_border_control_states()
+
+fit_trade_border <- function(model_data) {
+  feols(
+    retail_traded_before_maturity ~ city_go_vote + low_state_tax_privilege +
+      disclosure_control + ln_amount + ln_maturity_mths + callable + sinkable +
+      insured + ln_gdp + ln_pop + ln_pers_inc |
+      year + purp_broad + group + rating_fe,
+    data = model_data,
+    vcov = vcov_cluster(~state_year)
+  )
+}
+trade_border_pair_results <- run_leave_one_out(
+  data = trade_border,
+  omit_units = paper_border_pairs,
+  omit_column = 'group',
+  omit_labels = website_pair_labels,
+  fit_model = fit_trade_border,
+  analysis = 'Secondary-market trading - Border: pair LOO',
+  outcome = 'retail_traded_before_maturity',
+  outcome_short = 'Retail Trade',
+  omission_type = 'State-border pair'
+)
+trade_border_state_results <- run_leave_one_out(
+  data = trade_border,
+  omit_units = trade_border_control_states,
+  omit_column = 'control_state',
+  omit_labels = control_state_labels,
+  fit_model = fit_trade_border,
+  analysis = 'Secondary-market trading - Border: state LOO',
+  outcome = 'retail_traded_before_maturity',
+  outcome_short = 'Retail Trade',
+  omission_type = 'Control state and linked border pairs'
 )
 
 # -----------------------------------------------------------------------------
@@ -562,9 +706,14 @@ trade_results <- run_leave_one_out(
 # -----------------------------------------------------------------------------
 
 point <- fread(file.path(
-  root, 'Data', 'Clean_Intermediate', 'Census COG Finance', 'processed',
+  root, 'Data', 'Clean_Intermediate', 'Census COG Finance', 'processed', 'no_refundings',
   'census_mergent_debt_cross_section_2017.csv'
 ))
+point[, `:=`(
+  city_go_vote = as.numeric(city_go_vote),
+  state_go_vote = as.numeric(state_go_vote),
+  city_rev_vote = as.numeric(city_rev_vote)
+)]
 point[, fips := as.character(fips)]
 if ('nh_city' %in% names(point)) {
   point <- point[!(state == 'NH' & nh_city == 0)]
@@ -610,7 +759,7 @@ fraction_utgo_results <- run_leave_one_out(
   omit_column = 'state',
   omit_labels = control_state_labels,
   fit_model = fit_fraction_utgo,
-  analysis = 'Debt substitution',
+  analysis = 'Debt substitution: full sample',
   outcome = 'frac_utgo_outstanding',
   outcome_short = 'Pct UTGO',
   omission_type = 'Control state'
@@ -645,10 +794,126 @@ yield_results <- run_leave_one_out(
   omit_column = 'state',
   omit_labels = control_state_labels,
   fit_model = fit_yield,
-  analysis = 'Aggregate borrowing cost',
+  analysis = 'Aggregate borrowing cost: full sample',
   outcome = 'mergent_wavg_yield_spread_go_revenue',
   outcome_short = 'Wtd. Avg. Yield Spread',
   omission_type = 'Control state'
+)
+
+point_border <- fread(file.path(
+  root, 'Data', 'Clean_Intermediate', 'Census COG Finance', 'processed', 'no_refundings',
+  'census_mergent_debt_cross_section_2017_border_sample.csv'
+))
+point_border[, `:=`(
+  city_go_vote = as.numeric(city_go_vote),
+  state_go_vote = as.numeric(state_go_vote),
+  city_rev_vote = as.numeric(city_rev_vote)
+)]
+point_border[, fips := as.character(fips)]
+if ('nh_city' %in% names(point_border)) {
+  point_border <- point_border[!(state == 'NH' & nh_city == 0)]
+} else {
+  point_border <- point_border[!(state == 'NH' & government_type_label == 'township')]
+}
+point_border <- point_border[!is.na(city_go_vote)]
+add_low_state_tax_privilege(point_border)
+point_border[, frac_utgo_outstanding :=
+  mergent_utgo_outstanding_debt / mergent_go_revenue_outstanding_debt]
+point_border[mergent_go_revenue_outstanding_debt <= 0,
+  frac_utgo_outstanding := NA_real_]
+point_border[, ln_census_population := log(census_population)]
+point_border <- filter_debt_yield_border_pairs(point_border, 'border_group')
+point_border <- add_border_control_state(
+  point_border,
+  group_column = 'border_group',
+  inclusion_column = 'include_debt_yield'
+)
+point_border[, state_year := interaction(state, year, drop = TRUE)]
+point_border <- point_border[
+  !is.na(ln_gdp) &
+    !is.na(ln_census_population) &
+    !is.na(ln_pers_inc) &
+    !is.na(ln_1p_county_nonmunicipal_total_debt) &
+    !is.na(state_go_vote) &
+    !is.na(low_state_tax_privilege) &
+    insample == 1 &
+    !is.na(mergent_go_revenue_bonds_outstanding) &
+    mergent_go_revenue_bonds_outstanding >= 2
+]
+identifying_border_groups <- point_border[
+  , .(vote_values = uniqueN(city_go_vote)),
+  by = border_group
+][vote_values == 2, border_group]
+point_border <- point_border[border_group %in% identifying_border_groups]
+point_border_control_states <- included_border_control_states('include_debt_yield')
+
+fit_fraction_utgo_border <- function(model_data) {
+  feols(
+    frac_utgo_outstanding ~ city_go_vote + ln_gdp + ln_census_population +
+      ln_pers_inc + ln_1p_county_nonmunicipal_total_debt + state_go_vote +
+      low_state_tax_privilege | border_group,
+    data = model_data,
+    vcov = vcov_cluster(~state_year)
+  )
+}
+
+fit_yield_border <- function(model_data) {
+  feols(
+    mergent_wavg_yield_spread_go_revenue ~ city_go_vote + ln_gdp +
+      ln_census_population + ln_pers_inc +
+      ln_1p_county_nonmunicipal_total_debt +
+      mergent_wavg_rating_go_revenue_zero_unrated +
+      mergent_wavg_original_maturity_years_go_revenue +
+      mergent_wavg_insured_go_revenue + mergent_wavg_sinkable_go_revenue +
+      state_go_vote + low_state_tax_privilege | border_group,
+    data = model_data,
+    vcov = vcov_cluster(~state_year)
+  )
+}
+
+fraction_utgo_border_pair_results <- run_leave_one_out(
+  data = point_border,
+  omit_units = debt_yield_border_pairs,
+  omit_column = 'border_group',
+  omit_labels = website_pair_labels,
+  fit_model = fit_fraction_utgo_border,
+  analysis = 'Debt substitution - Border: pair LOO',
+  outcome = 'frac_utgo_outstanding',
+  outcome_short = 'Pct UTGO',
+  omission_type = 'State-border pair'
+)
+fraction_utgo_border_state_results <- run_leave_one_out(
+  data = point_border,
+  omit_units = point_border_control_states,
+  omit_column = 'control_state',
+  omit_labels = control_state_labels,
+  fit_model = fit_fraction_utgo_border,
+  analysis = 'Debt substitution - Border: state LOO',
+  outcome = 'frac_utgo_outstanding',
+  outcome_short = 'Pct UTGO',
+  omission_type = 'Control state and linked border pairs'
+)
+yield_border_pair_results <- run_leave_one_out(
+  data = point_border,
+  omit_units = debt_yield_border_pairs,
+  omit_column = 'border_group',
+  omit_labels = website_pair_labels,
+  fit_model = fit_yield_border,
+  analysis = 'Aggregate borrowing cost - Border: pair LOO',
+  outcome = 'mergent_wavg_yield_spread_go_revenue',
+  outcome_short = 'Wtd. Avg. Yield Spread',
+  omission_type = 'State-border pair'
+)
+yield_border_state_results <- run_leave_one_out(
+  data = point_border,
+  omit_units = point_border_control_states,
+  omit_column = 'control_state',
+  omit_labels = control_state_labels,
+  fit_model = fit_yield_border,
+  analysis = 'Aggregate borrowing cost - Border: state LOO',
+  outcome = 'mergent_wavg_yield_spread_go_revenue',
+  outcome_short = 'Wtd. Avg. Yield Spread',
+  omission_type = 'Control state and linked border pairs'
 )
 
 # -----------------------------------------------------------------------------
@@ -659,9 +924,17 @@ all_results <- rbindlist(list(
   website_results,
   website_state_results,
   media_results,
+  media_border_pair_results,
+  media_border_state_results,
   trade_results,
+  trade_border_pair_results,
+  trade_border_state_results,
   fraction_utgo_results,
-  yield_results
+  fraction_utgo_border_pair_results,
+  fraction_utgo_border_state_results,
+  yield_results,
+  yield_border_pair_results,
+  yield_border_state_results
 ), use.names = TRUE, fill = TRUE)
 
 summary_results <- make_summary(all_results)
@@ -671,3 +944,6 @@ write_summary_table(
   file.path(output_dir, 'leave_one_out_summary_raw.tex'),
   file.path(output_dir, 'leave_one_out_summary_processed.tex')
 )
+
+fwrite(all_results, file.path(output_dir, 'leave_one_out_estimates.csv'))
+fwrite(summary_results, file.path(output_dir, 'leave_one_out_summary.csv'))

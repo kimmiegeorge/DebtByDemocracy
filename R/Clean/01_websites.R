@@ -4,7 +4,11 @@ rm(list = ls())
 #---------------------------------------
 library(pacman)
 p_load(data.table, dplyr, stargazer, DescTools, arrow, glue, lfe, ggplot2, gridExtra, sandwich, zoo, fixest, xtable)
-tables_wd <- "/Users/kmunevar/Dropbox/Voting on Bonds/Code/R/Clean/output/revision_tables"
+tables_wd <- Sys.getenv(
+  "RESULTS_DIR",
+  unset = "/Users/kmunevar/Dropbox/Voting on Bonds/Code/R/Clean/output/revision_tables"
+)
+dir.create(tables_wd, recursive = TRUE, showWarnings = FALSE)
 source('/Users/kmunevar/Dropbox/Voting on Bonds/Code/R/Clean/00_modify_etable_rounding.R')
 source('/Users/kmunevar/Dropbox/Voting on Bonds/Code/R/Clean/00_helper_functions.R')
 tbl_dir <- tables_wd
@@ -185,12 +189,11 @@ writeLines(diff_table_output, paste0(tables_wd, "/website_diff_means_table.tex")
 # regs
 #---------------------------------
 
-r1 <- fixest::fepois(bond_url ~ city_go_vote + ln_1p_outstanding_debt_lag1 + state_monitor + ln_gdp + ln_pop + ln_pers_inc | group + year, data = data, cluster = ~state_year)
-r2 <- fixest::fepois(bond_count ~ city_go_vote + ln_1p_outstanding_debt_lag1 + state_monitor + ln_gdp + ln_pop + ln_pers_inc | group + year, data = data, cluster = ~state_year)
-r3 <- fixest::fepois(fiscal_url ~ city_go_vote + ln_1p_outstanding_debt_lag1 + state_monitor + ln_gdp + ln_pop + ln_pers_inc | group + year, data = data, cluster = ~state_year)
-r4 <- fixest::fepois(fiscal_count ~ city_go_vote + ln_1p_outstanding_debt_lag1 + state_monitor + ln_gdp + ln_pop + ln_pers_inc | group + year, data = data, cluster = ~state_year)
-r5 <- fixest::fepois(financial_pdf_urls ~ city_go_vote + ln_1p_outstanding_debt_lag1 + state_monitor + ln_gdp + ln_pop + ln_pers_inc | group + year, data = data, cluster = ~state_year)
-
+r1 <- fixest::fepois(bond_url ~ city_go_vote + ln_1p_outstanding_debt_lag1 + state_monitor + gasb_municipal_gaap_required_any + nasact_audits_cities_towns_villages +  ln_gdp + ln_pop + ln_pers_inc | group + year, data = data, cluster = ~state_year)
+r2 <- fixest::fepois(bond_count ~ city_go_vote + ln_1p_outstanding_debt_lag1 + state_monitor + gasb_municipal_gaap_required_any + nasact_audits_cities_towns_villages +  ln_gdp + ln_pop + ln_pers_inc | group + year, data = data, cluster = ~state_year)
+r3 <- fixest::fepois(fiscal_url ~ city_go_vote + ln_1p_outstanding_debt_lag1 + state_monitor + gasb_municipal_gaap_required_any + nasact_audits_cities_towns_villages +  ln_gdp + ln_pop + ln_pers_inc | group + year, data = data, cluster = ~state_year)
+r4 <- fixest::fepois(fiscal_count ~ city_go_vote + ln_1p_outstanding_debt_lag1 + state_monitor + gasb_municipal_gaap_required_any + nasact_audits_cities_towns_villages +  ln_gdp + ln_pop + ln_pers_inc | group + year, data = data, cluster = ~state_year)
+r5 <- fixest::fepois(financial_pdf_urls ~ city_go_vote + ln_1p_outstanding_debt_lag1 + state_monitor + gasb_municipal_gaap_required_any + nasact_audits_cities_towns_villages +  ln_gdp + ln_pop + ln_pers_inc | group + year, data = data, cluster = ~state_year)
 
 
 
@@ -214,6 +217,8 @@ table_call <- etable(r1, r2, r3, r4,r5,
                 financial_pdf_urls = 'Financial Docs',
                 city_go_vote = 'Vote',
                 state_monitor = 'State Fiscal Monitor',
+                gasb_municipal_gaap_required_any = 'GAAP Required',
+                nasact_audits_cities_towns_villages = 'State Audit',
                 ln_1p_outstanding_debt_lag1 = 'Outstanding Debt',
                 ln_gdp =  'County ln(GDP)', 
                 ln_pop = 'County ln(Pop)' , 
@@ -241,3 +246,143 @@ modified_output <- format_table(modified_output, cluster_level = "State-Year")
 modified_output <- add_panel(modified_output, 'Panel B: Regression analyses')
 
 writeLines(modified_output, paste0(tables_wd, '/websites_regression.tex'))
+
+#---------------------------------
+# regs: exclude treated states with a revenue-vote requirement
+#---------------------------------
+
+# Step 02 marks complete pairs whose treated state requires a GO vote and
+# does not require a revenue-bond vote.
+data_drop_dark_green <- data[keep_drop_dark_green == 1L]
+
+r1_drop_dark_green <- fixest::fepois(bond_url ~ city_go_vote + ln_1p_outstanding_debt_lag1 + state_monitor + gasb_municipal_gaap_required_any + nasact_audits_cities_towns_villages  +  ln_gdp + ln_pop + ln_pers_inc | group + year, data = data_drop_dark_green, cluster = ~state_year)
+r2_drop_dark_green <- fixest::fepois(bond_count ~ city_go_vote + ln_1p_outstanding_debt_lag1 + state_monitor + gasb_municipal_gaap_required_any + nasact_audits_cities_towns_villages  + ln_gdp + ln_pop + ln_pers_inc | group + year, data = data_drop_dark_green, cluster = ~state_year)
+r3_drop_dark_green <- fixest::fepois(fiscal_url ~ city_go_vote + ln_1p_outstanding_debt_lag1 + state_monitor + gasb_municipal_gaap_required_any + nasact_audits_cities_towns_villages  + ln_gdp + ln_pop + ln_pers_inc | group + year, data = data_drop_dark_green, cluster = ~state_year)
+r4_drop_dark_green <- fixest::fepois(fiscal_count ~ city_go_vote + ln_1p_outstanding_debt_lag1 + state_monitor + gasb_municipal_gaap_required_any + nasact_audits_cities_towns_villages  + ln_gdp + ln_pop + ln_pers_inc | group + year, data = data_drop_dark_green, cluster = ~state_year)
+r5_drop_dark_green <- fixest::fepois(financial_pdf_urls ~ city_go_vote + ln_1p_outstanding_debt_lag1 + state_monitor + gasb_municipal_gaap_required_any + nasact_audits_cities_towns_villages  + ln_gdp + ln_pop + ln_pers_inc | group + year, data = data_drop_dark_green, cluster = ~state_year)
+
+table_call_drop_dark_green <- etable(r1_drop_dark_green, r2_drop_dark_green, r3_drop_dark_green, r4_drop_dark_green, r5_drop_dark_green,
+       coefstat = 'tstat',
+                     style.tex = style.tex(main = 'aer', fixef.suffix = ' FE', yesNo = c("Yes", "No")),
+       fitstat = c('n', 'pr2'),
+       se.below = TRUE,
+       digits = 3,
+       digits.stats = 3,
+       signif.code = c("***"=0.01, "**"=0.05, "*"=0.10),
+       tex = TRUE,
+       #fontsize = 'small',
+       dict = c(bond_url ='Bond URLs',
+                bond_count ='Bond Count',
+                fiscal_url = 'Fiscal URLs',
+                fiscal_count = 'Fiscal Count',
+                liabil_count = 'Liabilities Count',
+                revenue_count = 'Revenue Count',
+                expense_count = 'Expense Count',
+                financial_pdf_urls = 'Financial Docs',
+                city_go_vote = 'Vote',
+                state_monitor = 'State Fiscal Monitor',
+                gasb_municipal_gaap_required_any = 'GAAP Required',
+                nasact_audits_cities_towns_villages = 'State Audit',
+                ln_1p_outstanding_debt_lag1 = 'Outstanding Debt',
+                ln_gdp =  'County ln(GDP)',
+                ln_pop = 'County ln(Pop)' ,
+                ln_pers_inc = 'County ln(Pers. Inc)',
+                ln_emp = 'County ln(Emp)',
+                group = 'State-Border',
+                year = 'Year'),
+       placement = 'H',
+       replace = TRUE)
+
+modified_output_drop_dark_green <- modify_etable_rounding(
+  table_call_drop_dark_green,
+  coef_digits = 3,
+  tstat_digits = 2
+)
+
+modified_output_drop_dark_green <- format_table(
+  modified_output_drop_dark_green,
+  cluster_level = "State-Year"
+)
+modified_output_drop_dark_green <- add_panel(
+  modified_output_drop_dark_green,
+  'Panel B: Regression analyses'
+)
+
+writeLines(
+  modified_output_drop_dark_green,
+  paste0(tables_wd, '/websites_regression_drop_dark_green.tex')
+)
+
+
+#---------------------------------
+# regs - xs
+#---------------------------------
+# Step 02 supplies the dark_green indicator using the canonical pair config.
+
+# city_go_vote is the coefficient for the other border pairs; the interaction
+# is the estimated difference in the Vote coefficient for dark-green pairs.
+r1_xs <- fixest::fepois(bond_url ~ city_go_vote + city_go_vote:dark_green + ln_1p_outstanding_debt_lag1 + state_monitor + gasb_municipal_gaap_required_any + nasact_audits_cities_towns_villages  + ln_gdp + ln_pop + ln_pers_inc | group + year, data = data, cluster = ~state_year)
+r2_xs <- fixest::fepois(bond_count ~ city_go_vote + city_go_vote:dark_green + ln_1p_outstanding_debt_lag1 + state_monitor + gasb_municipal_gaap_required_any + nasact_audits_cities_towns_villages  + ln_gdp + ln_pop + ln_pers_inc | group + year, data = data, cluster = ~state_year)
+r3_xs <- fixest::fepois(fiscal_url ~ city_go_vote + city_go_vote:dark_green + ln_1p_outstanding_debt_lag1 + state_monitor + gasb_municipal_gaap_required_any + nasact_audits_cities_towns_villages  + ln_gdp + ln_pop + ln_pers_inc | group + year, data = data, cluster = ~state_year)
+r4_xs <- fixest::fepois(fiscal_count ~ city_go_vote + city_go_vote:dark_green + ln_1p_outstanding_debt_lag1 + state_monitor + gasb_municipal_gaap_required_any + nasact_audits_cities_towns_villages  + ln_gdp + ln_pop + ln_pers_inc | group + year, data = data, cluster = ~state_year)
+r5_xs <- fixest::fepois(financial_pdf_urls ~ city_go_vote + city_go_vote:dark_green + ln_1p_outstanding_debt_lag1 + state_monitor + gasb_municipal_gaap_required_any + nasact_audits_cities_towns_villages  + ln_gdp + ln_pop + ln_pers_inc | group + year, data = data, cluster = ~state_year)
+
+
+
+
+table_call_xs <- etable(r1_xs, r2_xs, r3_xs, r4_xs, r5_xs,
+       coefstat = 'tstat',
+                     style.tex = style.tex(main = 'aer', fixef.suffix = ' FE', yesNo = c("Yes", "No")),
+       fitstat = c('n', 'pr2'), 
+       se.below = TRUE, 
+       digits = 3, 
+       digits.stats = 3,
+       signif.code = c("***"=0.01, "**"=0.05, "*"=0.10), 
+       tex = TRUE,
+       #fontsize = 'small',
+       dict = c(bond_url ='Bond URLs',
+                bond_count ='Bond Count',
+                fiscal_url = 'Fiscal URLs',
+                fiscal_count = 'Fiscal Count',
+                liabil_count = 'Liabilities Count',
+                revenue_count = 'Revenue Count',
+                expense_count = 'Expense Count',
+                financial_pdf_urls = 'Financial Docs',
+                city_go_vote = 'Vote',
+                'city_go_vote:dark_green' = 'Vote $\\times$ Dark Green',
+                state_monitor = 'State Fiscal Monitor',
+                gasb_municipal_gaap_required_any = 'GAAP Required',
+                nasact_audits_cities_towns_villages = 'State Audit',
+                ln_1p_outstanding_debt_lag1 = 'Outstanding Debt',
+                ln_gdp =  'County ln(GDP)', 
+                ln_pop = 'County ln(Pop)' , 
+                ln_pers_inc = 'County ln(Pers. Inc)', 
+                ln_emp = 'County ln(Emp)', 
+                group = 'State-Border', 
+                year = 'Year'),
+       placement = 'H',
+       #file = paste0('~/Dropbox/Apps/Overleaf/Voting on bonds/tables/2509_mediaupdate/tbls_0916/updated_website_regs.tex'), 
+       replace = TRUE)
+
+
+
+
+
+modified_output_xs <- modify_etable_rounding(
+  table_call_xs,
+  coef_digits = 3,
+  tstat_digits = 2
+)
+
+
+
+modified_output_xs <- format_table(modified_output_xs, cluster_level = "State-Year")
+modified_output_xs <- add_panel(
+  modified_output_xs,
+  'Panel B: Regression analyses with dark-green interaction'
+)
+
+writeLines(
+  modified_output_xs,
+  paste0(tables_wd, '/websites_regression_dark_green_interaction.tex')
+)

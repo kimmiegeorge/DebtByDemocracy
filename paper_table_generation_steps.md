@@ -1,8 +1,8 @@
 # Paper Table Generation Steps
 
-Audit date: 2026-07-16
+Audit date: 2026-09-17
 
-Paper source reviewed: `/Users/kmunevar/Dropbox/Apps/Overleaf/Voting on bonds/251214_draft.tex`.
+Live sources reviewed: `/Users/kmunevar/Dropbox/Apps/Overleaf/Voting on bonds/main.tex`, `251214_draft.tex`, `tables_figures.tex`, `appendix.tex`, `online_appendix.tex`, `response_1.tex`, and `response_2.tex`.
 
 Clean output locations created:
 
@@ -13,22 +13,23 @@ Clean output locations created:
 
 Clean reruns write generated intermediate data under `Data/Clean_Intermediate` with stable, undated filenames. Source data inputs, including Mergent `.dta`, BEA, WRDS/RavenPack raw files, state-policy inputs, and Stata-built source files, remain in the original `Data` tree.
 
-## Tables Included in the Draft
+## Tables Included in the Live Documents
 
-The draft includes the following table wrapper files:
+The paper includes these main-table wrappers in order:
 
-1. `tables/revision_tables/processed/summary_stats.tex`
-2. `tables/revision_tables/processed/websites.tex`
-3. `tables/revision_tables/processed/media_coverage.tex`
-4. `tables/revision_tables/processed/tx_election_time_series.tex`
-5. `tables/revision_tables/processed/tx_election_outcomes.tex`
-6. `tables/revision_tables/processed/trade_before_maturity.tex`
-7. `tables/revision_tables/processed/debt_choice_full_sample.tex`
-8. `tables/revision_tables/processed/debt_choice_super_majority.tex`
-9. `tables/revision_tables/processed/issuer_yields_full_sample.tex`
-10. `tables/revision_tables/processed/debt_choice_border_state.tex`
+1. `tables/clean/processed/summary_stats.tex`
+2. `tables/clean/processed/websites.tex`
+3. `tables/clean/processed/media_coverage.tex`
+4. `tables/clean/processed/tx_election_time_series.tex`
+5. `tables/clean/processed/tx_election_outcomes.tex`
+6. `tables/clean/processed/trade_before_maturity.tex`
+7. `tables/clean/processed/outstanding_debt.tex`
+8. `tables/clean/processed/debt_choice_full_sample.tex`
+9. `tables/clean/processed/substitution.tex`
+10. `tables/clean/processed/issuer_yields_full_sample.tex`
+11. `tables/clean/processed/point_in_time_robustness.tex`
 
-The `response.tex` file also includes `processed/debt_choice_supermajority_alt_control`, `processed/media_coverage_dpc`, and `processed/media_supermajority`.
+The paper appendix includes `alternative_sample_robustness.tex`; the online appendix includes `media_coverage_dpc.tex`, `county_debt.tex`, `wild_cluster_bootstrap_border_tests.tex`, and `media_coverage_exclude_month_zero.tex`. Response 1 includes `supermajority_media_response.tex`, `point_in_time_debt_choice_alternative_controls.tex`, and `media_coverage_panel_b_ols.tex`. Response 2 includes `leave_one_out_summary.tex` and `tx_election_time_series_poisson.tex`.
 
 ## Run Order
 
@@ -75,18 +76,22 @@ Run these after the Python intermediate data files exist.
 
 | Script | Inputs | Outputs |
 |---|---|---|
-| `Code/R/Clean/websites.R` | `Data/Clean_Intermediate/Websites/border_state_website_data_with_recovered.csv`; `Data/State Monitoring Policy/state_enforcement_adoption_years.csv`; Mergent clean `.dta` | `website_descriptives.tex`, `website_diff_means_table.tex`, `websites_regression.tex`, `websites_issuance_time_series_reg.tex` |
-| `Code/R/Clean/media_coverage.r` | Mergent clean `.dta`; `Data/Clean_Intermediate/News/Issuance_Lvl_News_With_Lagged_News.csv`; clean border RP file | `media_descriptives.tex`, `media_diff_means_table.tex`, `media_coverage.tex`, `media_coverage_super_majority.tex`, `article_counts.png` |
-| `Code/R/Clean/election_outcomes.R` | Clean TX election media files; clean TX website files; Mergent clean `.dta`; BEA controls | `election_descriptives.tex`, `tx_failed_and_margin.tex`, `tx_city_month_reg.tex`, `tx_website_time_series_reg.tex`, `tx_failed_and_margin_websites.tex` |
-| `Code/R/Clean/trade_before_maturity.R` | `Data/Clean_Intermediate/MSRB/Processed/Bond_Level_Any_Trade_Before_Maturity_with_CD_Data.csv`; clean border sample; clean website and media disclosure files; `Code/R/Clean/tax_privilege_definitions.R` | Raw-outcome `secondary_market_descriptives.tex`; raw-outcome trade-before-maturity tables with rating-category FE (`trade_before_maturity_full_sample_tax.tex`, `trade_before_maturity_border_sample_tax.tex`, and disclosure heterogeneity tables) |
-| `Code/R/Clean/wild_cluster_bootstrap_border_tests.R` | Clean website, media, 2017 point-in-time, MSRB trade, and border-sample files; shared border-pair and tax-privilege definitions | `wild_cluster_bootstrap_border_tests.csv`, four-panel `wild_cluster_bootstrap_border_tests.tex`, and its processed wrapper |
-| `Code/R/Clean/debt_choice.r` | `Data/Mergent/clean/260716_city_issuerlevel_yieldspread.dta`; clean border sample; `Code/R/Clean/tax_privilege_definitions.R` | `issuer_level_desc.tex`, `debt_choice_allgo.tex`, `debt_choice_utgo_only.tex`, `yield_spread_allgo.tex`, `yield_spread_utgo_only.tex`, `debt_choice_border_state_all_go_only.tex`, `debt_choice_super_majority.tex` |
-| `Code/R/Clean/media_coverage_dpc.R` | Clean DPC issuance-level parquet; Mergent clean `.dta` | `media_coverage_dpc.tex` |
-| `Code/R/Clean/census_mergent_point_in_time_debt_choice.R` | Clean Census-Mergent cross-section CSVs; `Code/R/Clean/tax_privilege_definitions.R`; `Code/R/Clean/state_policy_definitions.R` | Point-in-time debt, yield, census debt, and two-panel border-state/supermajority robustness tables |
+| `Code/R/Clean/01_websites.R` | Clean website panel, state-monitoring policy, Mergent issuances | Tables 2 and 4 plus the Table 1 website panel |
+| `Code/R/Clean/02_media_coverage.R` | Mergent issuances, RavenPack media panel, border sample | Table 3 plus the Table 1 media panel |
+| `Code/R/Clean/03_election_outcomes.R` | Clean Texas election, website, media, and Mergent files | Tables 4 and 5, the Table 1 election panel, and the Response 2 PPML table |
+| `Code/R/Clean/03_texas_media_event_time.R` | Texas election and issuance media panels | Event-time figure associated with Table 4 |
+| `Code/R/Clean/04_trade_before_maturity.R` | Clean MSRB trading file and border sample | Table 6 plus the Table 1 trading panel |
+| `Code/R/Clean/05_census_mergent_point_in_time_debt_choice.R` | Clean 2017 Census-Mergent cross sections | Tables 7, 8, 10, and 11 plus the Table 1 issuer panel |
+| `Code/R/Clean/06_point_in_time_purpose_substitution.R` | Clean 2017 DPC purpose panel | Table 9 and its associated figure |
+| `Code/R/Clean/07_alternative_sample_robustness.R` | 2012 and full-period alternative samples | Paper appendix robustness table |
+| `Code/R/Clean/08_media_coverage_dpc.R` | Clean DPC media file and Mergent issuances | Online-appendix DPC media table |
+| `Code/R/Clean/09_census_county_debt_issuance_share_2017.R` | Clean Census county debt files | Online-appendix county debt table |
+| `Code/R/Clean/10_wild_cluster_bootstrap_border_tests.R` | Clean website, media, point-in-time, and MSRB files | Online-appendix wild-bootstrap table and wrapper |
+| `Code/R/Clean/11_media_coverage_exclude_month_zero.R` | Clean RavenPack/Mergent media files | Online-appendix month-zero robustness table and wrapper |
 
 ## Wrapper-to-Component Mapping
 
-The included `processed/*.tex` files are wrappers that `\input{}` component tables from `tables/revision_tables` and sometimes `tables/submission_tables`.
+The included `tables/clean/processed/*.tex` files are wrappers that `\input{}` generated fragments from `tables/clean/raw`.
 
 | Paper wrapper | Component tables |
 |---|---|
@@ -96,18 +101,18 @@ The included `processed/*.tex` files are wrappers that `\input{}` component tabl
 | `processed/tx_election_time_series.tex` | `tx_website_time_series_reg`, `tx_city_month_reg` |
 | `processed/tx_election_outcomes.tex` | `tx_failed_and_margin_websites`, `tx_failed_and_margin` |
 | `processed/trade_before_maturity.tex` | `trade_before_maturity_full_sample_tax`, `trade_before_maturity_border_sample_tax` |
-| `processed/debt_choice_full_sample.tex` | `debt_choice_allgo`, `debt_choice_utgo_only`, `debt_choice_super_majority` |
-| `processed/issuer_yields_full_sample.tex` | `yield_spread_allgo`, `yield_spread_utgo_only` |
-| `processed/debt_choice_border_state.tex` | `debt_choice_border_state_all_go_only` |
+| `processed/outstanding_debt.tex` | `point_in_time_census_debt_poisson_2017_full_sample` |
+| `processed/debt_choice_full_sample.tex` | `point_in_time_debt_choice_2017_allgo`, `point_in_time_debt_choice_2017_utgo_only` |
+| `processed/substitution.tex` | `point_in_time_purpose_category_amount_ppml_2017_full_sample`, `point_in_time_purpose_revenue_share_2017_full_sample` |
+| `processed/issuer_yields_full_sample.tex` | `point_in_time_yield_spread_2017_full_sample` and both bond-type panels |
 | `processed/media_coverage_dpc.tex` | `media_coverage_dpc` |
-| `processed/media_supermajority.tex` | `media_coverage_super_majority` |
 | `output/processed/point_in_time_robustness.tex` | `point_in_time_robustness_border_state`, `point_in_time_robustness_super_majority` |
 
 ## Audit Notes
 
-- Most `tables/revision_tables/processed/*.tex` wrapper files appear to be hand-written or copied around generated component tables. The new clean `output/processed/point_in_time_robustness.tex` wrapper is generated directly by the point-in-time R script.
-- `summary_stats.tex` still inputs two components from `tables/submission_tables` while most other wrappers input from `tables/revision_tables`.
+- Several wrappers are generated by the clean R scripts; the remaining wrappers are maintained in `tables/clean/processed` in Overleaf.
+- `99_promote_tables_to_overleaf.R` copies reviewed raw fragments from `Code/R/Clean/output/revision_tables` to `tables/clean/raw`; it does not replace the live processed wrappers.
 - Several scripts use hard-coded dated input files. The date suffixes should be treated as part of the reproducibility contract.
-- All border-state debt-choice and yield-spread regressions use the same six identifying pairs: Georgia/Tennessee, Louisiana/Mississippi, Michigan/Wisconsin, North Carolina/Tennessee, Ohio/Kentucky, and West Virginia/Kentucky. This restriction applies to 2012, 2017, and the full-period issuer aggregates.
+- All active border-state debt-choice and yield-spread regressions use the same six identifying pairs: Georgia/Tennessee, Louisiana/Mississippi, Michigan/Wisconsin, North Carolina/Tennessee, Ohio/Kentucky, and West Virginia/Kentucky.
 - All other border analyses use the shared 14-pair universe. Outcome-specific missing data can change observations, but those regressions do not apply ad hoc pair exclusions.
 - The clean R copies redirect table outputs away from Overleaf. The clean Python copies are isolated, but many original Python scripts use one `data_dir` variable for both inputs and outputs; output redirection should be finished before running them end-to-end.
