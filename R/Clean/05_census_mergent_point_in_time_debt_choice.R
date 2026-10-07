@@ -1,3 +1,5 @@
+# Set up ----
+
 # 05: Point-in-time Census/Mergent results (Tables 7, 8, 10, and 11; also Table 1 inputs)
 rm(list = ls())
 
@@ -15,9 +17,8 @@ tbl_dir <- file.path(tbl_dir, 'additional_controls')
 dir.create(tbl_dir, recursive = TRUE, showWarnings = FALSE)
 processed_dir <- '/Users/kmunevar/Dropbox/Voting on Bonds/Code/R/Clean/output/processed'
 
-#----------------------------
-# Shared table labels
-#----------------------------
+# Shared table labels ----
+
 control_dict <- c(
   frac_utgo_outstanding = 'Pct UTGO',
   frac_ltgo_outstanding = 'Pct LTGO',
@@ -64,13 +65,10 @@ control_dict <- c(
   border_group = 'State-Border'
 )
 
-#==============================================================================
-# 2017 main cross section
-#==============================================================================
+# 2017 main cross section ----
 
-#----------------------------
-# Load and clean 2017 data
-#----------------------------
+# Load and clean 2017 data ---- ----
+
 data_2017 <- fread(
   file.path(root, 'Data/Clean_Intermediate/Census COG Finance/processed/census_mergent_debt_cross_section_2017.csv')
 )
@@ -108,9 +106,8 @@ full_sample_2017 <- full_sample_2017[
     mergent_go_revenue_bonds_outstanding >= 2
 ]
 
-#----------------------------
-# 2017 point-in-time summary statistics
-#----------------------------
+# 2017 point-in-time summary statistics ----
+
 # Use the common 2017 control screen. Debt-composition and yield outcomes are
 # summarized only for cities satisfying the main point-in-time requirement of
 # at least two outstanding GO/revenue CUSIPs. Census/Mergent debt-stock outcomes
@@ -241,9 +238,8 @@ summary_tex_2017 <- add_panel(
 )
 writeLines(summary_tex_2017, file.path(tbl_dir, 'issuer_level_desc.tex'))
 
-#----------------------------
-# 2017 full sample debt substitution: GO vote required
-#----------------------------
+# 2017 full sample debt substitution: GO vote required ----
+
 allgo_utgo_uncontrolled_2017 <- feols(
   frac_utgo_outstanding ~ city_go_vote,
   data = full_sample_2017[insample_allgo == 1],
@@ -270,7 +266,7 @@ allgo_revenue_controlled_2017 <- feols(
   data = full_sample_2017[insample_allgo == 1],
   vcov = vcov_cluster(~state)
 )
-  
+
 table_call <- etable(
   allgo_utgo_uncontrolled_2017,
   allgo_utgo_controlled_2017,
@@ -295,9 +291,8 @@ modified_output <- format_table(modified_output, cluster_level = 'State')
 modified_output <- add_panel(modified_output, 'Panel A: GO vote required')
 writeLines(modified_output, file.path(tbl_dir, 'point_in_time_debt_choice_2017_allgo.tex'))
 
-#----------------------------
-# 2017 full sample debt substitution: only UTGO vote required
-#----------------------------
+# 2017 full sample debt substitution: only UTGO vote required ----
+
 utgo_only_utgo_uncontrolled_2017 <- feols(
   frac_utgo_outstanding ~ city_go_vote,
   data = full_sample_2017[insample_utgo_only == 1],
@@ -349,9 +344,8 @@ modified_output <- format_table(modified_output, cluster_level = 'State')
 modified_output <- add_panel(modified_output, 'Panel B: Only UTGO vote required')
 writeLines(modified_output, file.path(tbl_dir, 'point_in_time_debt_choice_2017_utgo_only.tex'))
 
-#----------------------------
-# 2017 supermajority specification used in Table 11
-#----------------------------
+# 2017 supermajority specification used in Table 11 ----
+
 supermajority_utgo_2017 <- feols(
   frac_utgo_outstanding ~ city_go_vote + super_majority + ln_gdp + ln_census_population + ln_pers_inc +
     ln_1p_county_nonmunicipal_total_debt + glm_proactive + state_ltgo_allowed + state_go_vote + low_state_tax_privilege,
@@ -408,9 +402,8 @@ writeLines(
   file.path(tbl_dir, 'point_in_time_yield_spread_2017_full_sample.tex')
 )
 
-#----------------------------
-# 2017 full sample yield spreads by bond type
-#----------------------------
+# 2017 full sample yield spreads by bond type ----
+
 yield_2017_utgo_controlled <- feols(
   mergent_wavg_yield_spread_utgo ~ city_go_vote +
     ln_gdp + ln_census_population + ln_pers_inc +
@@ -505,9 +498,8 @@ writeLines(
   )
 )
 
-#----------------------------
-# 2017 robustness table, Panel B: supermajority cross section
-#----------------------------
+# 2017 robustness table, Panel B: supermajority cross section ----
+
 supermajority_yield_2017 <- feols(
   mergent_wavg_yield_spread_go_revenue ~ city_go_vote + super_majority +
     ln_gdp + ln_census_population + ln_pers_inc  +
@@ -560,9 +552,8 @@ writeLines(
 
 full_sample_2017 <- full_sample_2017_unrestricted
 
-#----------------------------
-# 2017 PPML debt stock: all city GO vote variation
-#----------------------------
+# 2017 PPML debt stock: all city GO vote variation ----
+
 census_total_debt_ppml_2017 <- fepois(
   census_total_debt_mil ~ city_go_vote + ln_gdp + ln_census_population + ln_pers_inc +
     ln_1p_county_nonmunicipal_total_debt + glm_proactive + state_ltgo_allowed + state_go_vote + low_state_tax_privilege,
@@ -619,9 +610,8 @@ modified_output <- sub(
 modified_output <- format_table(modified_output, cluster_level = 'State')
 writeLines(modified_output, file.path(tbl_dir, 'point_in_time_census_debt_poisson_2017_full_sample.tex'))
 
-#----------------------------
-# 2017 border-state test
-#----------------------------
+# 2017 border-state test ----
+
 border_2017 <- fread(
   file.path(root, 'Data/Clean_Intermediate/Census COG Finance/processed/census_mergent_debt_cross_section_2017_border_sample.csv')
 )
@@ -664,9 +654,8 @@ identifying_border_groups_2017 <- border_2017[
 ][vote_values == 2, border_group]
 border_2017 <- border_2017[border_group %in% identifying_border_groups_2017]
 
-#----------------------------
-# 2017 robustness table, Panel A: border-state cross section
-#----------------------------
+# 2017 robustness table, Panel A: border-state cross section ----
+
 border_utgo_2017 <- feols(
   frac_utgo_outstanding ~ city_go_vote + ln_gdp + ln_census_population + ln_pers_inc +
     ln_1p_county_nonmunicipal_total_debt + state_go_vote + low_state_tax_privilege | border_group,
@@ -715,6 +704,8 @@ writeLines(
   modified_output,
   file.path(tbl_dir, 'point_in_time_robustness_border_state.tex')
 )
+
+# Export combined robustness table ----
 
 dir.create(processed_dir, recursive = TRUE, showWarnings = FALSE)
 writeLines(c(
