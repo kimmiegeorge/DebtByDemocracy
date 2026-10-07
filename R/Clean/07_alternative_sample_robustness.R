@@ -15,9 +15,12 @@ tbl_dir <- Sys.getenv(
   "RESULTS_DIR",
   unset = "/Users/kmunevar/Dropbox/Voting on Bonds/Code/R/Clean/output/revision_tables"
 )
+
 processed_dir <- "/Users/kmunevar/Dropbox/Voting on Bonds/Code/R/Clean/output/processed"
 dir.create(tbl_dir, recursive = TRUE, showWarnings = FALSE)
 dir.create(processed_dir, recursive = TRUE, showWarnings = FALSE)
+
+# Shared table labels ----
 
 purpose_categories <- c(
   'utilities',
@@ -26,6 +29,7 @@ purpose_categories <- c(
   'public_safety',
   'other_public_buildings'
 )
+
 purpose_headers <- c(
   'Utilities',
   'Transport.',
@@ -47,9 +51,7 @@ table_dict <- c(
   share_revenue_vs_go_amount = 'Pct Revenue'
 )
 
-#==============================================================================
-# 2012 point-in-time debt choice and weighted-average yields
-#==============================================================================
+# 2012 point-in-time debt choice and weighted-average yields ----
 
 point_2012 <- fread(file.path(
   root,
@@ -92,9 +94,7 @@ point_2012 <- point_2012[
     mergent_go_revenue_bonds_outstanding >= 2
 ]
 
-#==============================================================================
-# Full-period issuer aggregates
-#==============================================================================
+# Full-period issuer aggregates ----
 
 issuer_aggregate <- as.data.table(read_dta(file.path(
   root,
@@ -113,6 +113,7 @@ issuer_aggregate <- merge(
   all.x = TRUE,
   sort = FALSE
 )
+
 issuer_aggregate[, issuer_spread := issuer_spread_nc]
 
 issuer_aggregate[state == 'RI', city_go_vote := NA_real_]
@@ -130,9 +131,7 @@ issuer_aggregate <- issuer_aggregate[
     !is.na(low_state_tax_privilege)
 ]
 
-#==============================================================================
-# Panel A: debt type, GO vote required
-#==============================================================================
+# Panel A: debt type, GO vote required ----
 
 panel_a_point_utgo <- feols(
   frac_utgo_outstanding ~ city_go_vote + ln_gdp + ln_census_population +
@@ -141,6 +140,7 @@ panel_a_point_utgo <- feols(
   data = point_2012[insample_allgo == 1],
   vcov = vcov_cluster(~state)
 )
+
 panel_a_point_ltgo <- feols(
   frac_ltgo_outstanding ~ city_go_vote + ln_gdp + ln_census_population +
     ln_pers_inc + ln_1p_county_nonmunicipal_total_debt + glm_proactive +
@@ -148,6 +148,7 @@ panel_a_point_ltgo <- feols(
   data = point_2012[insample_allgo == 1],
   vcov = vcov_cluster(~state)
 )
+
 panel_a_point_revenue <- feols(
   frac_rev_outstanding ~ city_go_vote + ln_gdp + ln_census_population +
     ln_pers_inc + ln_1p_county_nonmunicipal_total_debt + glm_proactive +
@@ -155,6 +156,7 @@ panel_a_point_revenue <- feols(
   data = point_2012[insample_allgo == 1],
   vcov = vcov_cluster(~state)
 )
+
 panel_a_aggregate_utgo <- feols(
   frac_utgo ~ city_go_vote + ln_gdp + ln_pop + ln_pers_inc +
     ln_county_debt_other + glm_proactive + state_ltgo_allowed +
@@ -162,6 +164,7 @@ panel_a_aggregate_utgo <- feols(
   data = issuer_aggregate[insample_allgo == 1],
   vcov = vcov_cluster(~state)
 )
+
 panel_a_aggregate_ltgo <- feols(
   frac_ltgo ~ city_go_vote + ln_gdp + ln_pop + ln_pers_inc +
     ln_county_debt_other + glm_proactive + state_ltgo_allowed +
@@ -169,6 +172,7 @@ panel_a_aggregate_ltgo <- feols(
   data = issuer_aggregate[insample_allgo == 1],
   vcov = vcov_cluster(~state)
 )
+
 panel_a_aggregate_revenue <- feols(
   frac_rev ~ city_go_vote + ln_gdp + ln_pop + ln_pers_inc +
     ln_county_debt_other + glm_proactive + state_ltgo_allowed +
@@ -198,6 +202,7 @@ table_call <- etable(
   dict = c(table_dict[names(table_dict) != 'city_go_vote'], city_go_vote = 'GO Vote'),
   placement = 'H'
 )
+
 table_output <- modify_etable_rounding(table_call, coef_digits = 3, tstat_digits = 2)
 table_output <- format_table(table_output, cluster_level = 'State', drop_covariance = TRUE)
 table_output <- table_output[!trimws(table_output) %in% c('& \\\\', '\\\\')]
@@ -210,6 +215,7 @@ table_output <- append(
   '   Controls       & Yes & Yes & Yes & Yes & Yes & Yes\\\\',
   after = hline_idx[1]
 )
+
 table_output <- add_panel(table_output, 'Panel A: Debt type, GO vote required', ncols = 7)
 table_output <- append(table_output, '\\small', after = 1)
 writeLines(
@@ -217,9 +223,7 @@ writeLines(
   file.path(tbl_dir, 'alternative_sample_robustness_panel_a_debt_choice_allgo.tex')
 )
 
-#==============================================================================
-# Panel B: debt type, only UTGO vote required
-#==============================================================================
+# Panel B: debt type, only UTGO vote required ----
 
 panel_b_point_utgo <- feols(
   frac_utgo_outstanding ~ city_go_vote + ln_gdp + ln_census_population +
@@ -228,6 +232,7 @@ panel_b_point_utgo <- feols(
   data = point_2012[insample_utgo_only == 1],
   vcov = vcov_cluster(~state)
 )
+
 panel_b_point_ltgo <- feols(
   frac_ltgo_outstanding ~ city_go_vote + ln_gdp + ln_census_population +
     ln_pers_inc + ln_1p_county_nonmunicipal_total_debt + glm_proactive +
@@ -235,6 +240,7 @@ panel_b_point_ltgo <- feols(
   data = point_2012[insample_utgo_only == 1],
   vcov = vcov_cluster(~state)
 )
+
 panel_b_point_revenue <- feols(
   frac_rev_outstanding ~ city_go_vote + ln_gdp + ln_census_population +
     ln_pers_inc + ln_1p_county_nonmunicipal_total_debt + glm_proactive +
@@ -242,6 +248,7 @@ panel_b_point_revenue <- feols(
   data = point_2012[insample_utgo_only == 1],
   vcov = vcov_cluster(~state)
 )
+
 panel_b_aggregate_utgo <- feols(
   frac_utgo ~ city_go_vote + ln_gdp + ln_pop + ln_pers_inc +
     ln_county_debt_other + glm_proactive + state_ltgo_allowed +
@@ -249,6 +256,7 @@ panel_b_aggregate_utgo <- feols(
   data = issuer_aggregate[insample_utgo_only == 1],
   vcov = vcov_cluster(~state)
 )
+
 panel_b_aggregate_ltgo <- feols(
   frac_ltgo ~ city_go_vote + ln_gdp + ln_pop + ln_pers_inc +
     ln_county_debt_other + glm_proactive + state_ltgo_allowed +
@@ -256,6 +264,7 @@ panel_b_aggregate_ltgo <- feols(
   data = issuer_aggregate[insample_utgo_only == 1],
   vcov = vcov_cluster(~state)
 )
+
 panel_b_aggregate_revenue <- feols(
   frac_rev ~ city_go_vote + ln_gdp + ln_pop + ln_pers_inc +
     ln_county_debt_other + glm_proactive + state_ltgo_allowed +
@@ -285,6 +294,7 @@ table_call <- etable(
   dict = c(table_dict[names(table_dict) != 'city_go_vote'], city_go_vote = 'UTGO Only Vote'),
   placement = 'H'
 )
+
 table_output <- modify_etable_rounding(table_call, coef_digits = 3, tstat_digits = 2)
 table_output <- format_table(table_output, cluster_level = 'State', drop_covariance = TRUE)
 table_output <- table_output[!trimws(table_output) %in% c('& \\\\', '\\\\')]
@@ -297,6 +307,7 @@ table_output <- append(
   '   Controls       & Yes & Yes & Yes & Yes & Yes & Yes\\\\',
   after = hline_idx[1]
 )
+
 table_output <- add_panel(table_output, 'Panel B: Debt type, only UTGO vote required', ncols = 7)
 table_output <- append(table_output, '\\small', after = 1)
 writeLines(
@@ -304,9 +315,7 @@ writeLines(
   file.path(tbl_dir, 'alternative_sample_robustness_panel_b_debt_choice_utgo_only.tex')
 )
 
-#==============================================================================
-# Panel C: weighted-average yield spread
-#==============================================================================
+# Panel C: weighted-average yield spread ----
 
 panel_c_point_yield <- feols(
   mergent_wavg_yield_spread_go_revenue ~ city_go_vote + ln_gdp +
@@ -351,6 +360,7 @@ table_call <- etable(
   dict = table_dict,
   placement = 'H'
 )
+
 table_output <- modify_etable_rounding(table_call, coef_digits = 3, tstat_digits = 2)
 table_output <- format_table(table_output, cluster_level = 'State', drop_covariance = TRUE)
 table_output <- table_output[!trimws(table_output) %in% c('& \\\\', '\\\\')]
@@ -363,15 +373,14 @@ table_output <- append(
   '   Controls       & Yes & Yes\\\\',
   after = hline_idx[1]
 )
+
 table_output <- add_panel(table_output, 'Panel C: Weighted average yield spread', ncols = 3)
 writeLines(
   table_output,
   file.path(tbl_dir, 'alternative_sample_robustness_panel_c_yield_spread.tex')
 )
 
-#==============================================================================
-# Panel D: 2012 point-in-time purpose substitution
-#==============================================================================
+# Panel D: 2012 point-in-time purpose substitution ----
 
 purpose_2012 <- fread(file.path(
   root,
@@ -412,6 +421,7 @@ panel_d_utilities <- feols(
   data = purpose_2012[purpose_category == 'utilities'],
   vcov = vcov_cluster(~state)
 )
+
 panel_d_transportation <- feols(
   share_revenue_vs_go_amount ~ city_go_vote + ln_gdp + ln_census_population +
     ln_pers_inc + ln_1p_county_nonmunicipal_total_debt + glm_proactive +
@@ -419,6 +429,7 @@ panel_d_transportation <- feols(
   data = purpose_2012[purpose_category == 'transportation'],
   vcov = vcov_cluster(~state)
 )
+
 panel_d_recreation <- feols(
   share_revenue_vs_go_amount ~ city_go_vote + ln_gdp + ln_census_population +
     ln_pers_inc + ln_1p_county_nonmunicipal_total_debt + glm_proactive +
@@ -426,6 +437,7 @@ panel_d_recreation <- feols(
   data = purpose_2012[purpose_category == 'recreation_amenities'],
   vcov = vcov_cluster(~state)
 )
+
 panel_d_public_safety <- feols(
   share_revenue_vs_go_amount ~ city_go_vote + ln_gdp + ln_census_population +
     ln_pers_inc + ln_1p_county_nonmunicipal_total_debt + glm_proactive +
@@ -433,6 +445,7 @@ panel_d_public_safety <- feols(
   data = purpose_2012[purpose_category == 'public_safety'],
   vcov = vcov_cluster(~state)
 )
+
 panel_d_public_buildings <- feols(
   share_revenue_vs_go_amount ~ city_go_vote + ln_gdp + ln_census_population +
     ln_pers_inc + ln_1p_county_nonmunicipal_total_debt + glm_proactive +
@@ -462,6 +475,7 @@ table_call <- etable(
   dict = table_dict,
   placement = 'H'
 )
+
 table_output <- modify_etable_rounding(table_call, coef_digits = 3, tstat_digits = 2)
 table_output <- format_table(table_output, cluster_level = 'State', drop_covariance = TRUE)
 table_output <- table_output[!trimws(table_output) %in% c('& \\\\', '\\\\')]
@@ -474,20 +488,20 @@ table_output <- append(
   '   Controls       & Yes & Yes & Yes & Yes & Yes\\\\',
   after = hline_idx[1]
 )
+
 table_output <- add_panel(
   table_output,
   'Panel D: Purpose substitution, 2012 point in time',
   ncols = 6
 )
+
 table_output <- append(table_output, '\\small', after = 1)
 writeLines(
   table_output,
   file.path(tbl_dir, 'alternative_sample_robustness_panel_d_purpose_2012.tex')
 )
 
-#==============================================================================
-# Panel E: full-period aggregate purpose substitution
-#==============================================================================
+# Panel E: full-period aggregate purpose substitution ----
 
 purpose_bonds <- fread(file.path(
   root,
@@ -497,6 +511,7 @@ purpose_bonds <- fread(file.path(
 purpose_covered_issuers <- unique(
   purpose_bonds[go_any == 1 | revenue_bond == 1, .(state, seed_issuer)]
 )
+
 purpose_bonds <- purpose_bonds[purpose_category %in% purpose_categories]
 
 purpose_amounts <- purpose_bonds[
@@ -524,6 +539,7 @@ issuer_purpose_controls <- unique(
   )],
   by = c('state', 'seed_issuer')
 )
+
 issuer_purpose_controls <- purpose_covered_issuers[
   issuer_purpose_controls,
   on = .(state, seed_issuer),
@@ -547,10 +563,12 @@ issuer_purpose <- issuer_purpose_controls[
     low_state_tax_privilege
   )
 ]
+
 issuer_purpose <- purpose_amounts[
   issuer_purpose,
   on = .(state, seed_issuer, purpose_category)
 ]
+
 issuer_purpose[is.na(category_amount), category_amount := 0]
 issuer_purpose[is.na(revenue_amount), revenue_amount := 0]
 issuer_purpose[, share_revenue_vs_go_amount := fifelse(
@@ -566,6 +584,7 @@ panel_e_utilities <- feols(
   data = issuer_purpose[purpose_category == 'utilities'],
   vcov = vcov_cluster(~state)
 )
+
 panel_e_transportation <- feols(
   share_revenue_vs_go_amount ~ city_go_vote + ln_gdp + ln_pop + ln_pers_inc +
     ln_county_debt_other + glm_proactive + state_ltgo_allowed +
@@ -573,6 +592,7 @@ panel_e_transportation <- feols(
   data = issuer_purpose[purpose_category == 'transportation'],
   vcov = vcov_cluster(~state)
 )
+
 panel_e_recreation <- feols(
   share_revenue_vs_go_amount ~ city_go_vote + ln_gdp + ln_pop + ln_pers_inc +
     ln_county_debt_other + glm_proactive + state_ltgo_allowed +
@@ -580,6 +600,7 @@ panel_e_recreation <- feols(
   data = issuer_purpose[purpose_category == 'recreation_amenities'],
   vcov = vcov_cluster(~state)
 )
+
 panel_e_public_safety <- feols(
   share_revenue_vs_go_amount ~ city_go_vote + ln_gdp + ln_pop + ln_pers_inc +
     ln_county_debt_other + glm_proactive + state_ltgo_allowed +
@@ -587,6 +608,7 @@ panel_e_public_safety <- feols(
   data = issuer_purpose[purpose_category == 'public_safety'],
   vcov = vcov_cluster(~state)
 )
+
 panel_e_public_buildings <- feols(
   share_revenue_vs_go_amount ~ city_go_vote + ln_gdp + ln_pop + ln_pers_inc +
     ln_county_debt_other + glm_proactive + state_ltgo_allowed +
@@ -616,6 +638,7 @@ table_call <- etable(
   dict = table_dict,
   placement = 'H'
 )
+
 table_output <- modify_etable_rounding(table_call, coef_digits = 3, tstat_digits = 2)
 table_output <- format_table(table_output, cluster_level = 'State', drop_covariance = TRUE)
 table_output <- table_output[!trimws(table_output) %in% c('& \\\\', '\\\\')]
@@ -628,20 +651,20 @@ table_output <- append(
   '   Controls       & Yes & Yes & Yes & Yes & Yes\\\\',
   after = hline_idx[1]
 )
+
 table_output <- add_panel(
   table_output,
   'Panel E: Purpose substitution, full sample aggregate',
   ncols = 6
 )
+
 table_output <- append(table_output, '\\small', after = 1)
 writeLines(
   table_output,
   file.path(tbl_dir, 'alternative_sample_robustness_panel_e_purpose_aggregate.tex')
 )
 
-#==============================================================================
-# Printable online-appendix wrapper
-#==============================================================================
+# Printable online-appendix wrapper ----
 
 writeLines(c(
   '\\newpage',
