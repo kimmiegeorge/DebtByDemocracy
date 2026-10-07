@@ -296,7 +296,13 @@ website_election_source = read_intermediate_csv(WEBSITE_ELECTION_INPUT)
 
 county_controls, county_name_fips = load_county_controls()
 city_month_issuer_fips = build_issuer_fips(city_month_source)
-website_issuer_fips = build_issuer_fips(website_election_source)
+# Recover missing website-election FIPS from the reported Texas county before
+# building the issuer map. This preserves abbreviated issuer names such as
+# EL PA and SPRING VA in the website city-year regressions.
+website_fips_source = add_fips(
+    website_election_source, city_month_issuer_fips, county_name_fips
+)
+website_issuer_fips = build_issuer_fips(website_fips_source)
 issue_month, issue_year, mergent_issuer_fips = load_issuance_indicators()
 issuer_fips = pl.concat(
     [city_month_issuer_fips, website_issuer_fips, mergent_issuer_fips]
