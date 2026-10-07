@@ -1,3 +1,5 @@
+# Set up ----
+
 # 06: Point-in-time DPC purpose substitution tests (Table 9 and associated Figure 4)
 rm(list = ls())
 
@@ -12,6 +14,8 @@ panel_dir <- file.path(root, 'Data/DPC Data/Use Of Proceeds/Purposes Substitutio
 tbl_dir <- file.path(root, 'Code/R/Clean/output/revision_tables')
 fig_dir <- file.path(root, 'Code/R/Clean/output/revision_figures')
 dir.create(fig_dir, showWarnings = FALSE, recursive = TRUE)
+
+# Purpose categories and table labels ----
 
 categories <- c(
   'other_public_buildings',
@@ -50,6 +54,8 @@ control_dict <- c(
   category_amount_mil = 'Par of Outstanding Bonds (millions)',
   share_revenue_vs_go_amount = 'Pct Revenue'
 )
+
+# Revenue and GO pie-chart helper ----
 
 write_revenue_amount_pie_charts <- function(sample_data, year, sample_suffix) {
   # The figure is saved at 13 inches and then scaled to roughly half that width
@@ -179,9 +185,7 @@ write_revenue_amount_pie_charts <- function(sample_data, year, sample_suffix) {
   invisible(list(plot = revenue_amount_pies, totals = pie_totals))
 }
 
-#==============================================================================
-# 2017 point-in-time purpose substitution
-#==============================================================================
+# 2017 point-in-time purpose substitution ----
 
 purpose_2017 <- fread(
   file.path(panel_dir, '260719_dpc_point_in_time_purpose_substitution_2017_issuer_category_panel.csv')
@@ -216,11 +220,15 @@ purpose_2017 <- purpose_2017[
 purpose_2017_full <- purpose_2017[insample == 1]
 purpose_2017_full[, category_amount_mil := category_amount / 1000000]
 
+# 2017 revenue and GO pie charts ----
+
 write_revenue_amount_pie_charts(
   sample_data = purpose_2017_full,
   year = 2017,
   sample_suffix = 'full_sample'
 )
+
+# 2017 par amount outstanding by purpose: full sample ----
 
 ppml_amount_2017_utilities <- fepois(
   category_amount_mil ~ city_go_vote + ln_gdp + ln_census_population +
@@ -229,6 +237,7 @@ ppml_amount_2017_utilities <- fepois(
   data = purpose_2017_full[purpose_category == 'utilities'],
   vcov = vcov_cluster(~state)
 )
+
 ppml_amount_2017_transportation <- fepois(
   category_amount_mil ~ city_go_vote + ln_gdp + ln_census_population +
     ln_pers_inc + ln_1p_county_nonmunicipal_total_debt + glm_proactive +
@@ -236,6 +245,7 @@ ppml_amount_2017_transportation <- fepois(
   data = purpose_2017_full[purpose_category == 'transportation'],
   vcov = vcov_cluster(~state)
 )
+
 ppml_amount_2017_recreation <- fepois(
   category_amount_mil ~ city_go_vote + ln_gdp + ln_census_population +
     ln_pers_inc + ln_1p_county_nonmunicipal_total_debt + glm_proactive +
@@ -243,6 +253,7 @@ ppml_amount_2017_recreation <- fepois(
   data = purpose_2017_full[purpose_category == 'recreation_amenities'],
   vcov = vcov_cluster(~state)
 )
+
 ppml_amount_2017_public_safety <- fepois(
   category_amount_mil ~ city_go_vote + ln_gdp + ln_census_population +
     ln_pers_inc + ln_1p_county_nonmunicipal_total_debt + glm_proactive +
@@ -250,6 +261,7 @@ ppml_amount_2017_public_safety <- fepois(
   data = purpose_2017_full[purpose_category == 'public_safety'],
   vcov = vcov_cluster(~state)
 )
+
 ppml_amount_2017_public_buildings <- fepois(
   category_amount_mil ~ city_go_vote + ln_gdp + ln_census_population +
     ln_pers_inc + ln_1p_county_nonmunicipal_total_debt + glm_proactive +
@@ -291,9 +303,8 @@ writeLines(
   file.path(tbl_dir, 'point_in_time_purpose_category_amount_ppml_2017_full_sample.tex')
 )
 
-#----------------------------
-# 2017 revenue share: full sample
-#----------------------------
+# 2017 revenue share: full sample ----
+
 r_rev_2017_full_other <- feols(
   share_revenue_vs_go_amount ~ city_go_vote + ln_gdp + ln_census_population +
     ln_pers_inc + ln_1p_county_nonmunicipal_total_debt + glm_proactive +
@@ -302,6 +313,7 @@ r_rev_2017_full_other <- feols(
   data = purpose_2017_full[purpose_category == 'other'],
   vcov = vcov_cluster(~state)
 )
+
 r_rev_2017_full_pub_build <- feols(
   share_revenue_vs_go_amount ~ city_go_vote + ln_gdp + ln_census_population +
     ln_pers_inc + ln_1p_county_nonmunicipal_total_debt + glm_proactive +
@@ -310,6 +322,7 @@ r_rev_2017_full_pub_build <- feols(
   data = purpose_2017_full[purpose_category == 'other_public_buildings'],
   vcov = vcov_cluster(~state)
 )
+
 r_rev_2017_full_safety <- feols(
   share_revenue_vs_go_amount ~ city_go_vote + ln_gdp + ln_census_population +
     ln_pers_inc + ln_1p_county_nonmunicipal_total_debt + glm_proactive +
@@ -318,6 +331,7 @@ r_rev_2017_full_safety <- feols(
   data = purpose_2017_full[purpose_category == 'public_safety'],
   vcov = vcov_cluster(~state)
 )
+
 r_rev_2017_full_rec <- feols(
   share_revenue_vs_go_amount ~ city_go_vote + ln_gdp + ln_census_population +
     ln_pers_inc + ln_1p_county_nonmunicipal_total_debt + glm_proactive +
@@ -326,6 +340,7 @@ r_rev_2017_full_rec <- feols(
   data = purpose_2017_full[purpose_category == 'recreation_amenities'],
   vcov = vcov_cluster(~state)
 )
+
 r_rev_2017_full_trans <- feols(
   share_revenue_vs_go_amount ~ city_go_vote + ln_gdp + ln_census_population +
     ln_pers_inc + ln_1p_county_nonmunicipal_total_debt + glm_proactive +
@@ -334,6 +349,7 @@ r_rev_2017_full_trans <- feols(
   data = purpose_2017_full[purpose_category == 'transportation'],
   vcov = vcov_cluster(~state)
 )
+
 r_rev_2017_full_util <- feols(
   share_revenue_vs_go_amount ~ city_go_vote + ln_gdp + ln_census_population +
     ln_pers_inc + ln_1p_county_nonmunicipal_total_debt + glm_proactive +
