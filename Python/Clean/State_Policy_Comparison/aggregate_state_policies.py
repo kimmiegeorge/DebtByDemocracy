@@ -125,7 +125,10 @@ def make_debt_data() -> pd.DataFrame:
         "Stricter debt limit (def. as <= 5% if market or <= 10% if below-market)": "strict_municipal_debt_limit",
     })
     strict["state_abbr"] = strict["state_abbr"].str.strip()
-    return debt.merge(strict, on="state_abbr", how="left", validate="one_to_one")
+    debt = debt.merge(strict, on="state_abbr", how="left", validate="one_to_one")
+    # Code Nebraska as non-strict to match the main debt-choice regressions.
+    debt.loc[debt["state_abbr"].eq("NE"), "strict_municipal_debt_limit"] = 0
+    return debt
 
 
 def make_monitor_data() -> pd.DataFrame:
