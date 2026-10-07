@@ -1,0 +1,34 @@
+\begingroup
+\centering
+\begin{tabular*}{\textwidth}{@{\extracolsep{\fill}}lcccc}
+   \toprule
+    & \multicolumn{4}{c}{Total Articles - 12mo}\\
+   \cmidrule(lr){2-5}
+    & \multicolumn{2}{c}{Full Sample} & \multicolumn{2}{c}{Border-State Sample}\\
+   \cmidrule(lr){2-3}\cmidrule(lr){4-5}
+                        & (1)           & (2)           & (3)           & (4)\\  
+   \midrule 
+   Vote                 & 0.329$^{***}$ & 0.305$^{**}$  & 0.401         & 0.169\\   
+                        & (2.73)       & (2.38)       & (0.84)       & (0.34)\\   
+   Bond Issuance - 12mo & 0.311$^{***}$ & 0.307$^{***}$ & 0.151         & 0.108\\   
+                        & (3.21)       & (2.96)       & (0.51)       & (0.40)\\   
+   Num Sources          & 0.891$^{***}$ & 0.773$^{***}$ & 0.909$^{***}$ & 0.781$^{***}$\\   
+                        & (20.19)      & (21.95)      & (3.35)       & (2.81)\\   
+   Amount               & 0.164$^{***}$ & 0.137$^{***}$ & 0.057         & -0.114\\   
+                        & (3.53)       & (3.26)       & (0.31)       & (-0.56)\\   
+   County ln(GDP)       &               & 0.527         &               & 0.329\\   
+                        &               & (1.46)       &               & (0.41)\\   
+   County ln(Pop)       &               & -0.300        &               & -1.326\\   
+                        &               & (-1.25)      &               & (-0.75)\\   
+   County ln(Pers. Inc) &               & -0.112        &               & 1.394\\   
+                        &               & (-0.26)      &               & (0.77)\\   
+   \hline
+   N         & 2,498         & 2,498         & 220           & 220\\  
+   Pseudo R$^2$         & 0.630         & 0.638         & 0.470         & 0.492\\  
+   Year-Month FE        & Yes           & Yes           & Yes           & Yes\\  
+   Purpose FE           & Yes           & Yes           & Yes           & Yes\\  
+   State-Border FE      & No            & No            & Yes           & Yes\\  
+   Cluster              & State & State & State-Year & State-Year\\  
+   \bottomrule
+\end{tabular*}
+\par\endgroup

@@ -1,0 +1,23 @@
+\begin{table}[H]
+\centering
+\small
+\caption{\textbf{Main full-sample results: leaving out one control state at a time}}
+\label{tab:leave_one_out_control_states}
+\resizebox{\textwidth}{!}{%
+\begin{tabular}{lcccc}
+\toprule
+Omitted unit & Total Articles - 12mo & Retail Trade & Pct UTGO & Wtd. Avg. Yield Spread\\
+\midrule
+None (baseline) & 0.250$^{**}$ & 0.063$^{**}$ & -0.270$^{***}$ & 0.277$^{***}$\\
+Kentucky (KY) & 0.261$^{**}$ & 0.064$^{**}$ & -0.299$^{***}$ & 0.307$^{***}$\\
+Massachusetts (MA) & 0.192 & 0.065$^{**}$ & -0.359$^{***}$ & 0.353$^{**}$\\
+Mississippi (MS) & 0.228$^{*}$ & 0.056$^{**}$ & -0.265$^{***}$ & 0.291$^{***}$\\
+New Hampshire (NH) & 0.242$^{*}$ & 0.070$^{***}$ & -0.269$^{***}$ & 0.278$^{***}$\\
+New Jersey (NJ) & 0.166 & 0.078$^{***}$ & -0.188$^{**}$ & 0.333$^{**}$\\
+Tennessee (TN) & 0.260$^{*}$ & 0.061$^{**}$ & -0.272$^{***}$ & 0.253$^{***}$\\
+Wisconsin (WI) & 0.371$^{***}$ & 0.037 & -0.269$^{***}$ & 0.243$^{**}$\\
+\bottomrule
+\end{tabular}%
+}
+\parbox{\textwidth}{\footnotesize \textit{Notes:} Each cell reports only the coefficient on \textit{Vote} from the corresponding controlled main-table specification. The first row is the main estimate. Each subsequent row removes all observations from the named control state. Standard errors retain the clustering used in the main tables. $^{*}$, $^{**}$, and $^{***}$ indicate significance at the 10\%, 5\%, and 1\% levels.}
+\end{table}

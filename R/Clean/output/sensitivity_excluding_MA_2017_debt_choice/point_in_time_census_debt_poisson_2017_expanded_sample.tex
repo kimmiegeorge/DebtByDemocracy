@@ -1,0 +1,36 @@
+\begingroup
+\centering
+\begin{tabular*}{\textwidth}{@{\extracolsep{\fill}}lccc}
+   \toprule
+                        & Census Total Debt & Census Long-Term Debt & frac\_mergent\\   
+                        & Total             & Long-term             & GO + Revenue \\   
+                        & (1)               & (2)                   & (3)\\  
+                        &  Poisson          & Poisson               & OLS\\  
+   \midrule 
+   Vote                 & -0.090            & -0.025                & -15.194\\   
+                        & (-0.83)          & (-0.22)              & (-1.67)\\   
+   County ln(GDP)       & 0.588$^{***}$     & 0.587$^{***}$         & -0.125\\   
+                        & (2.60)           & (2.61)               & (-0.05)\\   
+   City ln(Pop)         & 1.232$^{***}$     & 1.233$^{***}$         & -4.267\\   
+                        & (36.89)          & (36.67)              & (-1.53)\\   
+   County ln(Pers. Inc) & -0.624$^{***}$    & -0.633$^{***}$        & 1.707\\   
+                        & (-2.71)          & (-2.75)              & (0.39)\\   
+   County Non-City Debt & 0.022             & 0.027                 & 0.251\\   
+                        & (0.36)           & (0.45)               & (0.17)\\   
+   Proactive State      & -0.315$^{***}$    & -0.337$^{***}$        & -6.150\\   
+                        & (-5.94)          & (-5.79)              & (-0.95)\\   
+   LTGO Allowed         & 0.117             & 0.107                 & -0.404\\   
+                        & (1.27)           & (1.15)               & (-0.07)\\   
+   State GO Vote        & -0.008            & -0.035                & -19.207$^{**}$\\   
+                        & (-0.06)          & (-0.26)              & (-2.49)\\   
+   Low Tax Priv.        & -0.053            & -0.046                & 10.186\\   
+                        & (-0.70)          & (-0.60)              & (1.42)\\   
+   city\_rev\_vote      &                   &                       & -0.642\\   
+                        &                   &                       & (-0.14)\\   
+   \hline
+   N         & 2,577             & 2,577                 & 2,389\\  
+   Pseudo R$^2$         & 0.891             & 0.892                 & 0.0004\\  
+   Cluster              & State & State & State\\  
+   \bottomrule
+\end{tabular*}
+\par\endgroup
