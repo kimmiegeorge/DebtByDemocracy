@@ -1,51 +1,35 @@
-# 10: Wild-cluster bootstrap inference (Online Appendix)
-#
-# This script reproduces the current website, border-state media-coverage, 2017
-# point-in-time, and secondary-market trading border specifications. Inference is
-# based on a null-imposed wild-cluster score bootstrap by state. With at most 15
-# states in these samples, all distinct two-sided Rademacher sign assignments are
-# enumerated rather than simulated. Controls and fixed effects are included in
-# estimation but suppressed in the output table.
+# Set up ----
 
+# 10: Wild-cluster score bootstrap inference for the current border specifications.
+# Fit every unrestricted, null, and auxiliary regression explicitly. Enumerate
+# distinct two-sided Rademacher signs by state without refitting per draw.
 rm(list = ls())
-
-required_packages <- c('data.table', 'DescTools', 'fixest')
-missing_packages <- required_packages[
-  !vapply(required_packages, requireNamespace, quietly = TRUE, FUN.VALUE = logical(1))
-]
-if (length(missing_packages) > 0L) {
-  stop(
-    'Install the following R packages before running this script: ',
-    paste(missing_packages, collapse = ', ')
-  )
-}
 
 library(data.table)
 library(fixest)
 
-root <- '/Users/kmunevar/Dropbox/Voting on Bonds'
-output_dir <- file.path(root, 'Code/R/Clean/output/revision_tables')
-processed_output_dir <- file.path(root, 'Code/R/Clean/output/processed')
+root <- "/Users/kmunevar/Dropbox/Voting on Bonds"
+output_dir <- Sys.getenv(
+  "RESULTS_DIR",
+  unset = "/Users/kmunevar/Dropbox/Voting on Bonds/Code/R/Clean/output/revision_tables"
+)
+processed_output_dir <- Sys.getenv(
+  "PROCESSED_RESULTS_DIR",
+  unset = "/Users/kmunevar/Dropbox/Voting on Bonds/Code/R/Clean/output/processed"
+)
 dir.create(output_dir, recursive = TRUE, showWarnings = FALSE)
 dir.create(processed_output_dir, recursive = TRUE, showWarnings = FALSE)
 
-source(file.path(root, 'Code/R/Clean/00_tax_privilege_definitions.R'))
-source(file.path(root, 'Code/R/Clean/00_border_pair_definitions.R'))
+source(file.path(root, "Code/R/Clean/00_tax_privilege_definitions.R"))
+source(file.path(root, "Code/R/Clean/00_border_pair_definitions.R"))
 
-output_tex <- file.path(output_dir, 'wild_cluster_bootstrap_border_tests.tex')
-output_processed_tex <- file.path(
-  processed_output_dir,
-  'wild_cluster_bootstrap_border_tests.tex'
-)
-
-treatment <- 'city_go_vote'
+output_tex <- file.path(output_dir, "wild_cluster_bootstrap_border_tests.tex")
+output_processed_tex <- file.path(processed_output_dir, "wild_cluster_bootstrap_border_tests.tex")
+treatment <- "city_go_vote"
 poisson_glm_iter <- 100
 poisson_fixef_iter <- 50000
 
-
-# ==============================================================================
-# Wild-cluster score bootstrap helpers
-# ==============================================================================
+# Score-bootstrap and result helpers ----
 
 enumerated_rademacher_p <- function(cluster_scores, max_exact_clusters = 20L,
                                     B = 99999L, seed = 20260720L) {
@@ -107,7 +91,6 @@ enumerated_rademacher_p <- function(cluster_scores, max_exact_clusters = 20L,
   )
 }
 
-
 extract_p_value <- function(model, cluster_formula, coefficient = treatment) {
   coefficient_table <- fixest::coeftable(
     model,
@@ -120,92 +103,29 @@ extract_p_value <- function(model, cluster_formula, coefficient = treatment) {
   unname(coefficient_table[coefficient, p_column])
 }
 
-
-fit_paper_model <- function(data, outcome, controls, fixed_effects, family,
-                            baseline_cluster) {
-  rhs <- paste(c(treatment, controls), collapse = ' + ')
-  model_formula <- as.formula(sprintf(
-    '%s ~ %s | %s', outcome, rhs, paste(fixed_effects, collapse = ' + ')
-  ))
-
-  if (family == 'poisson') {
-    return(fixest::fepois(
-      model_formula,
-      data = data,
-      vcov = fixest::vcov_cluster(as.formula(paste0('~', baseline_cluster))),
-      glm.iter = poisson_glm_iter,
-      fixef.iter = poisson_fixef_iter
-    ))
+# These helpers summarize already-fitted models; no regressions run in functions.
+wild_cluster_score_test <- function(model, model_data, restricted_model,
+                                    auxiliary_model, outcome, family, cluster = "state") {
+  if (nobs(model) != nrow(model_data) || nobs(restricted_model) != nrow(model_data) ||
+      nobs(auxiliary_model) != nrow(model_data)) {
+    stop("The unrestricted, null, and auxiliary models must use the same rows.")
   }
-
-  fixest::feols(
-    model_formula,
-    data = data,
-    vcov = fixest::vcov_cluster(as.formula(paste0('~', baseline_cluster)))
-  )
-}
-
-
-wild_cluster_score_test <- function(model, data, outcome, controls,
-                                    fixed_effects, family, cluster = 'state') {
-  used_rows <- fixest::obs(model)
-  model_data <- copy(data[used_rows])
-
-  restricted_formula <- as.formula(sprintf(
-    '%s ~ %s | %s',
-    outcome,
-    paste(controls, collapse = ' + '),
-    paste(fixed_effects, collapse = ' + ')
-  ))
-  auxiliary_formula <- as.formula(sprintf(
-    '%s ~ %s | %s',
-    treatment,
-    paste(controls, collapse = ' + '),
-    paste(fixed_effects, collapse = ' + ')
-  ))
-
-  if (family == 'poisson') {
-    restricted_model <- fixest::fepois(
-      restricted_formula,
-      data = model_data,
-      glm.iter = poisson_glm_iter,
-      fixef.iter = poisson_fixef_iter
-    )
-    if (nobs(restricted_model) != nrow(model_data)) {
-      stop('The restricted PPML model changed the unrestricted estimation sample.')
-    }
-
+  treatment_residual <- as.numeric(residuals(auxiliary_model))
+  if (family == "poisson") {
     null_mean <- as.numeric(fitted(restricted_model))
-    auxiliary_model <- fixest::feols(
-      auxiliary_formula,
-      data = model_data,
-      weights = null_mean
-    )
-    treatment_residual <- as.numeric(residuals(auxiliary_model))
-    score_observation <- treatment_residual *
-      (model_data[[outcome]] - null_mean)
+    score_observation <- treatment_residual * (model_data[[outcome]] - null_mean)
   } else {
-    restricted_model <- fixest::feols(restricted_formula, data = model_data)
-    if (nobs(restricted_model) != nrow(model_data)) {
-      stop('The restricted linear model changed the unrestricted estimation sample.')
-    }
-
-    auxiliary_model <- fixest::feols(auxiliary_formula, data = model_data)
-    treatment_residual <- as.numeric(residuals(auxiliary_model))
     score_observation <- treatment_residual * as.numeric(residuals(restricted_model))
   }
-
   if (length(score_observation) != nrow(model_data) || any(!is.finite(score_observation))) {
-    stop('Could not construct finite observation-level scores for ', outcome, '.')
+    stop("Could not construct finite observation-level scores for ", outcome, ".")
   }
-
   cluster_id <- as.character(model_data[[cluster]])
   if (anyNA(cluster_id)) {
-    stop('The bootstrap cluster variable contains missing values.')
+    stop("The bootstrap cluster variable contains missing values.")
   }
   cluster_scores <- rowsum(score_observation, cluster_id, reorder = TRUE)[, 1L]
   bootstrap <- enumerated_rademacher_p(cluster_scores)
-
   list(
     estimate = unname(coef(model)[treatment]),
     p_value = bootstrap$p_value,
@@ -218,28 +138,12 @@ wild_cluster_score_test <- function(model, data, outcome, controls,
   )
 }
 
-
-estimate_specification <- function(data, panel, column, outcome_label, outcome,
-                                   controls, fixed_effects, family,
-                                   baseline_cluster) {
-  model <- fit_paper_model(
-    data = data,
-    outcome = outcome,
-    controls = controls,
-    fixed_effects = fixed_effects,
-    family = family,
-    baseline_cluster = baseline_cluster
-  )
+summarize_specification <- function(model, model_data, restricted_model, auxiliary_model,
+                                    panel, column, outcome_label, outcome, family,
+                                    baseline_cluster) {
   bootstrap <- wild_cluster_score_test(
-    model = model,
-    data = data,
-    outcome = outcome,
-    controls = controls,
-    fixed_effects = fixed_effects,
-    family = family,
-    cluster = 'state'
+    model, model_data, restricted_model, auxiliary_model, outcome, family
   )
-
   model_sample <- bootstrap$model_data
   state_year_clusters <- if ('state_year' %in% names(model_sample)) {
     uniqueN(model_sample$state_year)
@@ -275,375 +179,382 @@ estimate_specification <- function(data, panel, column, outcome_label, outcome,
   )
 }
 
+# Panel A: Website disclosure ----
 
-# ==============================================================================
-# Panel A: Website disclosure
-# ==============================================================================
-
-website_data <- fread(file.path(
-  root,
-  'Data/Clean_Intermediate/Websites/border_state_website_data_with_recovered.csv'
+# Read the exact prepared sample used by step 01, including prior-year controls.
+website_data <- fread(Sys.getenv(
+  "WEBSITE_REGRESSION_DATA",
+  unset = file.path(root, "Data/Clean_Intermediate/Websites/border_state_website_regression_data.csv")
 ))
-website_data <- filter_paper_border_pairs(website_data)
-website_data <- website_data[
-  !is.na(total_subs) &
-    !is.na(city_go_vote) &
-    total_subs == 50 &
-    seed_issuer != 'BONDUEL WIS'
-]
-website_data[, year_int := as.integer(year)]
-website_data[, state_year := interaction(state, year_int, drop = TRUE)]
-website_data[, issuer_key := paste(
-  sprintf('%.0f', round(as.numeric(seed_issuer_id) * 10)),
-  toupper(trimws(state)),
-  toupper(gsub('\\s+', ' ', trimws(seed_issuer))),
-  sep = '|'
-)]
-
-debt_panel <- fread(
-  file.path(
-    root,
-    'Data/Clean_Intermediate/Mergent/Outstanding Debt/full_mergent_issuer_year_outstanding_debt.csv'
-  ),
-  select = c('issuer_key', 'year', 'ln_1p_total_outstanding_debt')
-)
-debt_panel[, year_int := as.integer(year) + 1L]
-debt_panel[, year := NULL]
-setnames(debt_panel, 'ln_1p_total_outstanding_debt', 'ln_1p_outstanding_debt_lag1')
-if (debt_panel[, anyDuplicated(paste(issuer_key, year_int))] > 0L) {
-  stop('The outstanding-debt panel has duplicate issuer-year keys.')
-}
-website_data <- debt_panel[website_data, on = .(issuer_key, year_int)]
-if (website_data[, anyNA(ln_1p_outstanding_debt_lag1)]) {
-  stop('The outstanding-debt panel is missing website issuer-years.')
-}
-
-state_policy <- fread(file.path(
-  root,
-  'Data/State Monitoring Policy/state_enforcement_adoption_years.csv'
-))
-state_policy[, AdoptionYear := fifelse(AdoptionYear == 'before_sample', '2009', AdoptionYear)]
-state_policy[, AdoptionYear := as.integer(AdoptionYear)]
-setnames(state_policy, 'Abbreviation', 'state')
-website_data <- state_policy[website_data, on = .(state)]
-website_data[, state_monitor := as.integer(
-  !is.na(AdoptionYear) & year_int >= AdoptionYear
-)]
 website_data[, group := factor(group)]
-website_data[, year := factor(year_int)]
+website_data[, year := factor(year)]
+website_data[, state_year := factor(state_year)]
 
-# Use observed order statistics for the count-variable caps so winsorization
-# matches the main website analysis and preserves integer-valued counts.
-for (variable in c(
-  'fiscal_url', 'fiscal_count', 'bond_url', 'bond_count', 'financial_pdf_urls'
-)) {
-  website_data[, (variable) := DescTools::Winsorize(
-    get(variable),
-    val = quantile(
-      get(variable),
-      probs = c(0.01, 0.99),
-      na.rm = TRUE,
-      type = 1
-    )
-  )]
-}
-
-website_controls <- c(
-  'ln_1p_outstanding_debt_lag1', 'state_monitor',
-  'ln_gdp', 'ln_pop', 'ln_pers_inc'
+website_bond_url <- fepois(
+  bond_url ~ city_go_vote + ln_1p_outstanding_debt_lag1 + state_monitor +
+    gasb_municipal_gaap_required_any + nasact_audits_cities_towns_villages +
+    ln_gdp + ln_pop + ln_pers_inc | group + year,
+  data = website_data, vcov = ~state_year,
+  glm.iter = poisson_glm_iter, fixef.iter = poisson_fixef_iter
 )
-website_outcomes <- data.table(
-  column = 1:5,
-  outcome = c(
-    'Bond URLs', 'Bond Count', 'Fiscal URLs', 'Fiscal Count', 'Financial Docs'
-  ),
-  variable = c(
-    'bond_url', 'bond_count', 'fiscal_url', 'fiscal_count', 'financial_pdf_urls'
-  )
+website_bond_url_sample <- copy(website_data[obs(website_bond_url)])
+website_bond_url_null <- fepois(
+  bond_url ~ ln_1p_outstanding_debt_lag1 + state_monitor +
+    gasb_municipal_gaap_required_any + nasact_audits_cities_towns_villages +
+    ln_gdp + ln_pop + ln_pers_inc | group + year,
+  data = website_bond_url_sample,
+  glm.iter = poisson_glm_iter, fixef.iter = poisson_fixef_iter
+)
+website_bond_url_aux <- feols(
+  city_go_vote ~ ln_1p_outstanding_debt_lag1 + state_monitor +
+    gasb_municipal_gaap_required_any + nasact_audits_cities_towns_villages +
+    ln_gdp + ln_pop + ln_pers_inc | group + year,
+  data = website_bond_url_sample, weights = fitted(website_bond_url_null)
 )
 
-website_results <- rbindlist(lapply(seq_len(nrow(website_outcomes)), function(i) {
-  estimate_specification(
-    data = website_data,
-    panel = 'A',
-    column = website_outcomes$column[i],
-    outcome_label = website_outcomes$outcome[i],
-    outcome = website_outcomes$variable[i],
-    controls = website_controls,
-    fixed_effects = c('group', 'year'),
-    family = 'poisson',
-    baseline_cluster = 'state_year'
-  )
-}))
+website_bond_count <- fepois(
+  bond_count ~ city_go_vote + ln_1p_outstanding_debt_lag1 + state_monitor +
+    gasb_municipal_gaap_required_any + nasact_audits_cities_towns_villages +
+    ln_gdp + ln_pop + ln_pers_inc | group + year,
+  data = website_data, vcov = ~state_year,
+  glm.iter = poisson_glm_iter, fixef.iter = poisson_fixef_iter
+)
+website_bond_count_sample <- copy(website_data[obs(website_bond_count)])
+website_bond_count_null <- fepois(
+  bond_count ~ ln_1p_outstanding_debt_lag1 + state_monitor +
+    gasb_municipal_gaap_required_any + nasact_audits_cities_towns_villages +
+    ln_gdp + ln_pop + ln_pers_inc | group + year,
+  data = website_bond_count_sample,
+  glm.iter = poisson_glm_iter, fixef.iter = poisson_fixef_iter
+)
+website_bond_count_aux <- feols(
+  city_go_vote ~ ln_1p_outstanding_debt_lag1 + state_monitor +
+    gasb_municipal_gaap_required_any + nasact_audits_cities_towns_villages +
+    ln_gdp + ln_pop + ln_pers_inc | group + year,
+  data = website_bond_count_sample, weights = fitted(website_bond_count_null)
+)
 
+website_fiscal_url <- fepois(
+  fiscal_url ~ city_go_vote + ln_1p_outstanding_debt_lag1 + state_monitor +
+    gasb_municipal_gaap_required_any + nasact_audits_cities_towns_villages +
+    ln_gdp + ln_pop + ln_pers_inc | group + year,
+  data = website_data, vcov = ~state_year,
+  glm.iter = poisson_glm_iter, fixef.iter = poisson_fixef_iter
+)
+website_fiscal_url_sample <- copy(website_data[obs(website_fiscal_url)])
+website_fiscal_url_null <- fepois(
+  fiscal_url ~ ln_1p_outstanding_debt_lag1 + state_monitor +
+    gasb_municipal_gaap_required_any + nasact_audits_cities_towns_villages +
+    ln_gdp + ln_pop + ln_pers_inc | group + year,
+  data = website_fiscal_url_sample,
+  glm.iter = poisson_glm_iter, fixef.iter = poisson_fixef_iter
+)
+website_fiscal_url_aux <- feols(
+  city_go_vote ~ ln_1p_outstanding_debt_lag1 + state_monitor +
+    gasb_municipal_gaap_required_any + nasact_audits_cities_towns_villages +
+    ln_gdp + ln_pop + ln_pers_inc | group + year,
+  data = website_fiscal_url_sample, weights = fitted(website_fiscal_url_null)
+)
 
-# ==============================================================================
-# Panel B: RavenPack media coverage, border-state columns (3)--(4)
-# ==============================================================================
+website_fiscal_count <- fepois(
+  fiscal_count ~ city_go_vote + ln_1p_outstanding_debt_lag1 + state_monitor +
+    gasb_municipal_gaap_required_any + nasact_audits_cities_towns_villages +
+    ln_gdp + ln_pop + ln_pers_inc | group + year,
+  data = website_data, vcov = ~state_year,
+  glm.iter = poisson_glm_iter, fixef.iter = poisson_fixef_iter
+)
+website_fiscal_count_sample <- copy(website_data[obs(website_fiscal_count)])
+website_fiscal_count_null <- fepois(
+  fiscal_count ~ ln_1p_outstanding_debt_lag1 + state_monitor +
+    gasb_municipal_gaap_required_any + nasact_audits_cities_towns_villages +
+    ln_gdp + ln_pop + ln_pers_inc | group + year,
+  data = website_fiscal_count_sample,
+  glm.iter = poisson_glm_iter, fixef.iter = poisson_fixef_iter
+)
+website_fiscal_count_aux <- feols(
+  city_go_vote ~ ln_1p_outstanding_debt_lag1 + state_monitor +
+    gasb_municipal_gaap_required_any + nasact_audits_cities_towns_villages +
+    ln_gdp + ln_pop + ln_pers_inc | group + year,
+  data = website_fiscal_count_sample, weights = fitted(website_fiscal_count_null)
+)
 
-media_data <- fread(file.path(
-  root,
-  paste0(
-    'Data/Clean_Intermediate/Border States/',
-    'Border Matches RP Issuance Lvl Expanded Set Buffer 100000.csv'
-  )
+website_financial_docs <- fepois(
+  financial_pdf_urls ~ city_go_vote + ln_1p_outstanding_debt_lag1 + state_monitor +
+    gasb_municipal_gaap_required_any + nasact_audits_cities_towns_villages +
+    ln_gdp + ln_pop + ln_pers_inc | group + year,
+  data = website_data, vcov = ~state_year,
+  glm.iter = poisson_glm_iter, fixef.iter = poisson_fixef_iter
+)
+website_financial_docs_sample <- copy(website_data[obs(website_financial_docs)])
+website_financial_docs_null <- fepois(
+  financial_pdf_urls ~ ln_1p_outstanding_debt_lag1 + state_monitor +
+    gasb_municipal_gaap_required_any + nasact_audits_cities_towns_villages +
+    ln_gdp + ln_pop + ln_pers_inc | group + year,
+  data = website_financial_docs_sample,
+  glm.iter = poisson_glm_iter, fixef.iter = poisson_fixef_iter
+)
+website_financial_docs_aux <- feols(
+  city_go_vote ~ ln_1p_outstanding_debt_lag1 + state_monitor +
+    gasb_municipal_gaap_required_any + nasact_audits_cities_towns_villages +
+    ln_gdp + ln_pop + ln_pers_inc | group + year,
+  data = website_financial_docs_sample, weights = fitted(website_financial_docs_null)
+)
+
+website_results <- rbindlist(list(
+  summarize_specification(website_bond_url, website_bond_url_sample,
+    website_bond_url_null, website_bond_url_aux, "A", 1L, "Bond URLs", "bond_url", "poisson", "state_year"),
+  summarize_specification(website_bond_count, website_bond_count_sample,
+    website_bond_count_null, website_bond_count_aux, "A", 2L, "Bond Count", "bond_count", "poisson", "state_year"),
+  summarize_specification(website_fiscal_url, website_fiscal_url_sample,
+    website_fiscal_url_null, website_fiscal_url_aux, "A", 3L, "Fiscal URLs", "fiscal_url", "poisson", "state_year"),
+  summarize_specification(website_fiscal_count, website_fiscal_count_sample,
+    website_fiscal_count_null, website_fiscal_count_aux, "A", 4L, "Fiscal Count", "fiscal_count", "poisson", "state_year"),
+  summarize_specification(website_financial_docs, website_financial_docs_sample,
+    website_financial_docs_null, website_financial_docs_aux, "A", 5L, "Financial Docs", "financial_pdf_urls", "poisson", "state_year")
 ))
-media_data <- media_data[!is.na(ln_employment)]
-setorder(media_data, seed_issuer_id, issuance_year_month_id)
-media_data[, lag_issuance_ym_id := shift(issuance_year_month_id), by = seed_issuer_id]
-media_data[, issuance_gap := issuance_year_month_id - lag_issuance_ym_id]
-media_data[, bond_prior_12 := fifelse(
-  !is.na(issuance_gap) & issuance_gap <= 12,
-  1,
-  0
-)]
-media_data <- filter_paper_border_pairs(media_data)
-media_data[, log_sources := log1p(unique_sources_12)]
 
-# Match the media table's outcome definition: calculate the empirical 1st and
-# 99th percentile caps in the full media analysis sample, then apply those same
-# caps to the border-state sample. The RI treatment recode and the employment
-# and analysis-sample screens mirror 02_media_coverage.R; the issuer merge in that
-# script adds labels only and does not affect the percentile calculation.
-media_cap_data <- fread(file.path(
-  root,
-  'Data/Clean_Intermediate/News/Issuance_Lvl_News_With_Lagged_News.csv'
+# Panel B: Border-state media coverage ----
+
+# Reuse step 02's prior-year BEA controls, GDP fallback, and article caps.
+media_data <- fread(Sys.getenv(
+  "MEDIA_BORDER_REGRESSION_DATA",
+  unset = file.path(root, "Data/Clean_Intermediate/News/media_border_state_regression_data.csv")
 ))
-media_cap_data[state == 'RI', city_go_vote := NA_real_]
-media_cap_data <- media_cap_data[
-  !is.na(city_go_vote) &
-    !is.na(ln_employment) &
-    go_unlim_bond_issuance == 1 &
-    rolling_sum_monthly_article_count_12 > 0
-]
-media_article_caps <- quantile(
-  media_cap_data$total_rp_articles_12_0,
-  probs = c(0.01, 0.99),
-  na.rm = TRUE,
-  type = 1
-)
-media_data[, total_articles_12_0_win := DescTools::Winsorize(
-  total_rp_articles_12_0,
-  val = media_article_caps
-)]
-media_data[, state_year := interaction(state, year, drop = TRUE)]
 media_data <- media_data[
-  go_unlim_bond_issuance == 1 &
-    rolling_sum_monthly_article_count_12 > 0
+  go_unlim_bond_issuance == 1 & rolling_sum_monthly_article_count_12 > 0
 ]
+submission_border_prior <- fread(file.path(
+  root, "Code/R/Clean/input/media_submission_border_prior_12.csv"
+))
+submission_border_keys <- c("seed_issuer_id", "issuance_year_month_id", "group")
+stopifnot(!anyDuplicated(submission_border_prior[, ..submission_border_keys]))
+submission_border_matches <- media_data[
+  submission_border_prior, on = submission_border_keys, nomatch = 0
+]
+if (nrow(submission_border_matches) != nrow(submission_border_prior)) {
+  stop("Submitted media border rows are missing or duplicated in the current input.")
+}
+media_data[submission_border_prior, on = submission_border_keys,
+  bond_prior_12 := i.bond_prior_12]
 
-# The paper's two columns are estimated separately. Do not impose the full-
-# controls complete-case screen on the no-demographics column.
-
-media_controls_no_demographics <- c(
-  'bond_prior_12', 'log_sources', 'ln_amount'
+media_no_demographics <- fepois(
+  total_articles_12_0_win ~ city_go_vote + bond_prior_12 + log_sources + ln_amount |
+    issuance_year_month_id + group + purp_broad,
+  data = media_data, vcov = ~state_year,
+  glm.iter = poisson_glm_iter, fixef.iter = poisson_fixef_iter
 )
-media_controls_demographics <- c(
-  media_controls_no_demographics, 'ln_gdp', 'ln_pop', 'ln_pers_inc'
+media_no_demographics_sample <- copy(media_data[obs(media_no_demographics)])
+stopifnot(fsetequal(media_no_demographics_sample[, ..submission_border_keys],
+  submission_border_prior[, ..submission_border_keys]))
+media_no_demographics_null <- fepois(
+  total_articles_12_0_win ~ bond_prior_12 + log_sources + ln_amount |
+    issuance_year_month_id + group + purp_broad,
+  data = media_no_demographics_sample,
+  glm.iter = poisson_glm_iter, fixef.iter = poisson_fixef_iter
+)
+media_no_demographics_aux <- feols(
+  city_go_vote ~ bond_prior_12 + log_sources + ln_amount |
+    issuance_year_month_id + group + purp_broad,
+  data = media_no_demographics_sample, weights = fitted(media_no_demographics_null)
+)
+
+media_demographics <- fepois(
+  total_articles_12_0_win ~ city_go_vote + bond_prior_12 + log_sources + ln_amount +
+    ln_gdp + ln_pop + ln_pers_inc | issuance_year_month_id + group + purp_broad,
+  data = media_data, vcov = ~state_year,
+  glm.iter = poisson_glm_iter, fixef.iter = poisson_fixef_iter
+)
+media_demographics_sample <- copy(media_data[obs(media_demographics)])
+stopifnot(nrow(fsetdiff(media_demographics_sample[, ..submission_border_keys],
+  submission_border_prior[, ..submission_border_keys])) == 0)
+media_demographics_null <- fepois(
+  total_articles_12_0_win ~ bond_prior_12 + log_sources + ln_amount +
+    ln_gdp + ln_pop + ln_pers_inc | issuance_year_month_id + group + purp_broad,
+  data = media_demographics_sample,
+  glm.iter = poisson_glm_iter, fixef.iter = poisson_fixef_iter
+)
+media_demographics_aux <- feols(
+  city_go_vote ~ bond_prior_12 + log_sources + ln_amount + ln_gdp + ln_pop +
+    ln_pers_inc | issuance_year_month_id + group + purp_broad,
+  data = media_demographics_sample, weights = fitted(media_demographics_null)
 )
 
 media_results <- rbindlist(list(
-  estimate_specification(
-    data = media_data,
-    panel = 'B',
-    column = 1L,
-    outcome_label = 'No demographics',
-    outcome = 'total_articles_12_0_win',
-    controls = media_controls_no_demographics,
-    fixed_effects = c('issuance_year_month_id', 'group', 'purp_broad'),
-    family = 'poisson',
-    baseline_cluster = 'state_year'
-  ),
-  estimate_specification(
-    data = media_data,
-    panel = 'B',
-    column = 2L,
-    outcome_label = 'Demographics',
-    outcome = 'total_articles_12_0_win',
-    controls = media_controls_demographics,
-    fixed_effects = c('issuance_year_month_id', 'group', 'purp_broad'),
-    family = 'poisson',
-    baseline_cluster = 'state_year'
-  )
+  summarize_specification(media_no_demographics, media_no_demographics_sample,
+    media_no_demographics_null, media_no_demographics_aux, "B", 1L,
+    "No demographics", "total_articles_12_0_win", "poisson", "state_year"),
+  summarize_specification(media_demographics, media_demographics_sample,
+    media_demographics_null, media_demographics_aux, "B", 2L,
+    "Demographics", "total_articles_12_0_win", "poisson", "state_year")
 ))
 
+# Panel C: Secondary-market trading before maturity ----
 
-# ==============================================================================
-# Panel D: 2017 point-in-time fraction UTGO and aggregate yield
-# ==============================================================================
+# Reuse step 04's exact sample, raw trade indicators, and rating fixed effects.
+regression_data_dir <- Sys.getenv(
+  "MSRB_REGRESSION_DIR",
+  unset = file.path(root, "Data/Clean_Intermediate/MSRB/Regression")
+)
+trade_border_data <- fread(file.path(regression_data_dir,
+  "trade_border_sample_regression_ready.csv"))
 
-point_data <- fread(file.path(
-  root,
-  paste0(
-    'Data/Clean_Intermediate/Census COG Finance/processed/',
-    'census_mergent_debt_cross_section_2017_border_sample.csv'
-  )
+trade_any <- feols(
+  traded_before_maturity ~ city_go_vote + low_state_tax_privilege + disclosure_control +
+    ln_amount + ln_maturity_mths + callable + sinkable + insured +
+    ln_gdp + ln_pop + ln_pers_inc | year + purp_broad + group + rating_fe,
+  data = trade_border_data, vcov = ~state_year
+)
+trade_any_sample <- copy(trade_border_data[obs(trade_any)])
+trade_any_null <- feols(
+  traded_before_maturity ~ low_state_tax_privilege + disclosure_control +
+    ln_amount + ln_maturity_mths + callable + sinkable + insured +
+    ln_gdp + ln_pop + ln_pers_inc | year + purp_broad + group + rating_fe,
+  data = trade_any_sample
+)
+trade_any_aux <- feols(
+  city_go_vote ~ low_state_tax_privilege + disclosure_control +
+    ln_amount + ln_maturity_mths + callable + sinkable + insured +
+    ln_gdp + ln_pop + ln_pers_inc | year + purp_broad + group + rating_fe,
+  data = trade_any_sample
+)
+
+trade_retail <- feols(
+  retail_traded_before_maturity ~ city_go_vote + low_state_tax_privilege + disclosure_control +
+    ln_amount + ln_maturity_mths + callable + sinkable + insured +
+    ln_gdp + ln_pop + ln_pers_inc | year + purp_broad + group + rating_fe,
+  data = trade_border_data, vcov = ~state_year
+)
+trade_retail_sample <- copy(trade_border_data[obs(trade_retail)])
+trade_retail_null <- feols(
+  retail_traded_before_maturity ~ low_state_tax_privilege + disclosure_control +
+    ln_amount + ln_maturity_mths + callable + sinkable + insured +
+    ln_gdp + ln_pop + ln_pers_inc | year + purp_broad + group + rating_fe,
+  data = trade_retail_sample
+)
+trade_retail_aux <- feols(
+  city_go_vote ~ low_state_tax_privilege + disclosure_control +
+    ln_amount + ln_maturity_mths + callable + sinkable + insured +
+    ln_gdp + ln_pop + ln_pers_inc | year + purp_broad + group + rating_fe,
+  data = trade_retail_sample
+)
+
+trade_institutional <- feols(
+  institutional_traded_before_maturity ~ city_go_vote + low_state_tax_privilege + disclosure_control +
+    ln_amount + ln_maturity_mths + callable + sinkable + insured +
+    ln_gdp + ln_pop + ln_pers_inc | year + purp_broad + group + rating_fe,
+  data = trade_border_data, vcov = ~state_year
+)
+trade_institutional_sample <- copy(trade_border_data[obs(trade_institutional)])
+trade_institutional_null <- feols(
+  institutional_traded_before_maturity ~ low_state_tax_privilege + disclosure_control +
+    ln_amount + ln_maturity_mths + callable + sinkable + insured +
+    ln_gdp + ln_pop + ln_pers_inc | year + purp_broad + group + rating_fe,
+  data = trade_institutional_sample
+)
+trade_institutional_aux <- feols(
+  city_go_vote ~ low_state_tax_privilege + disclosure_control +
+    ln_amount + ln_maturity_mths + callable + sinkable + insured +
+    ln_gdp + ln_pop + ln_pers_inc | year + purp_broad + group + rating_fe,
+  data = trade_institutional_sample
+)
+
+trade_results <- rbindlist(list(
+  summarize_specification(trade_any, trade_any_sample, trade_any_null, trade_any_aux,
+    "C", 1L, "Trade", "traded_before_maturity", "linear", "state_year"),
+  summarize_specification(trade_retail, trade_retail_sample, trade_retail_null, trade_retail_aux,
+    "C", 2L, "Retail Trade", "retail_traded_before_maturity", "linear", "state_year"),
+  summarize_specification(trade_institutional, trade_institutional_sample,
+    trade_institutional_null, trade_institutional_aux,
+    "C", 3L, "Inst. Trade", "institutional_traded_before_maturity", "linear", "state_year")
+))
+
+# Panel D: 2017 point-in-time debt choice and yield ----
+
+# Mirror step 05's border construction and identifying-pair screen.
+point_data <- fread(file.path(root,
+  "Data/Clean_Intermediate/Census COG Finance/processed/no_refundings/census_mergent_debt_cross_section_2017_border_sample.csv"
 ))
 point_data[, fips := as.character(fips)]
-if ('nh_city' %in% names(point_data)) {
-  point_data <- point_data[!(state == 'NH' & nh_city == 0)]
-} else {
-  point_data <- point_data[!(state == 'NH' & government_type_label == 'township')]
-}
-point_data <- point_data[!is.na(city_go_vote)]
-add_low_state_tax_privilege(point_data)
-point_data[, frac_utgo_outstanding :=
-  mergent_utgo_outstanding_debt / mergent_go_revenue_outstanding_debt]
-point_data[mergent_go_revenue_outstanding_debt <= 0, frac_utgo_outstanding := NA_real_]
+add_low_state_tax_privilege(point_data, year_value = 2017)
 point_data[, ln_census_population := log(census_population)]
 point_data[, state_year := interaction(state, year, drop = TRUE)]
-
-point_data <- filter_debt_yield_border_pairs(point_data, 'border_group')
+point_data <- filter_debt_yield_border_pairs(point_data, "border_group")
 point_data <- point_data[
-  !is.na(ln_gdp) &
-    !is.na(ln_census_population) &
-    !is.na(ln_pers_inc) &
-    !is.na(ln_1p_county_nonmunicipal_total_debt) &
-    !is.na(state_go_vote) &
-    !is.na(low_state_tax_privilege) &
-    insample == 1 &
-    !is.na(mergent_go_revenue_bonds_outstanding) &
-    mergent_go_revenue_bonds_outstanding >= 2
+  !is.na(ln_gdp) & !is.na(ln_census_population) & !is.na(ln_pers_inc) &
+    !is.na(ln_1p_county_nonmunicipal_total_debt) & !is.na(state_go_vote) &
+    !is.na(low_state_tax_privilege) & insample == 1 &
+    !is.na(mergent_go_revenue_bonds_outstanding) & mergent_go_revenue_bonds_outstanding >= 2
 ]
-identifying_groups <- point_data[
-  , .(vote_values = uniqueN(city_go_vote)),
-  by = border_group
-][vote_values == 2, border_group]
+identifying_groups <- point_data[, .(vote_values = uniqueN(city_go_vote)),
+  by = border_group][vote_values == 2, border_group]
 point_data <- point_data[border_group %in% identifying_groups]
+# Numeric binary regressors preserve the treatment name used by score tests.
+point_data[, `:=`(city_go_vote = as.numeric(city_go_vote),
+  state_go_vote = as.numeric(state_go_vote))]
 
-point_common_controls <- c(
-  'ln_gdp', 'ln_census_population', 'ln_pers_inc',
-  'ln_1p_county_nonmunicipal_total_debt', 'state_go_vote',
-  'low_state_tax_privilege'
+point_utgo <- feols(
+  frac_utgo_outstanding ~ city_go_vote + ln_gdp + ln_census_population + ln_pers_inc +
+    ln_1p_county_nonmunicipal_total_debt + state_go_vote + low_state_tax_privilege +
+    strict_municipal_debt_limit | border_group,
+  data = point_data, vcov = ~state_year
 )
-point_yield_controls <- c(
-  'ln_gdp', 'ln_census_population', 'ln_pers_inc',
-  'ln_1p_county_nonmunicipal_total_debt',
-  'mergent_wavg_rating_go_revenue_zero_unrated',
-  'mergent_wavg_original_maturity_years_go_revenue',
-  'mergent_wavg_insured_go_revenue',
-  'mergent_wavg_sinkable_go_revenue',
-  'state_go_vote', 'low_state_tax_privilege'
+point_utgo_sample <- copy(point_data[obs(point_utgo)])
+point_utgo_null <- feols(
+  frac_utgo_outstanding ~ ln_gdp + ln_census_population + ln_pers_inc +
+    ln_1p_county_nonmunicipal_total_debt + state_go_vote + low_state_tax_privilege +
+    strict_municipal_debt_limit | border_group,
+  data = point_utgo_sample
+)
+point_utgo_aux <- feols(
+  city_go_vote ~ ln_gdp + ln_census_population + ln_pers_inc +
+    ln_1p_county_nonmunicipal_total_debt + state_go_vote + low_state_tax_privilege +
+    strict_municipal_debt_limit | border_group,
+  data = point_utgo_sample
+)
+
+point_yield <- feols(
+  mergent_wavg_yield_spread_go_revenue ~ city_go_vote + ln_gdp + ln_census_population +
+    ln_pers_inc + ln_1p_county_nonmunicipal_total_debt +
+    mergent_wavg_rating_go_revenue_zero_unrated + mergent_wavg_original_maturity_years_go_revenue +
+    mergent_wavg_insured_go_revenue + mergent_wavg_sinkable_go_revenue +
+    state_go_vote + low_state_tax_privilege + strict_municipal_debt_limit | border_group,
+  data = point_data, vcov = ~state_year
+)
+point_yield_sample <- copy(point_data[obs(point_yield)])
+point_yield_null <- feols(
+  mergent_wavg_yield_spread_go_revenue ~ ln_gdp + ln_census_population + ln_pers_inc +
+    ln_1p_county_nonmunicipal_total_debt + mergent_wavg_rating_go_revenue_zero_unrated +
+    mergent_wavg_original_maturity_years_go_revenue + mergent_wavg_insured_go_revenue +
+    mergent_wavg_sinkable_go_revenue + state_go_vote + low_state_tax_privilege +
+    strict_municipal_debt_limit | border_group,
+  data = point_yield_sample
+)
+point_yield_aux <- feols(
+  city_go_vote ~ ln_gdp + ln_census_population + ln_pers_inc +
+    ln_1p_county_nonmunicipal_total_debt + mergent_wavg_rating_go_revenue_zero_unrated +
+    mergent_wavg_original_maturity_years_go_revenue + mergent_wavg_insured_go_revenue +
+    mergent_wavg_sinkable_go_revenue + state_go_vote + low_state_tax_privilege +
+    strict_municipal_debt_limit | border_group,
+  data = point_yield_sample
 )
 
 point_results <- rbindlist(list(
-  estimate_specification(
-    data = point_data,
-    panel = 'D',
-    column = 1L,
-    outcome_label = 'Pct UTGO',
-    outcome = 'frac_utgo_outstanding',
-    controls = point_common_controls,
-    fixed_effects = 'border_group',
-    family = 'linear',
-    baseline_cluster = 'state_year'
-  ),
-  estimate_specification(
-    data = point_data,
-    panel = 'D',
-    column = 2L,
-    outcome_label = 'Wtd. Avg. Yield Spread',
-    outcome = 'mergent_wavg_yield_spread_go_revenue',
-    controls = point_yield_controls,
-    fixed_effects = 'border_group',
-    family = 'linear',
-    baseline_cluster = 'state_year'
-  )
+  summarize_specification(point_utgo, point_utgo_sample, point_utgo_null, point_utgo_aux,
+    "D", 1L, "Pct UTGO", "frac_utgo_outstanding", "linear", "state_year"),
+  summarize_specification(point_yield, point_yield_sample, point_yield_null, point_yield_aux,
+    "D", 2L, "Wtd. Avg. Yield Spread", "mergent_wavg_yield_spread_go_revenue", "linear", "state_year")
 ))
 
-
-# ==============================================================================
-# Panel C: Secondary-market trading before maturity
-# ==============================================================================
-
-trade_data <- fread(file.path(
-  root,
-  paste0(
-    'Data/Clean_Intermediate/MSRB/Processed/',
-    'Bond_Level_Any_Trade_Before_Maturity_with_CD_Data.csv'
-  )
-))
-trade_data[, seed_issuer_id := round(as.numeric(seed_issuer_id), 1)]
-trade_data[state == 'MO', city_rev_vote := 1]
-trade_data[state == 'RI', city_go_vote := NA_real_]
-trade_data <- trade_data[
-  city == 1 & !is.na(city_go_vote) & go_unlim == 1 & !is.na(callable)
-]
-add_low_state_tax_privilege(trade_data)
-trade_data[, disclosure_control := disclosed_before_maturity]
-
-required_trade_fields <- c(
-  'traded_before_maturity_raw',
-  'retail_traded_before_maturity_raw',
-  'institutional_traded_before_maturity_raw',
-  'rating_fe'
-)
-missing_trade_fields <- setdiff(required_trade_fields, names(trade_data))
-if (length(missing_trade_fields) > 0L) {
-  stop('Missing official trade fields: ', paste(missing_trade_fields, collapse = ', '))
-}
-if (trade_data[, anyNA(rating_fe)]) {
-  stop('rating_fe contains missing values in the trade-before-maturity data.')
-}
-
-trade_border_matches <- fread(file.path(
-  root,
-  paste0(
-    'Data/Clean_Intermediate/Border States/',
-    'Border Matches All Mergent Data Expanded Set Buffer 100000.csv'
-  )
-))
-trade_border_matches <- filter_paper_border_pairs(trade_border_matches)
-trade_border_matches <- trade_border_matches[go_unlim == 1]
-trade_border_matches <- unique(
-  trade_border_matches[, .(state, seed_issuer, group)]
-)
-trade_border_data <- trade_data[
-  trade_border_matches,
-  on = .(state, seed_issuer)
-]
-trade_border_data <- trade_border_data[!is.na(cusip) & year > 2004]
-trade_border_data[, state_year := interaction(state, year, drop = TRUE)]
-
-trade_controls <- c(
-  'low_state_tax_privilege', 'disclosure_control',
-  'ln_amount', 'ln_maturity_mths', 'callable', 'sinkable', 'insured',
-  'ln_gdp', 'ln_pop', 'ln_pers_inc'
-)
-trade_outcomes <- data.table(
-  column = 1:3,
-  outcome = c('Trade', 'Retail Trade', 'Inst. Trade'),
-  variable = c(
-    'traded_before_maturity_raw',
-    'retail_traded_before_maturity_raw',
-    'institutional_traded_before_maturity_raw'
-  )
-)
-
-trade_results <- rbindlist(lapply(seq_len(nrow(trade_outcomes)), function(i) {
-  estimate_specification(
-    data = trade_border_data,
-    panel = 'C',
-    column = trade_outcomes$column[i],
-    outcome_label = trade_outcomes$outcome[i],
-    outcome = trade_outcomes$variable[i],
-    controls = trade_controls,
-    fixed_effects = c('year', 'purp_broad', 'group', 'rating_fe'),
-    family = 'linear',
-    baseline_cluster = 'state_year'
-  )
-}))
-
-
-# ==============================================================================
-# Results and compact four-panel LaTeX table
-# ==============================================================================
+# Results and compact four-panel LaTeX table ----
 
 results <- rbindlist(
   list(website_results, media_results, point_results, trade_results),
   fill = TRUE
 )
 setorder(results, panel, column)
+# Save full-precision estimates and inference so agreement with the main tables
+# can be checked without reverse-engineering rounded LaTeX output.
+fwrite(results, file.path(output_dir, "wild_cluster_bootstrap_border_tests_diagnostics.csv"))
 significance_stars <- function(p_value) {
   ifelse(
     p_value < 0.01, '***',
