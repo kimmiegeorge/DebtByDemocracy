@@ -60,6 +60,13 @@ point_2012 <- fread(file.path(
   'census_mergent_debt_cross_section_2012.csv'
 ))
 
+# Keep binary policy indicators numeric so coefficient names match the table filter.
+point_2012[, `:=`(
+  city_go_vote = as.numeric(city_go_vote),
+  state_go_vote = as.numeric(state_go_vote),
+  state_ltgo_allowed = as.numeric(state_ltgo_allowed)
+)]
+
 # Extract the state-level debt-limit control before screening the city sample.
 # Nebraska is not strict, consistent with the main 2017 regressions.
 point_2012[state == "NE" & is.na(strict_municipal_debt_limit), strict_municipal_debt_limit := 0]
