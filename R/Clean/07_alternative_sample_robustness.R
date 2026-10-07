@@ -1,3 +1,5 @@
+# Set up ----
+
 # 07: Alternative-sample robustness (Appendix Table B1)
 rm(list = ls())
 
@@ -5,20 +7,15 @@ library(data.table)
 library(fixest)
 library(haven)
 
-# Resolve paths from this script so it can be run from any working directory.
-file_arg <- grep('^--file=', commandArgs(FALSE), value = TRUE)
-script_path <- if (length(file_arg) > 0) {
-  normalizePath(sub('^--file=', '', file_arg[[1]]), mustWork = TRUE)
-} else {
-  normalizePath(file.path(getwd(), 'Code/R/Clean/07_alternative_sample_robustness.R'), mustWork = TRUE)
-}
-root <- normalizePath(file.path(dirname(script_path), '..', '..', '..'), mustWork = TRUE)
+source("/Users/kmunevar/Dropbox/Voting on Bonds/Code/R/Clean/00_modify_etable_rounding.R")
+source("/Users/kmunevar/Dropbox/Voting on Bonds/Code/R/Clean/00_tax_privilege_definitions.R")
 
-source(file.path(root, 'Code/R/Clean/00_modify_etable_rounding.R'))
-source(file.path(root, 'Code/R/Clean/00_tax_privilege_definitions.R'))
-
-tbl_dir <- file.path(root, 'Code/R/Clean/output/revision_tables')
-processed_dir <- file.path(root, 'Code/R/Clean/output/processed')
+root <- "/Users/kmunevar/Dropbox/Voting on Bonds"
+tbl_dir <- Sys.getenv(
+  "RESULTS_DIR",
+  unset = "/Users/kmunevar/Dropbox/Voting on Bonds/Code/R/Clean/output/revision_tables"
+)
+processed_dir <- "/Users/kmunevar/Dropbox/Voting on Bonds/Code/R/Clean/output/processed"
 dir.create(tbl_dir, recursive = TRUE, showWarnings = FALSE)
 dir.create(processed_dir, recursive = TRUE, showWarnings = FALSE)
 
