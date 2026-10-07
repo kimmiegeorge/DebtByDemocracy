@@ -433,6 +433,7 @@ table_call <- etable(
   digits.stats = 3,
   signif.code = c('***' = 0.01, '**' = 0.05, '*' = 0.10),
   tex = TRUE,
+  keep = "%^city_go_vote$",
   order = c('%city_go_vote'),
   dict = c(control_dict[names(control_dict) != 'city_go_vote'], city_go_vote = 'GO Vote'),
   placement = 'H'
