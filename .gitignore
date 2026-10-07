@@ -25,3 +25,12 @@ Python/.gitignore
 
 # Downloaded Census cartographic boundary cache
 Python/Map/cb_2023_us_state_20m/
+
+# Local browser profiles and scratch files
+.chrome_cf_profile/
+*.tmp.*
+Rplot*.png
+
+# Downloaded geographic boundaries and source workbooks
+Python/Archive/Map/tl_2023_us_state/
+Python/Clean/TX_Property_Tax/raw/
