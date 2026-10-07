@@ -48,7 +48,8 @@ table_dict <- c(
   frac_rev = 'Pct Revenue',
   mergent_wavg_yield_spread_go_revenue = 'Wtd. Avg. Yield Spread',
   issuer_spread = 'Wtd. Avg. Yield Spread',
-  share_revenue_vs_go_amount = 'Pct Revenue'
+  share_revenue_vs_go_amount = 'Pct Revenue',
+  strict_municipal_debt_limit = 'Strict Municipal Debt Limit'
 )
 
 # 2012 point-in-time debt choice and weighted-average yields ----
@@ -58,6 +59,12 @@ point_2012 <- fread(file.path(
   'Data/Clean_Intermediate/Census COG Finance/processed',
   'census_mergent_debt_cross_section_2012.csv'
 ))
+
+# Extract the state-level debt-limit control before screening the city sample.
+# Nebraska is not strict, consistent with the main 2017 regressions.
+point_2012[state == "NE" & is.na(strict_municipal_debt_limit), strict_municipal_debt_limit := 0]
+state_debt_limits <- unique(point_2012[, .(state, strict_municipal_debt_limit)])
+stopifnot(!anyDuplicated(state_debt_limits$state))
 
 point_2012[, fips := as.character(fips)]
 if ('nh_city' %in% names(point_2012)) {
@@ -114,6 +121,10 @@ issuer_aggregate <- merge(
   sort = FALSE
 )
 
+# Apply the same state-level debt-limit definition to full-period issuers.
+issuer_aggregate[state_debt_limits, on = .(state),
+  strict_municipal_debt_limit := i.strict_municipal_debt_limit]
+
 issuer_aggregate[, issuer_spread := issuer_spread_nc]
 
 issuer_aggregate[state == 'RI', city_go_vote := NA_real_]
@@ -131,12 +142,16 @@ issuer_aggregate <- issuer_aggregate[
     !is.na(low_state_tax_privilege)
 ]
 
+# Require complete policy controls in both regression samples.
+stopifnot(!anyNA(point_2012$strict_municipal_debt_limit))
+stopifnot(!anyNA(issuer_aggregate$strict_municipal_debt_limit))
+
 # Panel A: debt type, GO vote required ----
 
 panel_a_point_utgo <- feols(
   frac_utgo_outstanding ~ city_go_vote + ln_gdp + ln_census_population +
     ln_pers_inc + ln_1p_county_nonmunicipal_total_debt + glm_proactive +
-    state_ltgo_allowed + state_go_vote + low_state_tax_privilege,
+    state_ltgo_allowed + state_go_vote + low_state_tax_privilege + strict_municipal_debt_limit,
   data = point_2012[insample_allgo == 1],
   vcov = vcov_cluster(~state)
 )
@@ -144,7 +159,7 @@ panel_a_point_utgo <- feols(
 panel_a_point_ltgo <- feols(
   frac_ltgo_outstanding ~ city_go_vote + ln_gdp + ln_census_population +
     ln_pers_inc + ln_1p_county_nonmunicipal_total_debt + glm_proactive +
-    state_ltgo_allowed + state_go_vote + low_state_tax_privilege,
+    state_ltgo_allowed + state_go_vote + low_state_tax_privilege + strict_municipal_debt_limit,
   data = point_2012[insample_allgo == 1],
   vcov = vcov_cluster(~state)
 )
@@ -152,7 +167,7 @@ panel_a_point_ltgo <- feols(
 panel_a_point_revenue <- feols(
   frac_rev_outstanding ~ city_go_vote + ln_gdp + ln_census_population +
     ln_pers_inc + ln_1p_county_nonmunicipal_total_debt + glm_proactive +
-    state_ltgo_allowed + state_go_vote + low_state_tax_privilege,
+    state_ltgo_allowed + state_go_vote + low_state_tax_privilege + strict_municipal_debt_limit,
   data = point_2012[insample_allgo == 1],
   vcov = vcov_cluster(~state)
 )
@@ -160,7 +175,7 @@ panel_a_point_revenue <- feols(
 panel_a_aggregate_utgo <- feols(
   frac_utgo ~ city_go_vote + ln_gdp + ln_pop + ln_pers_inc +
     ln_county_debt_other + glm_proactive + state_ltgo_allowed +
-    state_go_vote + low_state_tax_privilege,
+    state_go_vote + low_state_tax_privilege + strict_municipal_debt_limit,
   data = issuer_aggregate[insample_allgo == 1],
   vcov = vcov_cluster(~state)
 )
@@ -168,7 +183,7 @@ panel_a_aggregate_utgo <- feols(
 panel_a_aggregate_ltgo <- feols(
   frac_ltgo ~ city_go_vote + ln_gdp + ln_pop + ln_pers_inc +
     ln_county_debt_other + glm_proactive + state_ltgo_allowed +
-    state_go_vote + low_state_tax_privilege,
+    state_go_vote + low_state_tax_privilege + strict_municipal_debt_limit,
   data = issuer_aggregate[insample_allgo == 1],
   vcov = vcov_cluster(~state)
 )
@@ -176,7 +191,7 @@ panel_a_aggregate_ltgo <- feols(
 panel_a_aggregate_revenue <- feols(
   frac_rev ~ city_go_vote + ln_gdp + ln_pop + ln_pers_inc +
     ln_county_debt_other + glm_proactive + state_ltgo_allowed +
-    state_go_vote + low_state_tax_privilege,
+    state_go_vote + low_state_tax_privilege + strict_municipal_debt_limit,
   data = issuer_aggregate[insample_allgo == 1],
   vcov = vcov_cluster(~state)
 )
@@ -228,7 +243,7 @@ writeLines(
 panel_b_point_utgo <- feols(
   frac_utgo_outstanding ~ city_go_vote + ln_gdp + ln_census_population +
     ln_pers_inc + ln_1p_county_nonmunicipal_total_debt + glm_proactive +
-    state_ltgo_allowed + state_go_vote + low_state_tax_privilege,
+    state_ltgo_allowed + state_go_vote + low_state_tax_privilege + strict_municipal_debt_limit,
   data = point_2012[insample_utgo_only == 1],
   vcov = vcov_cluster(~state)
 )
@@ -236,7 +251,7 @@ panel_b_point_utgo <- feols(
 panel_b_point_ltgo <- feols(
   frac_ltgo_outstanding ~ city_go_vote + ln_gdp + ln_census_population +
     ln_pers_inc + ln_1p_county_nonmunicipal_total_debt + glm_proactive +
-    state_ltgo_allowed + state_go_vote + low_state_tax_privilege,
+    state_ltgo_allowed + state_go_vote + low_state_tax_privilege + strict_municipal_debt_limit,
   data = point_2012[insample_utgo_only == 1],
   vcov = vcov_cluster(~state)
 )
@@ -244,7 +259,7 @@ panel_b_point_ltgo <- feols(
 panel_b_point_revenue <- feols(
   frac_rev_outstanding ~ city_go_vote + ln_gdp + ln_census_population +
     ln_pers_inc + ln_1p_county_nonmunicipal_total_debt + glm_proactive +
-    state_ltgo_allowed + state_go_vote + low_state_tax_privilege,
+    state_ltgo_allowed + state_go_vote + low_state_tax_privilege + strict_municipal_debt_limit,
   data = point_2012[insample_utgo_only == 1],
   vcov = vcov_cluster(~state)
 )
@@ -252,7 +267,7 @@ panel_b_point_revenue <- feols(
 panel_b_aggregate_utgo <- feols(
   frac_utgo ~ city_go_vote + ln_gdp + ln_pop + ln_pers_inc +
     ln_county_debt_other + glm_proactive + state_ltgo_allowed +
-    state_go_vote + low_state_tax_privilege,
+    state_go_vote + low_state_tax_privilege + strict_municipal_debt_limit,
   data = issuer_aggregate[insample_utgo_only == 1],
   vcov = vcov_cluster(~state)
 )
@@ -260,7 +275,7 @@ panel_b_aggregate_utgo <- feols(
 panel_b_aggregate_ltgo <- feols(
   frac_ltgo ~ city_go_vote + ln_gdp + ln_pop + ln_pers_inc +
     ln_county_debt_other + glm_proactive + state_ltgo_allowed +
-    state_go_vote + low_state_tax_privilege,
+    state_go_vote + low_state_tax_privilege + strict_municipal_debt_limit,
   data = issuer_aggregate[insample_utgo_only == 1],
   vcov = vcov_cluster(~state)
 )
@@ -268,7 +283,7 @@ panel_b_aggregate_ltgo <- feols(
 panel_b_aggregate_revenue <- feols(
   frac_rev ~ city_go_vote + ln_gdp + ln_pop + ln_pers_inc +
     ln_county_debt_other + glm_proactive + state_ltgo_allowed +
-    state_go_vote + low_state_tax_privilege,
+    state_go_vote + low_state_tax_privilege + strict_municipal_debt_limit,
   data = issuer_aggregate[insample_utgo_only == 1],
   vcov = vcov_cluster(~state)
 )
@@ -325,7 +340,7 @@ panel_c_point_yield <- feols(
     mergent_wavg_original_maturity_years_go_revenue +
     mergent_any_insured_go_revenue + mergent_any_callable_go_revenue +
     mergent_any_sinkable_go_revenue + glm_proactive + state_ltgo_allowed +
-    state_go_vote + low_state_tax_privilege,
+    state_go_vote + low_state_tax_privilege + strict_municipal_debt_limit,
   data = point_2012,
   vcov = vcov_cluster(~state)
 )
@@ -335,7 +350,7 @@ panel_c_point_yield <- feols(
 panel_c_aggregate_yield <- feols(
   issuer_spread ~ city_go_vote + ln_gdp + ln_pop + ln_pers_inc +
     ln_county_debt_other + glm_proactive + state_ltgo_allowed +
-    state_go_vote + low_state_tax_privilege + issuer_rating + issuer_mat,
+    state_go_vote + low_state_tax_privilege + strict_municipal_debt_limit + issuer_rating + issuer_mat,
   data = issuer_aggregate,
   vcov = vcov_cluster(~state)
 )
@@ -397,6 +412,9 @@ if ('nh_city' %in% names(purpose_2012)) {
     !(state == 'NH' & grepl('\\b(TOWN|TWP|TOWNSHIP)\\b', toupper(seed_issuer)))
   ]
 }
+# Refresh the purpose panel's policy field from the same state lookup.
+purpose_2012[state_debt_limits, on = .(state),
+  strict_municipal_debt_limit := i.strict_municipal_debt_limit]
 add_low_state_tax_privilege(purpose_2012)
 purpose_2012 <- purpose_2012[
   insample == 1 &
@@ -414,10 +432,12 @@ purpose_2012 <- purpose_2012[
     mergent_go_revenue_bonds_outstanding >= 2
 ]
 
+stopifnot(!anyNA(purpose_2012$strict_municipal_debt_limit))
+
 panel_d_utilities <- feols(
   share_revenue_vs_go_amount ~ city_go_vote + ln_gdp + ln_census_population +
     ln_pers_inc + ln_1p_county_nonmunicipal_total_debt + glm_proactive +
-    state_ltgo_allowed + state_go_vote + low_state_tax_privilege,
+    state_ltgo_allowed + state_go_vote + low_state_tax_privilege + strict_municipal_debt_limit,
   data = purpose_2012[purpose_category == 'utilities'],
   vcov = vcov_cluster(~state)
 )
@@ -425,7 +445,7 @@ panel_d_utilities <- feols(
 panel_d_transportation <- feols(
   share_revenue_vs_go_amount ~ city_go_vote + ln_gdp + ln_census_population +
     ln_pers_inc + ln_1p_county_nonmunicipal_total_debt + glm_proactive +
-    state_ltgo_allowed + state_go_vote + low_state_tax_privilege,
+    state_ltgo_allowed + state_go_vote + low_state_tax_privilege + strict_municipal_debt_limit,
   data = purpose_2012[purpose_category == 'transportation'],
   vcov = vcov_cluster(~state)
 )
@@ -433,7 +453,7 @@ panel_d_transportation <- feols(
 panel_d_recreation <- feols(
   share_revenue_vs_go_amount ~ city_go_vote + ln_gdp + ln_census_population +
     ln_pers_inc + ln_1p_county_nonmunicipal_total_debt + glm_proactive +
-    state_ltgo_allowed + state_go_vote + low_state_tax_privilege,
+    state_ltgo_allowed + state_go_vote + low_state_tax_privilege + strict_municipal_debt_limit,
   data = purpose_2012[purpose_category == 'recreation_amenities'],
   vcov = vcov_cluster(~state)
 )
@@ -441,7 +461,7 @@ panel_d_recreation <- feols(
 panel_d_public_safety <- feols(
   share_revenue_vs_go_amount ~ city_go_vote + ln_gdp + ln_census_population +
     ln_pers_inc + ln_1p_county_nonmunicipal_total_debt + glm_proactive +
-    state_ltgo_allowed + state_go_vote + low_state_tax_privilege,
+    state_ltgo_allowed + state_go_vote + low_state_tax_privilege + strict_municipal_debt_limit,
   data = purpose_2012[purpose_category == 'public_safety'],
   vcov = vcov_cluster(~state)
 )
@@ -449,7 +469,7 @@ panel_d_public_safety <- feols(
 panel_d_public_buildings <- feols(
   share_revenue_vs_go_amount ~ city_go_vote + ln_gdp + ln_census_population +
     ln_pers_inc + ln_1p_county_nonmunicipal_total_debt + glm_proactive +
-    state_ltgo_allowed + state_go_vote + low_state_tax_privilege,
+    state_ltgo_allowed + state_go_vote + low_state_tax_privilege + strict_municipal_debt_limit,
   data = purpose_2012[purpose_category == 'other_public_buildings'],
   vcov = vcov_cluster(~state)
 )
@@ -535,7 +555,8 @@ issuer_purpose_controls <- unique(
     glm_proactive,
     state_ltgo_allowed,
     state_go_vote,
-    low_state_tax_privilege
+    low_state_tax_privilege,
+    strict_municipal_debt_limit
   )],
   by = c('state', 'seed_issuer')
 )
@@ -560,7 +581,8 @@ issuer_purpose <- issuer_purpose_controls[
     glm_proactive,
     state_ltgo_allowed,
     state_go_vote,
-    low_state_tax_privilege
+    low_state_tax_privilege,
+    strict_municipal_debt_limit
   )
 ]
 
@@ -580,7 +602,7 @@ issuer_purpose[, share_revenue_vs_go_amount := fifelse(
 panel_e_utilities <- feols(
   share_revenue_vs_go_amount ~ city_go_vote + ln_gdp + ln_pop + ln_pers_inc +
     ln_county_debt_other + glm_proactive + state_ltgo_allowed +
-    state_go_vote + low_state_tax_privilege,
+    state_go_vote + low_state_tax_privilege + strict_municipal_debt_limit,
   data = issuer_purpose[purpose_category == 'utilities'],
   vcov = vcov_cluster(~state)
 )
@@ -588,7 +610,7 @@ panel_e_utilities <- feols(
 panel_e_transportation <- feols(
   share_revenue_vs_go_amount ~ city_go_vote + ln_gdp + ln_pop + ln_pers_inc +
     ln_county_debt_other + glm_proactive + state_ltgo_allowed +
-    state_go_vote + low_state_tax_privilege,
+    state_go_vote + low_state_tax_privilege + strict_municipal_debt_limit,
   data = issuer_purpose[purpose_category == 'transportation'],
   vcov = vcov_cluster(~state)
 )
@@ -596,7 +618,7 @@ panel_e_transportation <- feols(
 panel_e_recreation <- feols(
   share_revenue_vs_go_amount ~ city_go_vote + ln_gdp + ln_pop + ln_pers_inc +
     ln_county_debt_other + glm_proactive + state_ltgo_allowed +
-    state_go_vote + low_state_tax_privilege,
+    state_go_vote + low_state_tax_privilege + strict_municipal_debt_limit,
   data = issuer_purpose[purpose_category == 'recreation_amenities'],
   vcov = vcov_cluster(~state)
 )
@@ -604,7 +626,7 @@ panel_e_recreation <- feols(
 panel_e_public_safety <- feols(
   share_revenue_vs_go_amount ~ city_go_vote + ln_gdp + ln_pop + ln_pers_inc +
     ln_county_debt_other + glm_proactive + state_ltgo_allowed +
-    state_go_vote + low_state_tax_privilege,
+    state_go_vote + low_state_tax_privilege + strict_municipal_debt_limit,
   data = issuer_purpose[purpose_category == 'public_safety'],
   vcov = vcov_cluster(~state)
 )
@@ -612,7 +634,7 @@ panel_e_public_safety <- feols(
 panel_e_public_buildings <- feols(
   share_revenue_vs_go_amount ~ city_go_vote + ln_gdp + ln_pop + ln_pers_inc +
     ln_county_debt_other + glm_proactive + state_ltgo_allowed +
-    state_go_vote + low_state_tax_privilege,
+    state_go_vote + low_state_tax_privilege + strict_municipal_debt_limit,
   data = issuer_purpose[purpose_category == 'other_public_buildings'],
   vcov = vcov_cluster(~state)
 )
