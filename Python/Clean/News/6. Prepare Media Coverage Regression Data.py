@@ -80,6 +80,32 @@ border_articles = border_articles.sort(
     pl.concat_str('state', pl.col('year').cast(pl.String), separator='.').alias('state_year')
 )
 
+#%% County demographics from the calendar year before issuance
+# Match on the issuance input's county (i.fips in the full sample), rather
+# than changing its historical issuer metadata or prior-issuance calculation.
+county_raw, _ = pyreadstat.read_dta(
+    data_dir / 'BEA/countydemos_1999_2026.dta',
+    usecols=['fips', 'year', 'gdp', 'pop', 'pers_inc'], output_format='dict'
+)
+county_controls = pl.DataFrame(county_raw).select(
+    pl.col('fips').cast(pl.Int64).alias('county_control_fips'),
+    pl.col('year').cast(pl.Int64).alias('county_control_year'),
+    pl.when(pl.col('gdp') > 0).then(pl.col('gdp').log()).alias('ln_gdp'),
+    pl.when(pl.col('pop') > 0).then(pl.col('pop').log()).alias('ln_pop'),
+    pl.when(pl.col('pers_inc') > 0).then(pl.col('pers_inc').log()).alias('ln_pers_inc')
+)
+issuance_lvl = issuance_lvl.drop('ln_gdp', 'ln_pop', 'ln_pers_inc').with_columns(
+    pl.col('i.fips').cast(pl.Float64, strict=False).cast(pl.Int64).alias('county_control_fips'),
+    (pl.col('year').cast(pl.Int64) - 1).alias('county_control_year')
+).join(county_controls, on=['county_control_fips', 'county_control_year'],
+       how='left', validate='m:1', maintain_order='left')
+border_articles = border_articles.drop('ln_gdp', 'ln_pop', 'ln_pers_inc').with_columns(
+    pl.col('fips').cast(pl.Float64, strict=False).cast(pl.Int64).alias('county_control_fips'),
+    (pl.col('year').cast(pl.Int64) - 1).alias('county_control_year')
+).join(county_controls, on=['county_control_fips', 'county_control_year'],
+       how='left', validate='m:1', maintain_order='left')
+# Missing/nonpositive BEA levels remain missing; do not substitute another year.
+
 #%% Logged source count and shared empirical winsorization caps
 issuance_lvl = issuance_lvl.with_columns(pl.col('unique_sources_12').log1p().alias('log_sources'))
 border_articles = border_articles.with_columns(pl.col('unique_sources_12').log1p().alias('log_sources'))

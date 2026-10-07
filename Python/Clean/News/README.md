@@ -42,3 +42,22 @@ do not require rebuilding the prepared data. Descriptives, explicit regressions,
 and table formatting remain in R. Supermajority membership is assigned in R
 from `00_state_policy_definitions.R`; shared table helpers are loaded from
 `00_helper_functions.R`.
+
+County GDP, population, and personal income are matched to `year - 1` from
+`Data/BEA/countydemos_1999_2026.dta`. `county_control_year` and
+`county_control_fips` record the join. Existing issuance indicators, employment
+screens, source counts, and article caps are preserved. Missing or nonpositive
+BEA values remain missing; 2001 issuances have no preceding-year county GDP
+because that series begins in 2001.
+
+For DPC media step 08, run:
+
+```sh
+python3 'Python/Clean/DPC_News/Prepare DPC Media Regression Data.py'
+Rscript R/Clean/08_media_coverage_dpc.R
+```
+
+This creates `Data/Clean_Intermediate/DPC Data/News/dpc_media_regression_data.csv`
+from the existing DPC issuance file using the same prior-year BEA source.
+`DPC_MEDIA_REGRESSION_DIR` overrides Python's output directory and
+`DPC_MEDIA_REGRESSION_DATA` overrides the input read by R.

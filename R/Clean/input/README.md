@@ -17,8 +17,10 @@ following fixed-effect removal of zero-outcome and singleton groups.
 This is a historical replication input, not a corrected prior-issuance measure.
 The submitted calculation treats copies of an issuance in different border
 pairs as successive rows. `02_media_coverage.R` uses these frozen values only
-for `r2` and `r2b`; it checks unique matches and the exact estimation-row keys.
+for `r2` and `r2b`; it checks unique matches and the exact uncontrolled estimation-row keys.
+The model with prior-year demographic controls may retain a subset when BEA
+controls are missing; it must not add observations outside the historical keys.
 Other media models continue to use the current prepared indicator.
 
-Using this lookup with the current input reproduces the submitted border Vote
+Using this lookup with the original contemporaneous controls reproduces the submitted border Vote
 coefficients 0.566933 and 0.565760 and t-statistics 2.13 and 2.04.

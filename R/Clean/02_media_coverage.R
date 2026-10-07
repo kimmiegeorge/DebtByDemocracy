@@ -242,18 +242,18 @@ r2b <- fixest::fepois(total_articles_12_0_win ~city_go_vote  + bond_prior_12 + l
 
 
   
-# Stop if a future rebuild changes the submitted estimation sample.
+# Preserve the submitted indicator and uncontrolled sample. The controlled
+# model can lose historical rows when prior-year BEA controls are missing.
 stopifnot(
   nobs(r2) == nrow(submission_border_prior),
-  nobs(r2b) == nrow(submission_border_prior),
   fsetequal(
     border_articles_main[obs(r2), ..submission_border_keys],
     submission_border_prior[, ..submission_border_keys]
   ),
-  fsetequal(
+  nrow(fsetdiff(
     border_articles_main[obs(r2b), ..submission_border_keys],
     submission_border_prior[, ..submission_border_keys]
-  )
+  )) == 0
 )
 
 table_call <- etable(r1, r1b, r2, r2b,

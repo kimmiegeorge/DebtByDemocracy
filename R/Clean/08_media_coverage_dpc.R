@@ -9,7 +9,11 @@ p_load(data.table, DescTools, arrow, fixest, haven, xtable)
 
 source('/Users/kmunevar/Dropbox/Voting on Bonds/Code/R/Clean/00_modify_etable_rounding.R')
 
-tbl_dir <- "/Users/kmunevar/Dropbox/Voting on Bonds/Code/R/Clean/output/revision_tables"
+tbl_dir <- Sys.getenv(
+  "RESULTS_DIR",
+  unset = "/Users/kmunevar/Dropbox/Voting on Bonds/Code/R/Clean/output/revision_tables"
+)
+dir.create(tbl_dir, recursive = TRUE, showWarnings = FALSE)
 data_wd <- "~/Dropbox/Voting on Bonds/Data/"
 clean_data_wd <- "~/Dropbox/Voting on Bonds/Data/Clean_Intermediate/"
 
@@ -21,23 +25,12 @@ poisson_fixef_iter <- 50000
 # Data loading and preparation
 # ===============================================================================
 
-issuance_lvl <- as.data.table(
-  read_parquet(paste0(clean_data_wd, 'DPC Data/News/Issuance_Lvl_DPC_News.gzip'))
-)
-
-# Keep the same county identifier convention used in 02_media_coverage.R.
-full_data <- as.data.table(
-  read_dta(
-    paste0(data_wd, 'Mergent/Clean/260716_city_cusiplevel_statereq_purpose_yieldspread.dta'),
-    col_select = c('seed_issuer_id', 'fips')
-  )
-)
-issuers <- full_data[, .(fips_from_mergent = first(fips)), by = seed_issuer_id]
-issuance_lvl <- issuers[issuance_lvl, on = .(seed_issuer_id)]
-issuance_lvl[, fips := as.character(fips)]
-issuance_lvl[, fips_from_mergent := as.character(fips_from_mergent)]
-issuance_lvl[, fips := fifelse(is.na(fips), fips_from_mergent, fips)]
-issuance_lvl[, fips_from_mergent := NULL]
+# The Python preparation step retains the DPC issuance rows and attaches
+# county GDP, population, and personal income from the year before issuance.
+issuance_lvl <- fread(Sys.getenv(
+  "DPC_MEDIA_REGRESSION_DATA",
+  unset = "/Users/kmunevar/Dropbox/Voting on Bonds/Data/Clean_Intermediate/DPC Data/News/dpc_media_regression_data.csv"
+))
 
 issuance_lvl[, city_rev_vote := fifelse(state == 'MO', 1, city_rev_vote)]
 issuance_lvl[, city_go_vote := fifelse(state == 'RI', NA_real_, city_go_vote)]
