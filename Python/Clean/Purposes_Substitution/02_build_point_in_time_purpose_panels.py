@@ -241,16 +241,8 @@ bond = (
 
 
 #%% Expanded issuer controls and state policies
-# Use the full July-sample issuer cross section, including revenue-vote and
-# unknown-revenue-vote states. Restore the original July county controls rather
-# than the newer prior-year BEA merge so overlapping observations remain identical.
-legacy_controls = read_stata_columns(
-    mergent_dir / '260716_city_cusiplevel_statereq_purpose_yieldspread.dta',
-    ['state', 'seed_issuer', 'ln_gdp', 'ln_pers_inc']
-).with_columns(issuer_match_key_expr().alias('issuer_match_key')).group_by(
-    'issuer_match_key'
-).agg(pl.col('ln_gdp', 'ln_pers_inc').drop_nulls().first())
-
+# Keep the prior-year county controls from the Census cross section:
+# 2011 for the 2012 panel and 2016 for the 2017 panel.
 state_policy = pl.read_csv(
     data_dir / 'State Policies/20260929_state_policy_comparison.csv',
     infer_schema_length=10000
@@ -294,10 +286,7 @@ for year in target_years:
 
     # Refresh policy fields once and preserve nulls, including city_rev_vote.
     cross_section = cross_section.drop(
-        'ln_gdp', 'ln_pers_inc',
         *[column for column in state_policy_cols if column in cross_section.columns]
-    ).join(
-        legacy_controls, on='issuer_match_key', how='left', validate='m:1'
     ).join(state_policy, on='state', how='left', validate='m:1')
     if cross_section['state_policy_build_date'].null_count() > 0:
         raise ValueError(f'Unmatched state policy in the {year} issuer cross section.')
@@ -469,6 +458,7 @@ for year in target_years:
         'insample_utgo_only',
         'state_go_vote',
         'state_ltgo_allowed',
+        'demographic_year',
         'ln_gdp',
         'ln_census_population',
         'ln_pers_inc',
@@ -524,6 +514,7 @@ for year in target_years:
             'insample_utgo_only',
             'state_go_vote',
             'state_ltgo_allowed',
+            'demographic_year',
             'ln_gdp',
             'ln_census_population',
             'ln_pers_inc',

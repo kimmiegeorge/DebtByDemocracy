@@ -1,4 +1,4 @@
-"""Check expanded issuer coverage and unchanged overlapping purpose observations."""
+"""Check purpose coverage, stable outcomes, and updated prior-year controls."""
 
 import os
 from pathlib import Path
@@ -18,13 +18,19 @@ validation_dir = Path(os.getenv(
 )).expanduser()
 validation_dir.mkdir(parents=True, exist_ok=True)
 
+state_policy = pl.read_csv(
+    data_dir / 'State Policies/20260929_state_policy_comparison.csv',
+    infer_schema_length=100000
+).rename({'state_abbr': 'state'})
+updated_columns = {'ln_gdp', 'ln_pers_inc', 'demographic_year', *state_policy.columns}
+
 validation_rows = []
 for year in [2012, 2017]:
     issuer_cross_section = pl.read_csv(
         data_dir / 'Clean_Intermediate/Census COG Finance/processed/no_refundings'
         / f'census_mergent_debt_cross_section_{year}.csv',
         infer_schema_length=100000
-    ).select(pl.concat_str(
+    ).with_columns(pl.concat_str(
         pl.col('state').str.strip_chars().str.to_uppercase(), pl.lit('|'),
         pl.col('seed_issuer').str.strip_chars().str.to_uppercase()
     ).alias('issuer_match_key'))
@@ -41,18 +47,35 @@ for year in [2012, 2017]:
         lost = old.select(keys).join(new.select(keys), on=keys, how='anti')
         if lost.height:
             raise ValueError(f'{filename}: {lost.height} original observations were lost.')
-        overlap = new.join(old.select(keys), on=keys, how='semi').select(old.columns)
-        # Compare every original value exactly after reading the written CSVs.
+        stable_columns = [column for column in old.columns if column not in updated_columns]
+        overlap = new.join(old.select(keys), on=keys, how='semi').select(stable_columns)
+        # Purpose outcomes, sample flags, and bond measures must remain identical.
         # Added null rows can widen integer column types without changing values.
         assert_frame_equal(
-            old.sort(keys), overlap.sort(keys), check_dtypes=False,
+            old.select(stable_columns).sort(keys), overlap.sort(keys), check_dtypes=False,
             check_exact=True
         )
         actual_issuers = new.select('issuer_match_key').unique()
         assert_frame_equal(
             actual_issuers.sort('issuer_match_key'),
-            issuer_cross_section.sort('issuer_match_key')
+            issuer_cross_section.select('issuer_match_key').sort('issuer_match_key')
         )
+        # Check the new demographic values independently against the Census input.
+        demo_cols = ['demographic_year', 'ln_gdp', 'ln_pers_inc']
+        actual_controls = new.select('issuer_match_key', *demo_cols).unique()
+        assert_frame_equal(
+            actual_controls.sort('issuer_match_key'),
+            issuer_cross_section.select('issuer_match_key', *demo_cols).sort('issuer_match_key'),
+            check_dtypes=False, check_exact=True
+        )
+        if actual_controls['demographic_year'].drop_nulls().unique().to_list() != [year - 1]:
+            raise ValueError(f'Wrong demographic year: {filename}')
+        strict = new.select('state', 'strict_municipal_debt_limit').unique()
+        expected_strict = state_policy.select('state', 'strict_municipal_debt_limit').join(
+            strict.select('state'), on='state', how='semi'
+        )
+        assert_frame_equal(strict.sort('state'), expected_strict.sort('state'),
+                           check_dtypes=False, check_exact=True)
         if layout == 'panel':
             missing_coverage = new.filter(pl.col('dpc_purpose_observed') == 0)
             if missing_coverage['category_amount'].null_count() != missing_coverage.height:
@@ -62,10 +85,10 @@ for year in [2012, 2017]:
             'expanded_rows': new.height, 'overlapping_rows': overlap.height,
             'added_rows': new.height - overlap.height,
             'expanded_issuers': actual_issuers.height,
-            'original_fields_checked': old.width,
-            'all_original_fields_match': True
+            'original_fields_checked': len(stable_columns),
+            'all_stable_fields_match': True, 'prior_year_controls_match': True
         })
-        print(f'{filename}: all {old.height:,} original observations match; '
+        print(f'{filename}: {old.height:,} original outcomes and flags match; '
               f'{actual_issuers.height:,} expanded issuers retained.')
 
 new_2017 = pl.read_csv(

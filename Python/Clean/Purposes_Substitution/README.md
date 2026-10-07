@@ -20,9 +20,9 @@ here. It uses the same `260709` Mergent bond classifications and contractual
 maturities to construct DPC-matched GO/revenue amounts at December 31 in 2012
 and 2017. Issuer coverage comes from the full `processed/no_refundings`
 Census/Mergent cross sections, the source used by the dark-green-inclusive
-analysis. It preserves the original July `ln_gdp` and `ln_pers_inc` controls
-from the `260716` Mergent file rather than replacing them with the newer
-prior-year BEA controls. This keeps all original overlapping inputs identical.
+analysis. County `ln_gdp` and `ln_pers_inc` use the prior-year BEA controls
+already attached to those cross sections: 2011 for 2012 and 2016 for 2017.
+Original overlapping purpose outcomes and sample flags remain identical.
 The state-policy comparison is merged directly into both long and wide outputs.
 Source-text line breaks are flattened so R reads numeric fields correctly.
 
@@ -45,8 +45,12 @@ a separate specification choice.
 
 Step 03 compares every original field on overlapping observation keys and
 checks that no original observation was lost, every expanded cross-section
-issuer is retained, and AL, SD, and ID are present. All original values must
+issuer is retained, and AL, SD, and ID are present. Original purpose outcomes, sample flags, and bond measures must
 match exactly after reading the written CSVs; nullable type widening is allowed.
+County GDP and personal income are now taken from the Census cross section’s
+prior-year BEA merge: 2011 for 2012 and 2016 for 2017. `demographic_year`
+records that timing. The validation separately checks these controls against
+the Census inputs and strict debt limits against the current state-policy data.
 The pre-expansion four files
 are preserved in `legacy_before_expansion`; `PURPOSE_BASELINE_DIR` can select
 another baseline. Validation reports go to `diagnostics` under the panel
@@ -57,3 +61,7 @@ The earlier restricted R merge remains archived at
 The separate additive policy-refresh script is archived as
 `Python/Archive/Purposes Substitution/03_add_state_policies_to_existing_panels.py`;
 policy merging is now part of step 02.
+
+This timing change also feeds 2012 purpose regressions in R step 07. City
+population remains contemporaneous Census population. Full-period aggregate
+regressions in step 07 retain their approved beginning-period 2001 controls.
