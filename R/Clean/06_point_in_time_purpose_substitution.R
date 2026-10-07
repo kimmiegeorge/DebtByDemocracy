@@ -6,53 +6,53 @@ rm(list = ls())
 library(pacman)
 p_load(data.table, fixest, ggplot2)
 
-source('/Users/kmunevar/Dropbox/Voting on Bonds/Code/R/Clean/00_modify_etable_rounding.R')
-source('/Users/kmunevar/Dropbox/Voting on Bonds/Code/R/Clean/00_tax_privilege_definitions.R')
+source("/Users/kmunevar/Dropbox/Voting on Bonds/Code/R/Clean/00_modify_etable_rounding.R")
+source("/Users/kmunevar/Dropbox/Voting on Bonds/Code/R/Clean/00_tax_privilege_definitions.R")
 
-root <- '/Users/kmunevar/Dropbox/Voting on Bonds'
-panel_dir <- file.path(root, 'Data/DPC Data/Use Of Proceeds/Purposes Substitution')
-tbl_dir <- file.path(root, 'Code/R/Clean/output/revision_tables')
-fig_dir <- file.path(root, 'Code/R/Clean/output/revision_figures')
+root <- "/Users/kmunevar/Dropbox/Voting on Bonds"
+panel_dir <- file.path(root, "Data/DPC Data/Use Of Proceeds/Purposes Substitution")
+tbl_dir <- file.path(root, "Code/R/Clean/output/revision_tables")
+fig_dir <- file.path(root, "Code/R/Clean/output/revision_figures")
 dir.create(fig_dir, showWarnings = FALSE, recursive = TRUE)
 
 # Purpose categories and table labels ----
 
 categories <- c(
-  'other_public_buildings',
-  'public_safety',
-  'recreation_amenities',
-  'transportation',
-  'utilities',
-  'other'
+  "other_public_buildings",
+  "public_safety",
+  "recreation_amenities",
+  "transportation",
+  "utilities",
+  "other"
 )
 
 category_headers <- c(
-  'Public Bldg.',
-  'Public Safety',
-  'Recreation',
-  'Transport.',
-  'Utilities',
-  'Other'
+  "Public Bldg.",
+  "Public Safety",
+  "Recreation",
+  "Transport.",
+  "Utilities",
+  "Other"
 )
 
-reported_categories <- rev(categories[categories != 'other'])
-reported_category_headers <- rev(category_headers[categories != 'other'])
+reported_categories <- rev(categories[categories != "other"])
+reported_category_headers <- rev(category_headers[categories != "other"])
 
 control_dict <- c(
-  city_go_vote = 'Vote',
-  ln_gdp = 'County ln(GDP)',
-  ln_census_population = 'City ln(Pop)',
-  ln_pers_inc = 'County ln(Pers. Inc)',
-  ln_1p_census_total_debt = 'ln(1 + Census Total Debt)',
-  ln_1p_county_nonmunicipal_total_debt = 'County Non-City Debt',
-  glm_proactive = 'Proactive State',
-  state_ltgo_allowed = 'LTGO Allowed',
-  state_go_vote = 'State GO Vote',
-  low_state_tax_privilege = 'Low Tax Priv.',
-  strict_municipal_debt_limit = 'Strict Municipal Debt Limit',
-  category_amount_share_of_go_or_revenue = 'Category Amt. Share',
-  category_amount_mil = 'Par of Outstanding Bonds (millions)',
-  share_revenue_vs_go_amount = 'Pct Revenue'
+  city_go_vote = "Vote",
+  ln_gdp = "County ln(GDP)",
+  ln_census_population = "City ln(Pop)",
+  ln_pers_inc = "County ln(Pers. Inc)",
+  ln_1p_census_total_debt = "ln(1 + Census Total Debt)",
+  ln_1p_county_nonmunicipal_total_debt = "County Non-City Debt",
+  glm_proactive = "Proactive State",
+  state_ltgo_allowed = "LTGO Allowed",
+  state_go_vote = "State GO Vote",
+  low_state_tax_privilege = "Low Tax Priv.",
+  strict_municipal_debt_limit = "Strict Municipal Debt Limit",
+  category_amount_share_of_go_or_revenue = "Category Amt. Share",
+  category_amount_mil = "Par of Outstanding Bonds (millions)",
+  share_revenue_vs_go_amount = "Pct Revenue"
 )
 
 # Revenue and GO pie-chart helper ----
@@ -77,23 +77,23 @@ write_revenue_amount_pie_charts <- function(sample_data, year, sample_suffix) {
 
   pie_totals[, go_amount := total_amount - revenue_amount]
   if (any(pie_totals$go_amount < -1e-6)) {
-    stop('Revenue par exceeds total GO-or-revenue par in the pie-chart sample.')
+    stop("Revenue par exceeds total GO-or-revenue par in the pie-chart sample.")
   }
   pie_totals[go_amount < 0, go_amount := 0]
 
   pie_data <- melt(
     pie_totals,
-    id.vars = c('city_go_vote', 'purpose_category', 'total_amount'),
-    measure.vars = c('revenue_amount', 'go_amount'),
-    variable.name = 'security_type',
-    value.name = 'amount'
+    id.vars = c("city_go_vote", "purpose_category", "total_amount"),
+    measure.vars = c("revenue_amount", "go_amount"),
+    variable.name = "security_type",
+    value.name = "amount"
   )
   pie_data[
     ,
     security_type := factor(
       security_type,
-      levels = c('revenue_amount', 'go_amount'),
-      labels = c('Revenue', 'GO')
+      levels = c("revenue_amount", "go_amount"),
+      labels = c("Revenue", "GO")
     )
   ]
   pie_data[
@@ -109,77 +109,77 @@ write_revenue_amount_pie_charts <- function(sample_data, year, sample_suffix) {
     vote_group := factor(
       city_go_vote,
       levels = c(0, 1),
-      labels = c('Vote = 0', 'Vote = 1')
+      labels = c("Vote = 0", "Vote = 1")
     )
   ]
   pie_data[, share := fifelse(total_amount > 0, amount / total_amount, NA_real_)]
-  pie_data[, percentage_label := sprintf('%.0f%%', 100 * share)]
+  pie_data[, percentage_label := sprintf("%.0f%%", 100 * share)]
 
   revenue_amount_pies <- ggplot(
     pie_data,
     aes(x = 1, y = share, fill = security_type)
   ) +
-    geom_col(width = 1, color = 'white', linewidth = 0.35) +
+    geom_col(width = 1, color = "white", linewidth = 0.35) +
     geom_text(
       aes(label = percentage_label),
       position = position_stack(vjust = 0.5),
-      color = 'white',
-      family = 'serif',
-      fontface = 'bold',
+      color = "white",
+      family = "serif",
+      fontface = "bold",
       size = pie_label_size
     ) +
-    coord_polar(theta = 'y') +
+    coord_polar(theta = "y") +
     facet_grid(
       rows = vars(vote_group),
       cols = vars(purpose_label),
-      switch = 'y'
+      switch = "y"
     ) +
-    scale_fill_manual(values = c('Revenue' = '#3D3D3D', 'GO' = '#BDBDBD')) +
+    scale_fill_manual(values = c("Revenue" = "#3D3D3D", "GO" = "#BDBDBD")) +
     labs(fill = NULL) +
     guides(
       fill = guide_legend(
-        override.aes = list(color = 'black', linewidth = 0.4)
+        override.aes = list(color = "black", linewidth = 0.4)
       )
     ) +
-    theme_void(base_size = pie_base_size, base_family = 'serif') +
+    theme_void(base_size = pie_base_size, base_family = "serif") +
     theme(
-      strip.background = element_rect(fill = 'white', color = 'black', linewidth = 0.35),
+      strip.background = element_rect(fill = "white", color = "black", linewidth = 0.35),
       strip.text.x = element_text(
         size = pie_base_size,
-        face = 'bold',
+        face = "bold",
         margin = margin(5, 3, 5, 3)
       ),
       strip.text.y.left = element_text(
         size = pie_base_size,
         angle = 0,
-        face = 'bold',
+        face = "bold",
         margin = margin(4, 6, 4, 6)
       ),
-      strip.placement = 'outside',
-      panel.spacing.x = unit(0.35, 'lines'),
-      panel.spacing.y = unit(0.8, 'lines'),
-      legend.position = 'bottom',
+      strip.placement = "outside",
+      panel.spacing.x = unit(0.35, "lines"),
+      panel.spacing.y = unit(0.8, "lines"),
+      legend.position = "bottom",
       legend.text = element_text(size = pie_base_size),
-      legend.key.height = unit(0.7, 'lines'),
-      legend.key.width = unit(1.1, 'lines'),
+      legend.key.height = unit(0.7, "lines"),
+      legend.key.width = unit(1.1, "lines"),
       plot.margin = margin(10, 12, 10, 12),
-      panel.background = element_rect(fill = 'white', color = NA),
-      plot.background = element_rect(fill = 'white', color = NA),
-      legend.background = element_rect(fill = 'white', color = NA)
+      panel.background = element_rect(fill = "white", color = NA),
+      plot.background = element_rect(fill = "white", color = NA),
+      legend.background = element_rect(fill = "white", color = NA)
     )
 
   output_stem <- file.path(
     fig_dir,
-    sprintf('point_in_time_purpose_revenue_amount_pies_%s_%s', year, sample_suffix)
+    sprintf("point_in_time_purpose_revenue_amount_pies_%s_%s", year, sample_suffix)
   )
   ggsave(
-    paste0(output_stem, '.png'),
+    paste0(output_stem, ".png"),
     plot = revenue_amount_pies,
     width = 13,
     height = 6,
-    units = 'in',
+    units = "in",
     dpi = 300,
-    bg = 'white'
+    bg = "white"
   )
 
   invisible(list(plot = revenue_amount_pies, totals = pie_totals))
@@ -188,18 +188,9 @@ write_revenue_amount_pie_charts <- function(sample_data, year, sample_suffix) {
 # 2017 point-in-time purpose substitution ----
 
 purpose_2017 <- fread(
-  file.path(panel_dir, '260719_dpc_point_in_time_purpose_substitution_2017_issuer_category_panel.csv')
+  file.path(panel_dir, "260719_dpc_point_in_time_purpose_substitution_2017_issuer_category_panel.csv")
 )
 
-if ('nh_city' %in% names(purpose_2017)) {
-  purpose_2017 <- purpose_2017[!(state == 'NH' & nh_city == 0)]
-} else if ('government_type_label' %in% names(purpose_2017)) {
-  purpose_2017 <- purpose_2017[!(state == 'NH' & government_type_label == 'township')]
-} else {
-  purpose_2017 <- purpose_2017[
-    !(state == 'NH' & grepl('\\b(TOWN|TWP|TOWNSHIP)\\b', toupper(seed_issuer)))
-  ]
-}
 add_low_state_tax_privilege(purpose_2017, year_value = 2017)
 
 purpose_2017[, fips := as.character(fips)]
@@ -225,7 +216,7 @@ purpose_2017_full[, category_amount_mil := category_amount / 1000000]
 write_revenue_amount_pie_charts(
   sample_data = purpose_2017_full,
   year = 2017,
-  sample_suffix = 'full_sample'
+  sample_suffix = "full_sample"
 )
 
 # 2017 par amount outstanding by purpose: full sample ----
@@ -234,7 +225,7 @@ ppml_amount_2017_utilities <- fepois(
   category_amount_mil ~ city_go_vote + ln_gdp + ln_census_population +
     ln_pers_inc + ln_1p_county_nonmunicipal_total_debt + glm_proactive +
     state_ltgo_allowed + state_go_vote + low_state_tax_privilege + strict_municipal_debt_limit,
-  data = purpose_2017_full[purpose_category == 'utilities'],
+  data = purpose_2017_full[purpose_category == "utilities"],
   vcov = vcov_cluster(~state)
 )
 
@@ -242,7 +233,7 @@ ppml_amount_2017_transportation <- fepois(
   category_amount_mil ~ city_go_vote + ln_gdp + ln_census_population +
     ln_pers_inc + ln_1p_county_nonmunicipal_total_debt + glm_proactive +
     state_ltgo_allowed + state_go_vote + low_state_tax_privilege + strict_municipal_debt_limit,
-  data = purpose_2017_full[purpose_category == 'transportation'],
+  data = purpose_2017_full[purpose_category == "transportation"],
   vcov = vcov_cluster(~state)
 )
 
@@ -250,7 +241,7 @@ ppml_amount_2017_recreation <- fepois(
   category_amount_mil ~ city_go_vote + ln_gdp + ln_census_population +
     ln_pers_inc + ln_1p_county_nonmunicipal_total_debt + glm_proactive +
     state_ltgo_allowed + state_go_vote + low_state_tax_privilege + strict_municipal_debt_limit,
-  data = purpose_2017_full[purpose_category == 'recreation_amenities'],
+  data = purpose_2017_full[purpose_category == "recreation_amenities"],
   vcov = vcov_cluster(~state)
 )
 
@@ -258,7 +249,7 @@ ppml_amount_2017_public_safety <- fepois(
   category_amount_mil ~ city_go_vote + ln_gdp + ln_census_population +
     ln_pers_inc + ln_1p_county_nonmunicipal_total_debt + glm_proactive +
     state_ltgo_allowed + state_go_vote + low_state_tax_privilege + strict_municipal_debt_limit,
-  data = purpose_2017_full[purpose_category == 'public_safety'],
+  data = purpose_2017_full[purpose_category == "public_safety"],
   vcov = vcov_cluster(~state)
 )
 
@@ -266,7 +257,7 @@ ppml_amount_2017_public_buildings <- fepois(
   category_amount_mil ~ city_go_vote + ln_gdp + ln_census_population +
     ln_pers_inc + ln_1p_county_nonmunicipal_total_debt + glm_proactive +
     state_ltgo_allowed + state_go_vote + low_state_tax_privilege + strict_municipal_debt_limit,
-  data = purpose_2017_full[purpose_category == 'other_public_buildings'],
+  data = purpose_2017_full[purpose_category == "other_public_buildings"],
   vcov = vcov_cluster(~state)
 )
 
@@ -277,30 +268,30 @@ table_call <- etable(
   ppml_amount_2017_public_safety,
   ppml_amount_2017_public_buildings,
   headers = reported_category_headers,
-  coefstat = 'tstat',
-  drop = 'Constant',
-  style.tex = style.tex(main = 'aer', fixef.suffix = ' FE', yesNo = c('Yes', 'No')),
-  fitstat = c('n', 'pr2'),
+  coefstat = "tstat",
+  drop = "Constant",
+  style.tex = style.tex(main = "aer", fixef.suffix = " FE", yesNo = c("Yes", "No")),
+  fitstat = c("n", "pr2"),
   se.below = TRUE,
   digits = 3,
   digits.stats = 3,
-  signif.code = c('***' = 0.01, '**' = 0.05, '*' = 0.10),
+  signif.code = c("***" = 0.01, "**" = 0.05, "*" = 0.10),
   tex = TRUE,
-  order = c('%city_go_vote'),
+  order = c("%city_go_vote"),
   dict = control_dict,
-  placement = 'H'
+  placement = "H"
 )
 
 modified_output <- modify_etable_rounding(table_call, coef_digits = 3, tstat_digits = 2)
-modified_output <- format_table(modified_output, cluster_level = 'State')
+modified_output <- format_table(modified_output, cluster_level = "State")
 modified_output <- add_panel(
   modified_output,
-  'Panel A: Par amount outstanding by purpose',
+  "Panel A: Par amount outstanding by purpose",
   ncols = 6
 )
 writeLines(
   modified_output,
-  file.path(tbl_dir, 'point_in_time_purpose_category_amount_ppml_2017_full_sample.tex')
+  file.path(tbl_dir, "point_in_time_purpose_category_amount_ppml_2017_full_sample.tex")
 )
 
 # 2017 revenue share: full sample ----
@@ -310,7 +301,7 @@ r_rev_2017_full_other <- feols(
     ln_pers_inc + ln_1p_county_nonmunicipal_total_debt + glm_proactive +
     state_ltgo_allowed +
     state_go_vote + low_state_tax_privilege + strict_municipal_debt_limit,
-  data = purpose_2017_full[purpose_category == 'other'],
+  data = purpose_2017_full[purpose_category == "other"],
   vcov = vcov_cluster(~state)
 )
 
@@ -319,7 +310,7 @@ r_rev_2017_full_pub_build <- feols(
     ln_pers_inc + ln_1p_county_nonmunicipal_total_debt + glm_proactive +
     state_ltgo_allowed +
     state_go_vote + low_state_tax_privilege + strict_municipal_debt_limit,
-  data = purpose_2017_full[purpose_category == 'other_public_buildings'],
+  data = purpose_2017_full[purpose_category == "other_public_buildings"],
   vcov = vcov_cluster(~state)
 )
 
@@ -328,7 +319,7 @@ r_rev_2017_full_safety <- feols(
     ln_pers_inc + ln_1p_county_nonmunicipal_total_debt + glm_proactive +
     state_ltgo_allowed +
     state_go_vote + low_state_tax_privilege + strict_municipal_debt_limit,
-  data = purpose_2017_full[purpose_category == 'public_safety'],
+  data = purpose_2017_full[purpose_category == "public_safety"],
   vcov = vcov_cluster(~state)
 )
 
@@ -337,7 +328,7 @@ r_rev_2017_full_rec <- feols(
     ln_pers_inc + ln_1p_county_nonmunicipal_total_debt + glm_proactive +
     state_ltgo_allowed +
     state_go_vote + low_state_tax_privilege + strict_municipal_debt_limit,
-  data = purpose_2017_full[purpose_category == 'recreation_amenities'],
+  data = purpose_2017_full[purpose_category == "recreation_amenities"],
   vcov = vcov_cluster(~state)
 )
 
@@ -346,7 +337,7 @@ r_rev_2017_full_trans <- feols(
     ln_pers_inc + ln_1p_county_nonmunicipal_total_debt + glm_proactive +
     state_ltgo_allowed +
     state_go_vote + low_state_tax_privilege + strict_municipal_debt_limit,
-  data = purpose_2017_full[purpose_category == 'transportation'],
+  data = purpose_2017_full[purpose_category == "transportation"],
   vcov = vcov_cluster(~state)
 )
 
@@ -355,7 +346,7 @@ r_rev_2017_full_util <- feols(
     ln_pers_inc + ln_1p_county_nonmunicipal_total_debt + glm_proactive +
     state_ltgo_allowed +
     state_go_vote + low_state_tax_privilege + strict_municipal_debt_limit,
-  data = purpose_2017_full[purpose_category == 'utilities'],
+  data = purpose_2017_full[purpose_category == "utilities"],
   vcov = vcov_cluster(~state)
 )
 
@@ -363,21 +354,21 @@ table_call <- etable(
   r_rev_2017_full_util, r_rev_2017_full_trans, r_rev_2017_full_rec,
   r_rev_2017_full_safety, r_rev_2017_full_pub_build,
   headers = reported_category_headers,
-  coefstat = 'tstat',
-  drop = 'Constant',
-  style.tex = style.tex(main = 'aer', fixef.suffix = ' FE', yesNo = c('Yes', 'No')),
-  fitstat = c('n', 'ar2'),
+  coefstat = "tstat",
+  drop = "Constant",
+  style.tex = style.tex(main = "aer", fixef.suffix = " FE", yesNo = c("Yes", "No")),
+  fitstat = c("n", "ar2"),
   se.below = TRUE,
   digits = 3,
   digits.stats = 3,
-  signif.code = c('***' = 0.01, '**' = 0.05, '*' = 0.10),
+  signif.code = c("***" = 0.01, "**" = 0.05, "*" = 0.10),
   tex = TRUE,
-  order = c('%city_go_vote'),
+  order = c("%city_go_vote"),
   dict = control_dict,
-  placement = 'H'
+  placement = "H"
 )
 
 modified_output <- modify_etable_rounding(table_call, coef_digits = 3, tstat_digits = 2)
-modified_output <- format_table(modified_output, cluster_level = 'State')
-modified_output <- add_panel(modified_output, 'Panel B: Pct Revenue by purpose')
-writeLines(modified_output, file.path(tbl_dir, 'point_in_time_purpose_revenue_share_2017_full_sample.tex'))
+modified_output <- format_table(modified_output, cluster_level = "State")
+modified_output <- add_panel(modified_output, "Panel B: Pct Revenue by purpose")
+writeLines(modified_output, file.path(tbl_dir, "point_in_time_purpose_revenue_share_2017_full_sample.tex"))
