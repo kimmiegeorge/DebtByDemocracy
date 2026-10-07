@@ -464,6 +464,13 @@ panel_c_table <- etable(
 )
 modified_output <- modify_etable_rounding(panel_c_table, coef_digits = 3, tstat_digits = 2)
 modified_output <- format_table(modified_output, cluster_level = 'County')
+# Place the controls indicator with the model statistics, before fixed effects.
+county_controls_row <- grep('^[[:space:]]*County controls[[:space:]]*&', modified_output)
+county_controls_line <- modified_output[county_controls_row]
+modified_output <- modified_output[-county_controls_row]
+adjusted_r2_row <- grep('Adj.', modified_output, fixed = TRUE)
+stopifnot(length(county_controls_line) == 1L, length(adjusted_r2_row) == 1L)
+modified_output <- append(modified_output, county_controls_line, after = adjusted_r2_row)
 modified_output <- add_panel(
   modified_output,
   'Panel C: City behavior after an overlapping ISD bond failure',
