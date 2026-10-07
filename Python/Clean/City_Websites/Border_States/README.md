@@ -22,12 +22,15 @@ and financial-document counts. It does not perform website scraping. If its
 intermediate is already current, run step 02 directly.
 
 Step 02 applies the paper border-pair and city-year sample restrictions, merges
-the shared full-Mergent debt panel lagged one year and state fiscal-monitoring
+county demographics from the preceding calendar year, the shared full-Mergent
+debt panel lagged one year, and state fiscal-monitoring
 adoption dates, and caps the five disclosure counts at the sample's 1st and
 99th percentiles using observed order statistics (R `quantile(type = 1)`). It
 also creates the state-year cluster identifier and the subgroup indicators
 used by the revenue-vote robustness and dark-green interaction regressions.
-It reads election rules from the same clean Mergent Stata file as step 01.
+The county controls use the same BEA 2001–2022 source files as step 01;
+`county_control_year` records the preceding year. No same-year fallback is
+applied. It reads election rules from the same clean Mergent Stata file as step 01.
 It also merges all fields from
 `Data/State Policies/20260929_state_policy_comparison.csv` by state, including
 debt-limit measures, municipal TEL severity, property-tax limits, municipal

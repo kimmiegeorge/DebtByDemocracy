@@ -12,6 +12,7 @@ tbl_dir <- tables_wd
 #---------------------------------------
 # Step 02 in Python prepares sample restrictions, merged controls, winsorized
 # counts, cluster identifiers, and robustness-sample indicators.
+# County demographics and outstanding debt refer to the preceding calendar year.
 data <- fread(Sys.getenv(
   "WEBSITE_REGRESSION_DATA",
   unset = "~/Dropbox/Voting on Bonds/Data/Clean_Intermediate/Websites/border_state_website_regression_data.csv"

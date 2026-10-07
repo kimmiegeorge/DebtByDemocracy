@@ -45,6 +45,40 @@ data = data.with_columns(
     pl.concat_str(['state', 'year'], separator='.').alias('state_year')
 )
 
+#%% Merge county demographics for the preceding calendar year.
+# Use the same BEA source vintage as step 01, changing only the control timing.
+# Join on the calendar year rather than shifting website rows: a missing
+# website observation must not turn a multi-year gap into a one-year lag.
+county_control_logs = {
+    'employment': 'ln_emp',
+    'percap_inc': 'ln_percap_inc',
+    'pers_inc': 'ln_pers_inc',
+    'pop': 'ln_pop',
+    'gdp': 'ln_gdp',
+}
+data = data.drop(
+    [*county_control_logs, *county_control_logs.values()], strict=False
+).with_columns((pl.col('year_int') - 1).alias('county_control_year'))
+
+# Pandas only decodes Stata; county joins and transformations use Polars.
+for variable, log_variable in county_control_logs.items():
+    county_control = pl.from_pandas(pd.read_stata(
+        data_dir / 'BEA' / f'{variable}_2001_2022.dta',
+        columns=['fips', 'year', variable],
+        convert_categoricals=False
+    )).with_columns(
+        pl.col('fips').cast(pl.Int64),
+        pl.col('year').cast(pl.Int64).alias('county_control_year'),
+        pl.when(pl.col(variable) > 0).then(pl.col(variable).log())
+        .otherwise(None).alias(log_variable)
+    ).select('fips', 'county_control_year', variable, log_variable).unique(
+        subset=['fips', 'county_control_year'], keep='first', maintain_order=True
+    )
+    data = data.join(
+        county_control, on=['fips', 'county_control_year'], how='left',
+        validate='m:1', maintain_order='left'
+    )
+
 #%% Merge debt outstanding at the end of the preceding calendar year.
 debt_panel = pl.read_csv(
     clean_data_dir / 'Mergent/Outstanding Debt/full_mergent_issuer_year_outstanding_debt.csv',
