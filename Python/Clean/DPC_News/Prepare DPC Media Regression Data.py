@@ -54,8 +54,24 @@ issuance_lvl = issuance_lvl.drop('ln_gdp', 'ln_pop', 'ln_pers_inc').with_columns
     (pl.col('year').cast(pl.Int64) - 1).alias('county_control_year')
 ).join(county_controls, on=['fips', 'county_control_year'],
        how='left', validate='m:1', maintain_order='left')
-# Preserve rows, outcomes, coverage flags, and the employment screen used in R.
-# Missing/nonpositive BEA levels stay missing; no other-year fallback is used.
+# County GDP starts in 2001. For 2001 issuances only, use that first GDP
+# observation while retaining prior-year population and personal income.
+county_gdp_2001 = county_controls.filter(pl.col('county_control_year') == 2001).select(
+    pl.col('fips'), pl.col('ln_gdp').alias('ln_gdp_2001')
+)
+issuance_lvl = issuance_lvl.join(
+    county_gdp_2001, on=['fips'], how='left', validate='m:1', maintain_order='left'
+).with_columns(
+    ((pl.col('year') == 2001) & (pl.col('county_control_year') == 2000)
+     & pl.col('ln_gdp').is_null() & pl.col('ln_gdp_2001').is_not_null())
+    .fill_null(False).alias('county_gdp_fallback')
+).with_columns(
+    pl.when(pl.col('county_gdp_fallback')).then(pl.col('ln_gdp_2001'))
+    .otherwise(pl.col('ln_gdp')).alias('ln_gdp'),
+    pl.when(pl.col('county_gdp_fallback')).then(2001)
+    .otherwise(pl.col('county_control_year')).alias('county_gdp_control_year')
+).drop('ln_gdp_2001')
+# Other missing/nonpositive BEA values remain missing.
 
 #%% Save the input consumed by step 08
 output_file = output_dir / 'dpc_media_regression_data.csv'

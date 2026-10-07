@@ -46,9 +46,11 @@ from `00_state_policy_definitions.R`; shared table helpers are loaded from
 County GDP, population, and personal income are matched to `year - 1` from
 `Data/BEA/countydemos_1999_2026.dta`. `county_control_year` and
 `county_control_fips` record the join. Existing issuance indicators, employment
-screens, source counts, and article caps are preserved. Missing or nonpositive
-BEA values remain missing; 2001 issuances have no preceding-year county GDP
-because that series begins in 2001.
+screens, source counts, and article caps are preserved. County GDP starts in
+2001, so 2001 issuances use a documented 2001 GDP fallback while population
+and personal income remain at 2000. `county_gdp_fallback` identifies those
+rows and `county_gdp_control_year` records the GDP source year. Other missing
+or nonpositive BEA values remain missing.
 
 For DPC media step 08, run:
 
