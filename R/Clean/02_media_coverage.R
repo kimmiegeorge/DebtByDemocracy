@@ -203,14 +203,38 @@ r1b <- fixest::fepois(total_articles_12_0_win ~city_go_vote  + bond_prior_12 + l
                      data = issuance_lvl[go_unlim_bond_issuance == 1 & rolling_sum_monthly_article_count_12 > 0 ], 
                      vcov = vcov_cluster(~state))
 
+# Preserve the submitted Table 3 border estimates using the historical lag
+# indicator. It was calculated after border-pair duplication and depends on
+# the pre-rebuild row order. The frozen lookup contains the 430 submitted
+# estimation rows; other media regressions retain the current indicator.
+submission_border_prior <- fread(
+  '/Users/kmunevar/Dropbox/Voting on Bonds/Code/R/Clean/input/media_submission_border_prior_12.csv'
+)
+submission_border_keys <- c('seed_issuer_id', 'issuance_year_month_id', 'group')
+stopifnot(!anyDuplicated(submission_border_prior[, ..submission_border_keys]))
+
+border_articles_main <- copy(border_articles[
+  go_unlim_bond_issuance == 1 & rolling_sum_monthly_article_count_12 > 0
+])
+submission_border_matches <- border_articles_main[
+  submission_border_prior, on = submission_border_keys, nomatch = 0
+]
+if (nrow(submission_border_matches) != nrow(submission_border_prior)) {
+  stop('Submitted media border rows are missing or duplicated in the current input.')
+}
+border_articles_main[
+  submission_border_prior, on = submission_border_keys,
+  bond_prior_12 := i.bond_prior_12
+]
+
 r2 <- fixest::fepois(total_articles_12_0_win ~city_go_vote + bond_prior_12 + log_sources + 
                         ln_amount | issuance_year_month_id + group + purp_broad,
-                      data = border_articles[go_unlim_bond_issuance == 1 & rolling_sum_monthly_article_count_12 > 0], 
+                      data = border_articles_main,
                       vcov = vcov_cluster(~state_year))
 
 r2b <- fixest::fepois(total_articles_12_0_win ~city_go_vote  + bond_prior_12 + log_sources + ln_amount +
                        ln_gdp + ln_pop + ln_pers_inc | issuance_year_month_id + group + purp_broad,
-                     data = border_articles[(go_unlim_bond_issuance == 1) & rolling_sum_monthly_article_count_12 > 0], 
+                     data = border_articles_main,
                      vcov = vcov_cluster(~state_year))
 
 
@@ -218,6 +242,20 @@ r2b <- fixest::fepois(total_articles_12_0_win ~city_go_vote  + bond_prior_12 + l
 
 
   
+# Stop if a future rebuild changes the submitted estimation sample.
+stopifnot(
+  nobs(r2) == nrow(submission_border_prior),
+  nobs(r2b) == nrow(submission_border_prior),
+  fsetequal(
+    border_articles_main[obs(r2), ..submission_border_keys],
+    submission_border_prior[, ..submission_border_keys]
+  ),
+  fsetequal(
+    border_articles_main[obs(r2b), ..submission_border_keys],
+    submission_border_prior[, ..submission_border_keys]
+  )
+)
+
 table_call <- etable(r1, r1b, r2, r2b,
        coefstat = 'tstat',
        style.tex = style.tex(main = 'aer', fixef.suffix = ' FE', yesNo = c("Yes", "No")),

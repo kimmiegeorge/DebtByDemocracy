@@ -1,0 +1,431 @@
+seed_issuer_id,issuance_year_month_id,group,bond_prior_12
+85,107,Alabama/Tennessee,0
+85,179,Alabama/Tennessee,0
+300,112,Arkansas/Mississippi,0
+300,208,Arkansas/Mississippi,0
+300,215,Arkansas/Mississippi,1
+300,217,Arkansas/Mississippi,1
+300,223,Arkansas/Mississippi,1
+392,215,West Virginia/Kentucky,0
+392,229,West Virginia/Kentucky,0
+413,102,Arkansas/Mississippi,1
+413,121,Arkansas/Mississippi,0
+413,154,Arkansas/Mississippi,0
+413,166,Arkansas/Mississippi,1
+417,130,Georgia/Tennessee,1
+417,130,North Carolina/Tennessee,0
+417,139,Georgia/Tennessee,1
+417,139,North Carolina/Tennessee,1
+417,154,Georgia/Tennessee,1
+417,154,North Carolina/Tennessee,0
+417,163,Georgia/Tennessee,1
+417,163,North Carolina/Tennessee,1
+417,170,Georgia/Tennessee,1
+417,170,North Carolina/Tennessee,1
+417,200,Georgia/Tennessee,1
+417,200,North Carolina/Tennessee,0
+574,92,Arkansas/Mississippi,1
+574,178,Arkansas/Mississippi,0
+574,183,Arkansas/Mississippi,1
+593,188,Alabama/Tennessee,0
+658,208,Michigan/Wisconsin,0
+702,208,Arkansas/Mississippi,0
+784,87,Alabama/Mississippi,1
+784,112,Alabama/Mississippi,0
+784,133,Alabama/Mississippi,0
+903,166,Alabama/Mississippi,0
+1094,129,Alabama/Mississippi,1
+1094,129,Louisiana/Mississippi,0
+1214,91,Michigan/Wisconsin,1
+1214,102,Michigan/Wisconsin,1
+1214,106,Michigan/Wisconsin,1
+1214,114,Michigan/Wisconsin,1
+1214,153,Michigan/Wisconsin,1
+1214,175,Michigan/Wisconsin,0
+1214,189,Michigan/Wisconsin,0
+1214,200,Michigan/Wisconsin,1
+1214,224,Michigan/Wisconsin,1
+1214,236,Michigan/Wisconsin,1
+1214,246,Michigan/Wisconsin,1
+1373,160,North Carolina/Tennessee,1
+1373,229,North Carolina/Tennessee,0
+1431,80,Vermont/New Hampshire,0
+1431,95,Vermont/New Hampshire,0
+1431,111,Vermont/New Hampshire,0
+1431,164,Vermont/New Hampshire,0
+1431,190,Vermont/New Hampshire,0
+1431,201,Vermont/New Hampshire,1
+1431,206,Vermont/New Hampshire,1
+1431,207,Vermont/New Hampshire,1
+1431,215,Vermont/New Hampshire,1
+1431,220,Vermont/New Hampshire,1
+1431,226,Vermont/New Hampshire,1
+1431,238,Vermont/New Hampshire,1
+1461,216,Michigan/Wisconsin,0
+1816,139,Georgia/Tennessee,0
+1842,212,Alabama/Tennessee,1
+1842,212,Georgia/Tennessee,0
+1842,232,Alabama/Tennessee,1
+1842,232,Georgia/Tennessee,0
+1875,48,Vermont/Massachusetts,1
+1938,126,Alabama/Tennessee,0
+1938,126,Georgia/Tennessee,1
+1999,121,Vermont/Massachusetts,0
+2024,90,Louisiana/Mississippi,0
+2024,191,Louisiana/Mississippi,0
+2024,234,Louisiana/Mississippi,0
+2174,112,Vermont/Massachusetts,1
+2220,207,North Carolina/Tennessee,0
+2308,190,Vermont/Massachusetts,0
+2334,184,North Carolina/Tennessee,0
+2398,104,Missouri/Kentucky,0
+2416,98,Arkansas/Mississippi,1
+2416,186,Arkansas/Mississippi,0
+2431,112,Ohio/Kentucky,1
+2665,112,Alabama/Tennessee,0
+2665,112,Arkansas/Tennesee,1
+2665,112,Missouri/Tennessee,1
+2836,176,Ohio/Kentucky,0
+3299,153,Alabama/Tennessee,0
+3299,210,Alabama/Tennessee,0
+3394,175,Alabama/Tennessee,0
+3394,246,Alabama/Tennessee,0
+3519,103,Louisiana/Mississippi,0
+3519,146,Louisiana/Mississippi,0
+3519,195,Louisiana/Mississippi,0
+3534,100,North Carolina/Tennessee,0
+3534,118,North Carolina/Tennessee,1
+3534,165,North Carolina/Tennessee,0
+3534,177,North Carolina/Tennessee,1
+3534,201,North Carolina/Tennessee,0
+3534,211,North Carolina/Tennessee,1
+3534,224,North Carolina/Tennessee,0
+3534,238,North Carolina/Tennessee,0
+3599,226,Alabama/Mississippi,0
+3610,98,Michigan/Wisconsin,0
+3610,140,Michigan/Wisconsin,0
+3610,160,Michigan/Wisconsin,0
+3636,90,North Carolina/Tennessee,0
+3636,133,North Carolina/Tennessee,0
+3636,158,North Carolina/Tennessee,0
+3636,171,North Carolina/Tennessee,0
+3636,183,North Carolina/Tennessee,1
+3636,206,North Carolina/Tennessee,1
+3662,208,Vermont/Massachusetts,1
+3727,61,Vermont/Massachusetts,0
+3787,171,Vermont/Massachusetts,0
+3787,240,Vermont/Massachusetts,0
+3814,163,Vermont/Massachusetts,1
+3895,236,Arkansas/Mississippi,0
+3895,236,Louisiana/Mississippi,1
+4129,57,Arkansas/Tennesee,1
+4129,57,Missouri/Tennessee,1
+4129,99,Arkansas/Tennesee,1
+4129,99,Missouri/Tennessee,1
+4169,193,Georgia/Tennessee,0
+4169,193,North Carolina/Tennessee,1
+4169,216,Georgia/Tennessee,0
+4169,216,North Carolina/Tennessee,1
+4200,113,Michigan/Wisconsin,0
+4298,135,Vermont/Massachusetts,1
+4624,205,Vermont/Massachusetts,1
+4666,186,Louisiana/Mississippi,0
+4688,245,Alabama/Mississippi,0
+4809,184,Vermont/Massachusetts,0
+4883,234,Ohio/Kentucky,0
+4915,74,Vermont/Massachusetts,0
+4915,121,Vermont/Massachusetts,1
+5166,176,North Carolina/Tennessee,1
+5166,221,North Carolina/Tennessee,1
+5307,166,Vermont/Massachusetts,1
+5406,57,Arkansas/Tennesee,0
+5406,57,Missouri/Tennessee,1
+5406,80,Arkansas/Tennesee,0
+5406,80,Missouri/Tennessee,1
+5406,91,Arkansas/Tennesee,1
+5406,91,Missouri/Tennessee,1
+5406,115,Arkansas/Tennesee,0
+5406,115,Missouri/Tennessee,1
+5406,188,Arkansas/Tennesee,0
+5406,188,Missouri/Tennessee,1
+5406,225,Arkansas/Tennesee,0
+5406,225,Missouri/Tennessee,1
+5406,237,Arkansas/Tennesee,1
+5406,237,Missouri/Tennessee,1
+5449,107,Ohio/Kentucky,0
+5449,114,Ohio/Kentucky,1
+5491,159,Vermont/Massachusetts,1
+5491,209,Vermont/Massachusetts,1
+5549,77,Vermont/Massachusetts,0
+5549,99,Vermont/Massachusetts,1
+5549,116,Vermont/Massachusetts,1
+5718,17,Vermont/Massachusetts,0
+5800,48,Vermont/Massachusetts,1
+5800,97,Vermont/Massachusetts,0
+5823,225,Michigan/Wisconsin,0
+5948,195,Michigan/Wisconsin,0
+5948,235,Michigan/Wisconsin,0
+5973,167,Michigan/Wisconsin,0
+6076,66,Vermont/Massachusetts,0
+6076,118,Vermont/Massachusetts,0
+6167,91,Vermont/Massachusetts,1
+6256,132,Vermont/Massachusetts,1
+6330,103,Alabama/Tennessee,0
+6330,204,Alabama/Tennessee,0
+6442,211,Michigan/Wisconsin,0
+6442,221,Michigan/Wisconsin,1
+6442,239,Michigan/Wisconsin,1
+6594,218,Georgia/Tennessee,1
+6596,139,Ohio/Kentucky,1
+6596,176,Ohio/Kentucky,1
+6609,97,Vermont/Massachusetts,0
+6617,103,North Carolina/Tennessee,0
+7082,17,Vermont/Massachusetts,1
+7082,77,Vermont/Massachusetts,1
+7082,173,Vermont/Massachusetts,1
+7164,112,Alabama/Tennessee,0
+7164,112,Georgia/Tennessee,1
+7164,159,Alabama/Tennessee,0
+7164,159,Georgia/Tennessee,1
+7164,164,Alabama/Tennessee,1
+7164,164,Georgia/Tennessee,1
+7164,179,Alabama/Tennessee,0
+7164,179,Georgia/Tennessee,1
+7253,175,Ohio/Kentucky,0
+7428,223,Louisiana/Mississippi,0
+7448,142,Michigan/Wisconsin,0
+7448,160,Michigan/Wisconsin,0
+7448,178,Michigan/Wisconsin,1
+7448,208,Michigan/Wisconsin,0
+7448,235,Michigan/Wisconsin,0
+7613,111,North Carolina/Tennessee,0
+7613,180,North Carolina/Tennessee,0
+7613,231,North Carolina/Tennessee,0
+7671,139,Vermont/Massachusetts,0
+7785,87,Arkansas/Tennesee,1
+7785,87,Missouri/Tennessee,1
+7785,163,Arkansas/Tennesee,1
+7785,163,Missouri/Tennessee,0
+7934,239,Ohio/Kentucky,0
+7993,66,Vermont/New Hampshire,1
+7993,132,Vermont/New Hampshire,1
+7993,144,Vermont/New Hampshire,1
+7993,167,Vermont/New Hampshire,1
+7993,173,Vermont/New Hampshire,1
+7993,191,Vermont/New Hampshire,1
+7993,192,Vermont/New Hampshire,1
+7993,204,Vermont/New Hampshire,1
+7993,216,Vermont/New Hampshire,1
+7993,240,Vermont/New Hampshire,1
+8006,235,Alabama/Tennessee,0
+8006,237,Alabama/Tennessee,1
+8065,223,North Carolina/Tennessee,0
+8065,237,North Carolina/Tennessee,0
+8174,106,Arkansas/Tennesee,0
+8174,106,Missouri/Tennessee,1
+8174,163,Arkansas/Tennesee,0
+8174,163,Missouri/Tennessee,1
+8174,188,Arkansas/Tennesee,0
+8174,188,Missouri/Tennessee,1
+8201,74,Alabama/Mississippi,0
+8201,74,Louisiana/Mississippi,1
+8329,116,Alabama/Mississippi,0
+8336,167,Alabama/Mississippi,0
+8336,216,Alabama/Mississippi,0
+8408,205,Vermont/Massachusetts,0
+8422,171,Alabama/Tennessee,0
+8422,195,Alabama/Tennessee,0
+8422,218,Alabama/Tennessee,0
+8549,104,Ohio/Kentucky,0
+8782,179,Georgia/Tennessee,0
+8782,179,North Carolina/Tennessee,1
+8782,180,Georgia/Tennessee,1
+8782,180,North Carolina/Tennessee,1
+8782,225,Georgia/Tennessee,0
+8782,225,North Carolina/Tennessee,1
+8999,91,Arkansas/Mississippi,0
+8999,91,Louisiana/Mississippi,1
+9003,165,Vermont/Massachusetts,1
+9003,189,Vermont/Massachusetts,1
+9235,99,Vermont/Massachusetts,1
+9235,130,Vermont/Massachusetts,1
+9273,95,Michigan/Wisconsin,0
+9273,163,Michigan/Wisconsin,0
+9273,213,Michigan/Wisconsin,0
+9273,224,Michigan/Wisconsin,1
+9273,237,Michigan/Wisconsin,0
+9288,17,Vermont/Massachusetts,0
+9488,211,Alabama/Tennessee,0
+9488,211,Georgia/Tennessee,1
+9488,211,North Carolina/Tennessee,1
+9488,226,Alabama/Tennessee,0
+9488,226,Georgia/Tennessee,1
+9488,226,North Carolina/Tennessee,1
+9854,48,Vermont/Massachusetts,0
+9900,158,Ohio/Kentucky,0
+9914,193,North Carolina/Tennessee,0
+9914,220,North Carolina/Tennessee,0
+9914,239,North Carolina/Tennessee,0
+9995,61,Vermont/Massachusetts,0
+9995,180,Vermont/Massachusetts,1
+10014,112,Ohio/Kentucky,0
+10083,103,Michigan/Wisconsin,1
+10083,140,Michigan/Wisconsin,0
+10083,187,Michigan/Wisconsin,1
+10083,201,Michigan/Wisconsin,0
+10083,211,Michigan/Wisconsin,1
+10083,223,Michigan/Wisconsin,1
+10083,237,Michigan/Wisconsin,0
+10088,167,Michigan/Wisconsin,0
+10088,186,Michigan/Wisconsin,0
+10122,66,Michigan/Wisconsin,0
+10122,77,Michigan/Wisconsin,1
+10122,102,Michigan/Wisconsin,1
+10122,139,Michigan/Wisconsin,0
+10122,177,Michigan/Wisconsin,0
+10122,213,Michigan/Wisconsin,0
+10122,223,Michigan/Wisconsin,1
+10200,111,Vermont/New Hampshire,1
+10200,126,Vermont/New Hampshire,1
+10200,159,Vermont/New Hampshire,1
+10200,172,Vermont/New Hampshire,1
+10200,206,Vermont/New Hampshire,1
+10200,224,Vermont/New Hampshire,1
+10200,237,Vermont/New Hampshire,1
+10401,146,Missouri/Kentucky,0
+10401,146,Missouri/Tennessee,1
+10471,144,Arkansas/Mississippi,1
+10471,144,Louisiana/Mississippi,0
+10471,159,Arkansas/Mississippi,1
+10471,159,Louisiana/Mississippi,0
+10471,187,Arkansas/Mississippi,1
+10471,187,Louisiana/Mississippi,0
+10471,193,Arkansas/Mississippi,1
+10471,193,Louisiana/Mississippi,1
+10471,205,Arkansas/Mississippi,1
+10471,205,Louisiana/Mississippi,1
+10471,217,Arkansas/Mississippi,1
+10471,217,Louisiana/Mississippi,1
+10471,229,Arkansas/Mississippi,1
+10471,229,Louisiana/Mississippi,1
+10471,245,Arkansas/Mississippi,1
+10471,245,Louisiana/Mississippi,1
+10593,245,Alabama/Mississippi,0
+10593,245,Louisiana/Mississippi,1
+10631,171,North Carolina/Tennessee,0
+10664,213,Michigan/Wisconsin,0
+10847,187,North Carolina/Tennessee,0
+10847,225,North Carolina/Tennessee,0
+11037,209,Vermont/Massachusetts,0
+11195,129,Georgia/Tennessee,1
+11195,129,North Carolina/Tennessee,0
+11303,178,Ohio/Kentucky,1
+11328,100,Vermont/Massachusetts,0
+11384,179,Vermont/Massachusetts,0
+12003,218,Michigan/Wisconsin,0
+12112,92,Louisiana/Mississippi,0
+12286,112,Michigan/Wisconsin,0
+12286,234,Michigan/Wisconsin,0
+12350,142,Georgia/Tennessee,1
+12350,142,North Carolina/Tennessee,0
+12505,184,Alabama/Mississippi,0
+12529,140,North Carolina/Tennessee,0
+12529,226,North Carolina/Tennessee,0
+12911,107,North Carolina/Tennessee,1
+12911,130,North Carolina/Tennessee,1
+13014,106,Alabama/Mississippi,0
+13014,154,Alabama/Mississippi,1
+13014,158,Alabama/Mississippi,1
+13014,163,Alabama/Mississippi,1
+13110,111,Michigan/Wisconsin,1
+13110,135,Michigan/Wisconsin,0
+13110,146,Michigan/Wisconsin,1
+13110,165,Michigan/Wisconsin,0
+13110,206,Michigan/Wisconsin,0
+13110,231,Michigan/Wisconsin,0
+13155,170,Ohio/Kentucky,0
+13241,140,Arkansas/Tennesee,1
+13241,140,Missouri/Tennessee,0
+13241,164,Arkansas/Tennesee,1
+13241,164,Missouri/Tennessee,0
+13241,193,Arkansas/Tennesee,1
+13241,193,Missouri/Tennessee,0
+13241,212,Arkansas/Tennesee,1
+13241,212,Missouri/Tennessee,0
+13259,186,Vermont/Massachusetts,1
+13331,90,Vermont/New Hampshire,0
+13331,118,Vermont/New Hampshire,0
+13331,129,Vermont/New Hampshire,1
+13331,142,Vermont/New Hampshire,0
+13331,224,Vermont/New Hampshire,0
+13363,98,Michigan/Wisconsin,0
+13363,188,Michigan/Wisconsin,0
+13363,210,Michigan/Wisconsin,0
+13422,139,Alabama/Mississippi,0
+13624,57,Vermont/Massachusetts,1
+13626,206,North Carolina/Tennessee,0
+13626,224,North Carolina/Tennessee,0
+13626,238,North Carolina/Tennessee,0
+13719,135,Michigan/Wisconsin,0
+13719,172,Michigan/Wisconsin,0
+13719,208,Michigan/Wisconsin,0
+13719,232,Michigan/Wisconsin,0
+13801,171,Michigan/Wisconsin,0
+13897,91,Louisiana/Mississippi,0
+13897,126,Louisiana/Mississippi,0
+13969,61,Michigan/Wisconsin,0
+13969,74,Michigan/Wisconsin,0
+13969,147,Michigan/Wisconsin,0
+13969,184,Michigan/Wisconsin,0
+14055,126,Louisiana/Mississippi,0
+14082,190,Michigan/Wisconsin,0
+14088,142,Michigan/Wisconsin,0
+14119,192,Vermont/Massachusetts,1
+14192,180,Vermont/Massachusetts,0
+14342,213,Ohio/Kentucky,0
+14342,213,West Virginia/Kentucky,1
+14586,57,Louisiana/Mississippi,0
+14586,100,Louisiana/Mississippi,0
+14586,115,Louisiana/Mississippi,0
+14586,187,Louisiana/Mississippi,0
+14586,237,Louisiana/Mississippi,0
+14721,147,Alabama/Mississippi,0
+14775,225,Michigan/Wisconsin,0
+14775,235,Michigan/Wisconsin,1
+14794,17,Missouri/Kentucky,0
+14794,164,Missouri/Kentucky,0
+14794,222,Missouri/Kentucky,0
+14794,240,Missouri/Kentucky,0
+14799,113,Alabama/Tennessee,0
+14799,179,Alabama/Tennessee,0
+14978,170,Michigan/Wisconsin,0
+15007,100,Georgia/Tennessee,1
+15007,100,North Carolina/Tennessee,0
+15007,164,Georgia/Tennessee,1
+15007,164,North Carolina/Tennessee,1
+15007,170,Georgia/Tennessee,1
+15007,170,North Carolina/Tennessee,1
+15007,184,Georgia/Tennessee,1
+15007,184,North Carolina/Tennessee,0
+15007,205,Georgia/Tennessee,1
+15007,205,North Carolina/Tennessee,0
+15078,222,Alabama/Tennessee,0
+15078,222,Georgia/Tennessee,1
+15078,222,North Carolina/Tennessee,1
+15078,226,Alabama/Tennessee,1
+15078,226,Georgia/Tennessee,1
+15078,226,North Carolina/Tennessee,1
+15094,92,Vermont/Massachusetts,0
+15094,245,Vermont/Massachusetts,0
+15345,240,Alabama/Tennessee,0
+15348,167,Ohio/Kentucky,0
+15367,212,Michigan/Wisconsin,0
+15542,118,Georgia/Tennessee,0
+15542,118,North Carolina/Tennessee,1
+15542,125,Georgia/Tennessee,1
+15542,125,North Carolina/Tennessee,1
+15542,220,Georgia/Tennessee,0
+15542,220,North Carolina/Tennessee,1
+15568,160,Alabama/Mississippi,1
+15568,160,Louisiana/Mississippi,0
+15667,186,Vermont/Massachusetts,0
