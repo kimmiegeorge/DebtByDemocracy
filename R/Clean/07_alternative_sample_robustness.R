@@ -23,41 +23,41 @@ dir.create(processed_dir, recursive = TRUE, showWarnings = FALSE)
 # Shared table labels ----
 
 purpose_categories <- c(
-  'utilities',
-  'transportation',
-  'recreation_amenities',
-  'public_safety',
-  'other_public_buildings'
+  "utilities",
+  "transportation",
+  "recreation_amenities",
+  "public_safety",
+  "other_public_buildings"
 )
 
 purpose_headers <- c(
-  'Utilities',
-  'Transport.',
-  'Recreation',
-  'Public Safety',
-  'Public Bldg.'
+  "Utilities",
+  "Transport.",
+  "Recreation",
+  "Public Safety",
+  "Public Bldg."
 )
 
 table_dict <- c(
-  city_go_vote = 'Vote',
-  frac_utgo_outstanding = 'Pct UTGO',
-  frac_ltgo_outstanding = 'Pct LTGO',
-  frac_rev_outstanding = 'Pct Revenue',
-  frac_utgo = 'Pct UTGO',
-  frac_ltgo = 'Pct LTGO',
-  frac_rev = 'Pct Revenue',
-  mergent_wavg_yield_spread_go_revenue = 'Wtd. Avg. Yield Spread',
-  issuer_spread = 'Wtd. Avg. Yield Spread',
-  share_revenue_vs_go_amount = 'Pct Revenue',
-  strict_municipal_debt_limit = 'Strict Municipal Debt Limit'
+  city_go_vote = "Vote",
+  frac_utgo_outstanding = "Pct UTGO",
+  frac_ltgo_outstanding = "Pct LTGO",
+  frac_rev_outstanding = "Pct Revenue",
+  frac_utgo = "Pct UTGO",
+  frac_ltgo = "Pct LTGO",
+  frac_rev = "Pct Revenue",
+  mergent_wavg_yield_spread_go_revenue = "Wtd. Avg. Yield Spread",
+  issuer_spread = "Wtd. Avg. Yield Spread",
+  share_revenue_vs_go_amount = "Pct Revenue",
+  strict_municipal_debt_limit = "Strict Municipal Debt Limit"
 )
 
 # 2012 point-in-time debt choice and weighted-average yields ----
 
 point_2012 <- fread(file.path(
   root,
-  'Data/Clean_Intermediate/Census COG Finance/processed',
-  'census_mergent_debt_cross_section_2012.csv'
+  "Data/Clean_Intermediate/Census COG Finance/processed/no_refundings",
+  "census_mergent_debt_cross_section_2012.csv"
 ))
 
 # Keep binary policy indicators numeric so coefficient names match the table filter.
@@ -74,10 +74,10 @@ state_debt_limits <- unique(point_2012[, .(state, strict_municipal_debt_limit)])
 stopifnot(!anyDuplicated(state_debt_limits$state))
 
 point_2012[, fips := as.character(fips)]
-if ('nh_city' %in% names(point_2012)) {
-  point_2012 <- point_2012[!(state == 'NH' & nh_city == 0)]
+if ("nh_city" %in% names(point_2012)) {
+  point_2012 <- point_2012[!(state == "NH" & nh_city == 0)]
 } else {
-  point_2012 <- point_2012[!(state == 'NH' & government_type_label == 'township')]
+  point_2012 <- point_2012[!(state == "NH" & government_type_label == "township")]
 }
 point_2012 <- point_2012[!is.na(city_go_vote)]
 add_low_state_tax_privilege(point_2012)
@@ -112,18 +112,18 @@ point_2012 <- point_2012[
 
 issuer_aggregate <- as.data.table(read_dta(file.path(
   root,
-  'Data/Mergent/Clean/260716_city_issuerlevel_yieldspread.dta'
+  "Data/Mergent/Clean/260716_city_issuerlevel_yieldspread.dta"
 )))
 
 # Use the paper's current NC/Garrett et al. weighted-average spread measure.
 nc_spreads <- fread(file.path(
   root,
-  'Data/Clean_Intermediate/Mergent/Clean/issuer_level_nc_yield_spreads.csv'
+  "Data/Clean_Intermediate/Mergent/Clean/issuer_level_nc_yield_spreads.csv"
 ))
 issuer_aggregate <- merge(
   issuer_aggregate,
   nc_spreads,
-  by = c('state', 'seed_issuer'),
+  by = c("state", "seed_issuer"),
   all.x = TRUE,
   sort = FALSE
 )
@@ -134,7 +134,7 @@ issuer_aggregate[state_debt_limits, on = .(state),
 
 issuer_aggregate[, issuer_spread := issuer_spread_nc]
 
-issuer_aggregate[state == 'RI', city_go_vote := NA_real_]
+issuer_aggregate[state == "RI", city_go_vote := NA_real_]
 add_low_state_tax_privilege(issuer_aggregate)
 issuer_aggregate <- issuer_aggregate[
   insample == 1 &
@@ -207,42 +207,42 @@ table_call <- etable(
   panel_a_point_utgo, panel_a_point_ltgo, panel_a_point_revenue,
   panel_a_aggregate_utgo, panel_a_aggregate_ltgo, panel_a_aggregate_revenue,
   headers = list(
-    '^ ' = list('2012 Point in Time' = 3, 'Full Sample Aggregate' = 3),
-    '- ' = rep(c('UTGO', 'LTGO', 'Revenue'), 2)
+    "^ " = list("2012 Point in Time" = 3, "Full Sample Aggregate" = 3),
+    "- " = rep(c("UTGO", "LTGO", "Revenue"), 2)
   ),
-  coefstat = 'tstat',
-  keep_raw = '^city_go_vote$',
-  order = '%city_go_vote',
+  coefstat = "tstat",
+  keep_raw = "^city_go_vote$",
+  order = "%city_go_vote",
   depvar = FALSE,
-  style.tex = style.tex(main = 'aer', fixef.suffix = ' FE', yesNo = c('Yes', 'No')),
-  fitstat = c('n', 'ar2'),
+  style.tex = style.tex(main = "aer", fixef.suffix = " FE", yesNo = c("Yes", "No")),
+  fitstat = c("n", "ar2"),
   se.below = TRUE,
   digits = 3,
   digits.stats = 3,
-  signif.code = c('***' = 0.01, '**' = 0.05, '*' = 0.10),
+  signif.code = c("***" = 0.01, "**" = 0.05, "*" = 0.10),
   tex = TRUE,
-  dict = c(table_dict[names(table_dict) != 'city_go_vote'], city_go_vote = 'GO Vote'),
-  placement = 'H'
+  dict = c(table_dict[names(table_dict) != "city_go_vote"], city_go_vote = "GO Vote"),
+  placement = "H"
 )
 
 table_output <- modify_etable_rounding(table_call, coef_digits = 3, tstat_digits = 2)
-table_output <- format_table(table_output, cluster_level = 'State', drop_covariance = TRUE)
-table_output <- table_output[!trimws(table_output) %in% c('& \\\\', '\\\\')]
-hline_idx <- grep('^[[:space:]]*\\\\hline[[:space:]]*$', table_output)
+table_output <- format_table(table_output, cluster_level = "State", drop_covariance = TRUE)
+table_output <- table_output[!trimws(table_output) %in% c("& \\\\", "\\\\")]
+hline_idx <- grep("^[[:space:]]*\\\\hline[[:space:]]*$", table_output)
 if (length(hline_idx) == 0) {
-  stop('Could not find the pre-statistics horizontal rule in Panel A.')
+  stop("Could not find the pre-statistics horizontal rule in Panel A.")
 }
 table_output <- append(
   table_output,
-  '   Controls       & Yes & Yes & Yes & Yes & Yes & Yes\\\\',
+  "   Controls       & Yes & Yes & Yes & Yes & Yes & Yes\\\\",
   after = hline_idx[1]
 )
 
-table_output <- add_panel(table_output, 'Panel A: Debt type, GO vote required', ncols = 7)
-table_output <- append(table_output, '\\small', after = 1)
+table_output <- add_panel(table_output, "Panel A: Debt type, GO vote required", ncols = 7)
+table_output <- append(table_output, "\\small", after = 1)
 writeLines(
   table_output,
-  file.path(tbl_dir, 'alternative_sample_robustness_panel_a_debt_choice_allgo.tex')
+  file.path(tbl_dir, "alternative_sample_robustness_panel_a_debt_choice_allgo.tex")
 )
 
 # Panel B: debt type, only UTGO vote required ----
@@ -299,42 +299,42 @@ table_call <- etable(
   panel_b_point_utgo, panel_b_point_ltgo, panel_b_point_revenue,
   panel_b_aggregate_utgo, panel_b_aggregate_ltgo, panel_b_aggregate_revenue,
   headers = list(
-    '^ ' = list('2012 Point in Time' = 3, 'Full Sample Aggregate' = 3),
-    '- ' = rep(c('UTGO', 'LTGO', 'Revenue'), 2)
+    "^ " = list("2012 Point in Time" = 3, "Full Sample Aggregate" = 3),
+    "- " = rep(c("UTGO", "LTGO", "Revenue"), 2)
   ),
-  coefstat = 'tstat',
-  keep_raw = '^city_go_vote$',
-  order = '%city_go_vote',
+  coefstat = "tstat",
+  keep_raw = "^city_go_vote$",
+  order = "%city_go_vote",
   depvar = FALSE,
-  style.tex = style.tex(main = 'aer', fixef.suffix = ' FE', yesNo = c('Yes', 'No')),
-  fitstat = c('n', 'ar2'),
+  style.tex = style.tex(main = "aer", fixef.suffix = " FE", yesNo = c("Yes", "No")),
+  fitstat = c("n", "ar2"),
   se.below = TRUE,
   digits = 3,
   digits.stats = 3,
-  signif.code = c('***' = 0.01, '**' = 0.05, '*' = 0.10),
+  signif.code = c("***" = 0.01, "**" = 0.05, "*" = 0.10),
   tex = TRUE,
-  dict = c(table_dict[names(table_dict) != 'city_go_vote'], city_go_vote = 'UTGO Only Vote'),
-  placement = 'H'
+  dict = c(table_dict[names(table_dict) != "city_go_vote"], city_go_vote = "UTGO Only Vote"),
+  placement = "H"
 )
 
 table_output <- modify_etable_rounding(table_call, coef_digits = 3, tstat_digits = 2)
-table_output <- format_table(table_output, cluster_level = 'State', drop_covariance = TRUE)
-table_output <- table_output[!trimws(table_output) %in% c('& \\\\', '\\\\')]
-hline_idx <- grep('^[[:space:]]*\\\\hline[[:space:]]*$', table_output)
+table_output <- format_table(table_output, cluster_level = "State", drop_covariance = TRUE)
+table_output <- table_output[!trimws(table_output) %in% c("& \\\\", "\\\\")]
+hline_idx <- grep("^[[:space:]]*\\\\hline[[:space:]]*$", table_output)
 if (length(hline_idx) == 0) {
-  stop('Could not find the pre-statistics horizontal rule in Panel B.')
+  stop("Could not find the pre-statistics horizontal rule in Panel B.")
 }
 table_output <- append(
   table_output,
-  '   Controls       & Yes & Yes & Yes & Yes & Yes & Yes\\\\',
+  "   Controls       & Yes & Yes & Yes & Yes & Yes & Yes\\\\",
   after = hline_idx[1]
 )
 
-table_output <- add_panel(table_output, 'Panel B: Debt type, only UTGO vote required', ncols = 7)
-table_output <- append(table_output, '\\small', after = 1)
+table_output <- add_panel(table_output, "Panel B: Debt type, only UTGO vote required", ncols = 7)
+table_output <- append(table_output, "\\small", after = 1)
 writeLines(
   table_output,
-  file.path(tbl_dir, 'alternative_sample_robustness_panel_b_debt_choice_utgo_only.tex')
+  file.path(tbl_dir, "alternative_sample_robustness_panel_b_debt_choice_utgo_only.tex")
 )
 
 # Panel C: weighted-average yield spread ----
@@ -365,58 +365,58 @@ panel_c_aggregate_yield <- feols(
 table_call <- etable(
   panel_c_point_yield, panel_c_aggregate_yield,
   headers = list(
-    '^ ' = list('Wtd. Avg. Yield Spread' = 2),
-    '- ' = c('2012 Point in Time', 'Full Sample Aggregate')
+    "^ " = list("Wtd. Avg. Yield Spread" = 2),
+    "- " = c("2012 Point in Time", "Full Sample Aggregate")
   ),
-  coefstat = 'tstat',
-  keep_raw = '^city_go_vote$',
-  order = '%city_go_vote',
+  coefstat = "tstat",
+  keep_raw = "^city_go_vote$",
+  order = "%city_go_vote",
   depvar = FALSE,
-  style.tex = style.tex(main = 'aer', fixef.suffix = ' FE', yesNo = c('Yes', 'No')),
-  fitstat = c('n', 'ar2'),
+  style.tex = style.tex(main = "aer", fixef.suffix = " FE", yesNo = c("Yes", "No")),
+  fitstat = c("n", "ar2"),
   se.below = TRUE,
   digits = 3,
   digits.stats = 3,
-  signif.code = c('***' = 0.01, '**' = 0.05, '*' = 0.10),
+  signif.code = c("***" = 0.01, "**" = 0.05, "*" = 0.10),
   tex = TRUE,
   dict = table_dict,
-  placement = 'H'
+  placement = "H"
 )
 
 table_output <- modify_etable_rounding(table_call, coef_digits = 3, tstat_digits = 2)
-table_output <- format_table(table_output, cluster_level = 'State', drop_covariance = TRUE)
-table_output <- table_output[!trimws(table_output) %in% c('& \\\\', '\\\\')]
-hline_idx <- grep('^[[:space:]]*\\\\hline[[:space:]]*$', table_output)
+table_output <- format_table(table_output, cluster_level = "State", drop_covariance = TRUE)
+table_output <- table_output[!trimws(table_output) %in% c("& \\\\", "\\\\")]
+hline_idx <- grep("^[[:space:]]*\\\\hline[[:space:]]*$", table_output)
 if (length(hline_idx) == 0) {
-  stop('Could not find the pre-statistics horizontal rule in Panel C.')
+  stop("Could not find the pre-statistics horizontal rule in Panel C.")
 }
 table_output <- append(
   table_output,
-  '   Controls       & Yes & Yes\\\\',
+  "   Controls       & Yes & Yes\\\\",
   after = hline_idx[1]
 )
 
-table_output <- add_panel(table_output, 'Panel C: Weighted average yield spread', ncols = 3)
+table_output <- add_panel(table_output, "Panel C: Weighted average yield spread", ncols = 3)
 writeLines(
   table_output,
-  file.path(tbl_dir, 'alternative_sample_robustness_panel_c_yield_spread.tex')
+  file.path(tbl_dir, "alternative_sample_robustness_panel_c_yield_spread.tex")
 )
 
 # Panel D: 2012 point-in-time purpose substitution ----
 
 purpose_2012 <- fread(file.path(
   root,
-  'Data/DPC Data/Use Of Proceeds/Purposes Substitution',
-  '260719_dpc_point_in_time_purpose_substitution_2012_issuer_category_panel.csv'
+  "Data/DPC Data/Use Of Proceeds/Purposes Substitution",
+  "260719_dpc_point_in_time_purpose_substitution_2012_issuer_category_panel.csv"
 ))
 
-if ('nh_city' %in% names(purpose_2012)) {
-  purpose_2012 <- purpose_2012[!(state == 'NH' & nh_city == 0)]
-} else if ('government_type_label' %in% names(purpose_2012)) {
-  purpose_2012 <- purpose_2012[!(state == 'NH' & government_type_label == 'township')]
+if ("nh_city" %in% names(purpose_2012)) {
+  purpose_2012 <- purpose_2012[!(state == "NH" & nh_city == 0)]
+} else if ("government_type_label" %in% names(purpose_2012)) {
+  purpose_2012 <- purpose_2012[!(state == "NH" & government_type_label == "township")]
 } else {
   purpose_2012 <- purpose_2012[
-    !(state == 'NH' & grepl('\\b(TOWN|TWP|TOWNSHIP)\\b', toupper(seed_issuer)))
+    !(state == "NH" & grepl("\\b(TOWN|TWP|TOWNSHIP)\\b", toupper(seed_issuer)))
   ]
 }
 # Refresh the purpose panel's policy field from the same state lookup.
@@ -445,7 +445,7 @@ panel_d_utilities <- feols(
   share_revenue_vs_go_amount ~ city_go_vote + ln_gdp + ln_census_population +
     ln_pers_inc + ln_1p_county_nonmunicipal_total_debt + glm_proactive +
     state_ltgo_allowed + state_go_vote + low_state_tax_privilege + strict_municipal_debt_limit,
-  data = purpose_2012[purpose_category == 'utilities'],
+  data = purpose_2012[purpose_category == "utilities"],
   vcov = vcov_cluster(~state)
 )
 
@@ -453,7 +453,7 @@ panel_d_transportation <- feols(
   share_revenue_vs_go_amount ~ city_go_vote + ln_gdp + ln_census_population +
     ln_pers_inc + ln_1p_county_nonmunicipal_total_debt + glm_proactive +
     state_ltgo_allowed + state_go_vote + low_state_tax_privilege + strict_municipal_debt_limit,
-  data = purpose_2012[purpose_category == 'transportation'],
+  data = purpose_2012[purpose_category == "transportation"],
   vcov = vcov_cluster(~state)
 )
 
@@ -461,7 +461,7 @@ panel_d_recreation <- feols(
   share_revenue_vs_go_amount ~ city_go_vote + ln_gdp + ln_census_population +
     ln_pers_inc + ln_1p_county_nonmunicipal_total_debt + glm_proactive +
     state_ltgo_allowed + state_go_vote + low_state_tax_privilege + strict_municipal_debt_limit,
-  data = purpose_2012[purpose_category == 'recreation_amenities'],
+  data = purpose_2012[purpose_category == "recreation_amenities"],
   vcov = vcov_cluster(~state)
 )
 
@@ -469,7 +469,7 @@ panel_d_public_safety <- feols(
   share_revenue_vs_go_amount ~ city_go_vote + ln_gdp + ln_census_population +
     ln_pers_inc + ln_1p_county_nonmunicipal_total_debt + glm_proactive +
     state_ltgo_allowed + state_go_vote + low_state_tax_privilege + strict_municipal_debt_limit,
-  data = purpose_2012[purpose_category == 'public_safety'],
+  data = purpose_2012[purpose_category == "public_safety"],
   vcov = vcov_cluster(~state)
 )
 
@@ -477,7 +477,7 @@ panel_d_public_buildings <- feols(
   share_revenue_vs_go_amount ~ city_go_vote + ln_gdp + ln_census_population +
     ln_pers_inc + ln_1p_county_nonmunicipal_total_debt + glm_proactive +
     state_ltgo_allowed + state_go_vote + low_state_tax_privilege + strict_municipal_debt_limit,
-  data = purpose_2012[purpose_category == 'other_public_buildings'],
+  data = purpose_2012[purpose_category == "other_public_buildings"],
   vcov = vcov_cluster(~state)
 )
 
@@ -485,55 +485,55 @@ table_call <- etable(
   panel_d_utilities, panel_d_transportation, panel_d_recreation,
   panel_d_public_safety, panel_d_public_buildings,
   headers = list(
-    '^ ' = list('Pct Revenue' = 5),
-    '- ' = purpose_headers
+    "^ " = list("Pct Revenue" = 5),
+    "- " = purpose_headers
   ),
-  coefstat = 'tstat',
-  keep_raw = '^city_go_vote$',
-  order = '%city_go_vote',
+  coefstat = "tstat",
+  keep_raw = "^city_go_vote$",
+  order = "%city_go_vote",
   depvar = FALSE,
-  style.tex = style.tex(main = 'aer', fixef.suffix = ' FE', yesNo = c('Yes', 'No')),
-  fitstat = c('n', 'ar2'),
+  style.tex = style.tex(main = "aer", fixef.suffix = " FE", yesNo = c("Yes", "No")),
+  fitstat = c("n", "ar2"),
   se.below = TRUE,
   digits = 3,
   digits.stats = 3,
-  signif.code = c('***' = 0.01, '**' = 0.05, '*' = 0.10),
+  signif.code = c("***" = 0.01, "**" = 0.05, "*" = 0.10),
   tex = TRUE,
   dict = table_dict,
-  placement = 'H'
+  placement = "H"
 )
 
 table_output <- modify_etable_rounding(table_call, coef_digits = 3, tstat_digits = 2)
-table_output <- format_table(table_output, cluster_level = 'State', drop_covariance = TRUE)
-table_output <- table_output[!trimws(table_output) %in% c('& \\\\', '\\\\')]
-hline_idx <- grep('^[[:space:]]*\\\\hline[[:space:]]*$', table_output)
+table_output <- format_table(table_output, cluster_level = "State", drop_covariance = TRUE)
+table_output <- table_output[!trimws(table_output) %in% c("& \\\\", "\\\\")]
+hline_idx <- grep("^[[:space:]]*\\\\hline[[:space:]]*$", table_output)
 if (length(hline_idx) == 0) {
-  stop('Could not find the pre-statistics horizontal rule in Panel D.')
+  stop("Could not find the pre-statistics horizontal rule in Panel D.")
 }
 table_output <- append(
   table_output,
-  '   Controls       & Yes & Yes & Yes & Yes & Yes\\\\',
+  "   Controls       & Yes & Yes & Yes & Yes & Yes\\\\",
   after = hline_idx[1]
 )
 
 table_output <- add_panel(
   table_output,
-  'Panel D: Purpose substitution, 2012 point in time',
+  "Panel D: Purpose substitution, 2012 point in time",
   ncols = 6
 )
 
-table_output <- append(table_output, '\\small', after = 1)
+table_output <- append(table_output, "\\small", after = 1)
 writeLines(
   table_output,
-  file.path(tbl_dir, 'alternative_sample_robustness_panel_d_purpose_2012.tex')
+  file.path(tbl_dir, "alternative_sample_robustness_panel_d_purpose_2012.tex")
 )
 
 # Panel E: full-period aggregate purpose substitution ----
 
 purpose_bonds <- fread(file.path(
   root,
-  'Data/DPC Data/Use Of Proceeds/Purposes Substitution',
-  '260707_dpc_purpose_substitution_cusip_category_panel.csv'
+  "Data/DPC Data/Use Of Proceeds/Purposes Substitution",
+  "260707_dpc_purpose_substitution_cusip_category_panel.csv"
 ))
 purpose_covered_issuers <- unique(
   purpose_bonds[go_any == 1 | revenue_bond == 1, .(state, seed_issuer)]
@@ -565,7 +565,7 @@ issuer_purpose_controls <- unique(
     low_state_tax_privilege,
     strict_municipal_debt_limit
   )],
-  by = c('state', 'seed_issuer')
+  by = c("state", "seed_issuer")
 )
 
 issuer_purpose_controls <- purpose_covered_issuers[
@@ -610,7 +610,7 @@ panel_e_utilities <- feols(
   share_revenue_vs_go_amount ~ city_go_vote + ln_gdp + ln_pop + ln_pers_inc +
     ln_county_debt_other + glm_proactive + state_ltgo_allowed +
     state_go_vote + low_state_tax_privilege + strict_municipal_debt_limit,
-  data = issuer_purpose[purpose_category == 'utilities'],
+  data = issuer_purpose[purpose_category == "utilities"],
   vcov = vcov_cluster(~state)
 )
 
@@ -618,7 +618,7 @@ panel_e_transportation <- feols(
   share_revenue_vs_go_amount ~ city_go_vote + ln_gdp + ln_pop + ln_pers_inc +
     ln_county_debt_other + glm_proactive + state_ltgo_allowed +
     state_go_vote + low_state_tax_privilege + strict_municipal_debt_limit,
-  data = issuer_purpose[purpose_category == 'transportation'],
+  data = issuer_purpose[purpose_category == "transportation"],
   vcov = vcov_cluster(~state)
 )
 
@@ -626,7 +626,7 @@ panel_e_recreation <- feols(
   share_revenue_vs_go_amount ~ city_go_vote + ln_gdp + ln_pop + ln_pers_inc +
     ln_county_debt_other + glm_proactive + state_ltgo_allowed +
     state_go_vote + low_state_tax_privilege + strict_municipal_debt_limit,
-  data = issuer_purpose[purpose_category == 'recreation_amenities'],
+  data = issuer_purpose[purpose_category == "recreation_amenities"],
   vcov = vcov_cluster(~state)
 )
 
@@ -634,7 +634,7 @@ panel_e_public_safety <- feols(
   share_revenue_vs_go_amount ~ city_go_vote + ln_gdp + ln_pop + ln_pers_inc +
     ln_county_debt_other + glm_proactive + state_ltgo_allowed +
     state_go_vote + low_state_tax_privilege + strict_municipal_debt_limit,
-  data = issuer_purpose[purpose_category == 'public_safety'],
+  data = issuer_purpose[purpose_category == "public_safety"],
   vcov = vcov_cluster(~state)
 )
 
@@ -642,7 +642,7 @@ panel_e_public_buildings <- feols(
   share_revenue_vs_go_amount ~ city_go_vote + ln_gdp + ln_pop + ln_pers_inc +
     ln_county_debt_other + glm_proactive + state_ltgo_allowed +
     state_go_vote + low_state_tax_privilege + strict_municipal_debt_limit,
-  data = issuer_purpose[purpose_category == 'other_public_buildings'],
+  data = issuer_purpose[purpose_category == "other_public_buildings"],
   vcov = vcov_cluster(~state)
 )
 
@@ -650,75 +650,75 @@ table_call <- etable(
   panel_e_utilities, panel_e_transportation, panel_e_recreation,
   panel_e_public_safety, panel_e_public_buildings,
   headers = list(
-    '^ ' = list('Pct Revenue' = 5),
-    '- ' = purpose_headers
+    "^ " = list("Pct Revenue" = 5),
+    "- " = purpose_headers
   ),
-  coefstat = 'tstat',
-  keep_raw = '^city_go_vote$',
-  order = '%city_go_vote',
+  coefstat = "tstat",
+  keep_raw = "^city_go_vote$",
+  order = "%city_go_vote",
   depvar = FALSE,
-  style.tex = style.tex(main = 'aer', fixef.suffix = ' FE', yesNo = c('Yes', 'No')),
-  fitstat = c('n', 'ar2'),
+  style.tex = style.tex(main = "aer", fixef.suffix = " FE", yesNo = c("Yes", "No")),
+  fitstat = c("n", "ar2"),
   se.below = TRUE,
   digits = 3,
   digits.stats = 3,
-  signif.code = c('***' = 0.01, '**' = 0.05, '*' = 0.10),
+  signif.code = c("***" = 0.01, "**" = 0.05, "*" = 0.10),
   tex = TRUE,
   dict = table_dict,
-  placement = 'H'
+  placement = "H"
 )
 
 table_output <- modify_etable_rounding(table_call, coef_digits = 3, tstat_digits = 2)
-table_output <- format_table(table_output, cluster_level = 'State', drop_covariance = TRUE)
-table_output <- table_output[!trimws(table_output) %in% c('& \\\\', '\\\\')]
-hline_idx <- grep('^[[:space:]]*\\\\hline[[:space:]]*$', table_output)
+table_output <- format_table(table_output, cluster_level = "State", drop_covariance = TRUE)
+table_output <- table_output[!trimws(table_output) %in% c("& \\\\", "\\\\")]
+hline_idx <- grep("^[[:space:]]*\\\\hline[[:space:]]*$", table_output)
 if (length(hline_idx) == 0) {
-  stop('Could not find the pre-statistics horizontal rule in Panel E.')
+  stop("Could not find the pre-statistics horizontal rule in Panel E.")
 }
 table_output <- append(
   table_output,
-  '   Controls       & Yes & Yes & Yes & Yes & Yes\\\\',
+  "   Controls       & Yes & Yes & Yes & Yes & Yes\\\\",
   after = hline_idx[1]
 )
 
 table_output <- add_panel(
   table_output,
-  'Panel E: Purpose substitution, full sample aggregate',
+  "Panel E: Purpose substitution, full sample aggregate",
   ncols = 6
 )
 
-table_output <- append(table_output, '\\small', after = 1)
+table_output <- append(table_output, "\\small", after = 1)
 writeLines(
   table_output,
-  file.path(tbl_dir, 'alternative_sample_robustness_panel_e_purpose_aggregate.tex')
+  file.path(tbl_dir, "alternative_sample_robustness_panel_e_purpose_aggregate.tex")
 )
 
 # Printable online-appendix wrapper ----
 
 writeLines(c(
-  '\\newpage',
-  '\\begin{table}[H]\\centering',
-  '\\caption{\\textbf{Robustness to Alternative Measurement Periods}}',
-  '\\label{tab:alternative_sample_robustness}',
+  "\\newpage",
+  "\\begin{table}[H]\\centering",
+  "\\caption{\\textbf{Robustness to Alternative Measurement Periods}}",
+  "\\label{tab:alternative_sample_robustness}",
   paste0(
-    '\\parbox{\\textwidth}{This table repeats the debt-choice, weighted-average yield-spread, ',
-    'and purpose-substitution analyses using the 2012 point-in-time measures and full-period ',
-    'issuer aggregates. Panels A and B report debt composition. Panel C reports the weighted-average ',
-    'yield spread. Panels D and E report the revenue share within each purpose category. ',
-    'The 2012 specifications use the point-in-time controls. The full-sample aggregate specifications ',
-    'use county population and debt issued by other entities in the county. The aggregate yield ',
-    'regression also controls for available weighted-average rating and maturity, but the issuer-level ',
-    'data do not contain the insured, callable, and sinkable indicators used in the point-in-time ',
-    'specification. Controls are suppressed. Standard errors are clustered by state.}'
+    "\\parbox{\\textwidth}{This table repeats the debt-choice, weighted-average yield-spread, ",
+    "and purpose-substitution analyses using the 2012 point-in-time measures and full-period ",
+    "issuer aggregates. Panels A and B report debt composition. Panel C reports the weighted-average ",
+    "yield spread. Panels D and E report the revenue share within each purpose category. ",
+    "The 2012 specifications use the point-in-time controls. The full-sample aggregate specifications ",
+    "use county population and debt issued by other entities in the county. The aggregate yield ",
+    "regression also controls for available weighted-average rating and maturity, but the issuer-level ",
+    "data do not contain the insured, callable, and sinkable indicators used in the point-in-time ",
+    "specification. Controls are suppressed. Standard errors are clustered by state.}"
   ),
-  '\\end{table}',
-  '\\input{tables/clean/raw/alternative_sample_robustness_panel_a_debt_choice_allgo}',
-  '\\vspace{10pt}',
-  '\\input{tables/clean/raw/alternative_sample_robustness_panel_b_debt_choice_utgo_only}',
-  '\\vspace{10pt}',
-  '\\input{tables/clean/raw/alternative_sample_robustness_panel_c_yield_spread}',
-  '\\vspace{10pt}',
-  '\\input{tables/clean/raw/alternative_sample_robustness_panel_d_purpose_2012}',
-  '\\vspace{10pt}',
-  '\\input{tables/clean/raw/alternative_sample_robustness_panel_e_purpose_aggregate}'
-), file.path(processed_dir, 'alternative_sample_robustness.tex'))
+  "\\end{table}",
+  "\\input{tables/clean/raw/alternative_sample_robustness_panel_a_debt_choice_allgo}",
+  "\\vspace{10pt}",
+  "\\input{tables/clean/raw/alternative_sample_robustness_panel_b_debt_choice_utgo_only}",
+  "\\vspace{10pt}",
+  "\\input{tables/clean/raw/alternative_sample_robustness_panel_c_yield_spread}",
+  "\\vspace{10pt}",
+  "\\input{tables/clean/raw/alternative_sample_robustness_panel_d_purpose_2012}",
+  "\\vspace{10pt}",
+  "\\input{tables/clean/raw/alternative_sample_robustness_panel_e_purpose_aggregate}"
+), file.path(processed_dir, "alternative_sample_robustness.tex"))
