@@ -1,28 +1,32 @@
 # 11: Media coverage excluding month zero (Online Appendix)
 
+# Setup ----
+
 rm(list = ls())
 
 library(data.table)
 library(DescTools)
 library(fixest)
-library(haven)
 
 project_dir <- path.expand("~/Dropbox/Voting on Bonds")
 data_dir <- file.path(project_dir, "Data")
 clean_data_dir <- file.path(data_dir, "Clean_Intermediate")
-raw_table_dir <- file.path(project_dir, "Code", "R", "Clean", "output", "revision_tables")
-processed_table_dir <- file.path(project_dir, "Code", "R", "Clean", "output", "processed")
+raw_table_dir <- Sys.getenv(
+  "RESULTS_DIR",
+  unset = file.path(project_dir, "Code", "R", "Clean", "output", "revision_tables")
+)
+processed_table_dir <- Sys.getenv(
+  "PROCESSED_RESULTS_DIR",
+  unset = file.path(project_dir, "Code", "R", "Clean", "output", "processed")
+)
 
 source(file.path(project_dir, "Code", "R", "Clean", "00_modify_etable_rounding.R"))
-source(file.path(project_dir, "Code", "R", "Clean", "00_border_pair_definitions.R"))
 
 raw_output_file <- file.path(raw_table_dir, "media_coverage_exclude_month_zero.tex")
 processed_output_file <- file.path(processed_table_dir, "media_coverage_exclude_month_zero.tex")
 
 
-# -----------------------------------------------------------------------------
-# Table formatting
-# -----------------------------------------------------------------------------
+# Table formatting ----
 
 add_media_sample_headers <- function(tex, outcome_label) {
   if (length(tex) > 1) {
@@ -48,57 +52,20 @@ add_media_sample_headers <- function(tex, outcome_label) {
 }
 
 
-# -----------------------------------------------------------------------------
-# Data preparation
-# -----------------------------------------------------------------------------
+# Data preparation ----
 
-full_data <- as.data.table(read_dta(
-  file.path(data_dir, "Mergent", "Clean", "260716_city_cusiplevel_statereq_purpose_yieldspread.dta"),
-  col_select = c("seed_issuer_id", "fips", "issuer_long_name")
+# Use the same prepared inputs as step 02: prior-year county demographics,
+# the 2001 GDP fallback, issuance indicators, sources, and border restrictions.
+# The historical border indicator is reserved for the main media table;
+# this robustness test retains the current prepared indicator.
+issuance_lvl <- fread(Sys.getenv(
+  "MEDIA_FULL_REGRESSION_DATA",
+  unset = file.path(clean_data_dir, "News", "media_full_sample_regression_data.csv")
 ))
-
-issuers <- full_data[, .(
-  fips = first(fips),
-  issuer_long_name = first(issuer_long_name)
-), by = seed_issuer_id]
-
-issuance_lvl <- fread(file.path(
-  clean_data_dir,
-  "News",
-  "Issuance_Lvl_News_With_Lagged_News.csv"
+border_articles <- fread(Sys.getenv(
+  "MEDIA_BORDER_REGRESSION_DATA",
+  unset = file.path(clean_data_dir, "News", "media_border_state_regression_data.csv")
 ))
-issuance_lvl <- issuers[issuance_lvl, on = .(seed_issuer_id)]
-issuance_lvl[, city_rev_vote := fifelse(state == "MO", 1, city_rev_vote)]
-issuance_lvl[, city_go_vote := fifelse(state == "RI", NA_real_, city_go_vote)]
-issuance_lvl <- issuance_lvl[!is.na(city_go_vote) & !is.na(ln_employment)]
-
-border_articles <- fread(file.path(
-  clean_data_dir,
-  "Border States",
-  "Border Matches RP Issuance Lvl Expanded Set Buffer 100000.csv"
-))
-border_articles <- border_articles[!is.na(ln_employment)]
-
-add_prior_issuance_indicator <- function(dt) {
-  setorder(dt, seed_issuer_id, issuance_year_month_id)
-  dt[, lag_issuance_ym_id := shift(issuance_year_month_id), by = seed_issuer_id]
-  dt[, months_since_prior_issuance := issuance_year_month_id - lag_issuance_ym_id]
-  dt[, bond_prior_12 := fifelse(
-    !is.na(months_since_prior_issuance) & months_since_prior_issuance <= 12,
-    1,
-    0
-  )]
-  invisible(dt)
-}
-
-add_prior_issuance_indicator(issuance_lvl)
-add_prior_issuance_indicator(border_articles)
-
-border_articles <- filter_paper_border_pairs(border_articles)
-border_articles[, state_year := interaction(state, year, drop = TRUE)]
-
-issuance_lvl[, log_sources := log1p(unique_sources_12)]
-border_articles[, log_sources := log1p(unique_sources_12)]
 
 full_sample <- issuance_lvl[
   go_unlim_bond_issuance == 1 & rolling_sum_monthly_article_count_12 > 0
@@ -132,9 +99,7 @@ border_sample[, total_articles_12_neg1_win := Winsorize(
 )]
 
 
-# -----------------------------------------------------------------------------
-# Regressions
-# -----------------------------------------------------------------------------
+# Regressions ----
 
 r1 <- fepois(
   total_articles_12_neg1_win ~ city_go_vote + bond_prior_12 + log_sources +
@@ -167,9 +132,7 @@ r2b <- fepois(
 )
 
 
-# -----------------------------------------------------------------------------
-# Raw regression table
-# -----------------------------------------------------------------------------
+# Raw regression table ----
 
 outcome_label <- "Total Articles - 12mo (Excl. Month 0)"
 
@@ -220,9 +183,7 @@ dir.create(raw_table_dir, recursive = TRUE, showWarnings = FALSE)
 writeLines(table_output, raw_output_file)
 
 
-# -----------------------------------------------------------------------------
-# Processed supplemental table wrapper
-# -----------------------------------------------------------------------------
+# Processed supplemental table wrapper ----
 
 processed_output <- c(
   "\\clearpage",
@@ -238,6 +199,7 @@ processed_output <- c(
     "The article count is winsorized at the empirical 1st and 99th percentiles within each estimation sample. ",
     "The table reports Poisson pseudo-maximum-likelihood estimates. Columns 1--2 compare cities in states with a GO bond referendum requirement to cities in states with no GO bond referendum requirement. ",
     "Columns 3--4 compare cities located along the border of states with and without GO bond referendum requirements and include state-border fixed effects. ",
+    "County demographic controls use the preceding year; GDP uses 2001 values for 2001 issuances when 2000 GDP is unavailable. ",
     "All columns include fixed effects for the issuance month and Mergent project purpose. t-statistics are reported in parentheses. ",
     "Standard errors are clustered by state in columns 1--2 and by state-year in columns 3--4. ",
     "*, **, and *** indicate statistical significance at the 10\\%, 5\\%, and 1\\% levels. All variables are defined in \\textit{Appendix A}.}"
