@@ -94,18 +94,32 @@ uniform city GO-bond rule: 26 states where voter approval is required and 7
 where it is not.  It excludes states whose rule varies by city, project, or
 financing type, as well as states without a classifiable rule.  "GO" means a
 municipal general-obligation bond; it does not refer to revenue bonds.  The
-first two columns are group means, and the final column is the GO-vote-required
-mean minus the no-GO-vote-requirement mean.  Percentages are percentage-point
-differences in the last column.  Bracketed `N` values are the number of states
-with nonmissing data for that row, so they can be smaller than the 26 or 7
-states in the comparison group.
+two comparison columns report the number of states meeting each policy followed
+by the percentage of all 26 or 7 states in that group, formatted as `N [%]`.
+Unknown policy values are not counted as meeting a policy. The States row
+reports only group sizes, and the final column identifies policy sources.
+The table uses a wider policy-label column to keep labels on one line.
+
+### State debt policies
+
+* **Proactive state.** `glm_proactive` from Gao, Lee, and Murphy (2019),
+  read from `Data/Gao et al/250624_GLM_table1.csv`.
+* **LTGO allowed.** Fidelity policy coding (`state_ltgo_allowed`).
+* **State GO vote required.** Pew Trusts policy coding (`state_go_vote`).
+  This is distinct from the municipal GO-vote rule used to form comparison
+  groups. Both bond-policy indicators are read from the existing
+  `Data/Mergent/Clean/260716_city_issuerlevel_yieldspread.dta` file, with a
+  check that coding is constant within each state.
+
+Truth-in-Taxation and GFOA recipient rates remain in the data outputs but are
+omitted from the displayed comparison table.
 
 ### Debt-limit variables
 
 * **Any municipal debt limit.** Indicator equal to one when the statutory
   debt-limit workbook codes the state as having a municipal debt limit.  States
   coded `Depends` or `N/A` are missing rather than treated as having no limit.
-* **Strict municipal debt limit (threshold and cannot be exceeded).** Indicator
+* **Strict municipal debt limit.** Indicator
   equal to one only when the workbook's threshold is at most 5 percent at a
   close-to-market valuation (or at most 10 percent at a below-market
   valuation) **and** the cap cannot be exceeded.  A low cap with an available

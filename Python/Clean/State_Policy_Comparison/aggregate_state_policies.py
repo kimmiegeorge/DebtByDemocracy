@@ -305,14 +305,14 @@ def render_table(state: pd.DataFrame) -> str:
     statute_source = "State statutes"
     tax_source = "Langley, Paquin, and Um (2025)"
     rows = [
-        ("States", None, statute_source),
+        ("States", None, ""),
         ("State debt policies", None, None),
         ("Proactive state", "glm_proactive", "Gao, Lee, and Murphy (2019)"),
-        ("LTGO allowed", "state_ltgo_allowed", "State bond-law coding"),
-        ("State GO vote required", "state_go_vote", "State bond-law coding"),
+        ("LTGO allowed", "state_ltgo_allowed", "Fidelity"),
+        ("State GO vote required", "state_go_vote", "Pew Trusts"),
         ("Debt-limit variables", None, None),
         ("Any municipal debt limit", "municipal_debt_limit", statute_source),
-        ("Strict municipal debt limit (threshold and cannot be exceeded)", "strict_municipal_debt_limit", statute_source),
+        ("Strict municipal debt limit", "strict_municipal_debt_limit", statute_source),
         ("Debt limit can be exceeded", "debt_limit_can_be_exceeded", statute_source),
         ("Tax-related variables", None, None),
         ("Property-tax levy cap", "lincoln_property_tax_levy_cap_2024", tax_source),
@@ -337,10 +337,10 @@ def render_table(state: pd.DataFrame) -> str:
         r"\begin{table}[!htbp]\centering",
         r"\caption{State-level fiscal-policy comparison}",
         r"\label{tab:r3_state_policy_comparison}",
-        r"\small",
+        r"\scriptsize",
         r"\setlength{\tabcolsep}{4pt}",
         r"\renewcommand{\arraystretch}{1.15}",
-        r"\begin{tabularx}{\textwidth}{@{}>{\raggedright\arraybackslash}X>{\centering\arraybackslash}p{0.18\textwidth}>{\centering\arraybackslash}p{0.18\textwidth}>{\raggedright\arraybackslash}p{0.23\textwidth}@{}}",
+        r"\begin{tabularx}{\textwidth}{@{}>{\raggedright\arraybackslash}X>{\centering\arraybackslash}p{0.13\textwidth}>{\centering\arraybackslash}p{0.13\textwidth}>{\raggedright\arraybackslash}p{0.20\textwidth}@{}}",
         r"\toprule",
         r" & \textbf{Vote-requiring states} & \textbf{Non-requiring states} & \textbf{Source} \\",
         r" & \textbf{$N$ [\%]} & \textbf{$N$ [\%]} & \\",
@@ -354,9 +354,12 @@ def render_table(state: pd.DataFrame) -> str:
                 f"\\multicolumn{{4}}{{@{{}}l}}{{\\textit{{{label}}}}} {row_end}",
             ])
             continue
+        if column is None:
+            lines.append(f"{label} & {referendum.height} & {control.height} & {row_end}")
+            continue
         display = []
         for group in (referendum, control):
-            count = group.height if column is None else group.filter(pl.col(column) == 1).height
+            count = group.filter(pl.col(column) == 1).height
             percent = 100 * count / group.height
             display.append(f"{count} [{percent:.1f}\\%]")
         lines.append(f"{label} & {display[0]} & {display[1]} & {escape_tex(source)} {row_end}")
