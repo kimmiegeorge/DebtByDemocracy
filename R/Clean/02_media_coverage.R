@@ -482,6 +482,5 @@ if (length(pseudo_r2_idx) > 0) {
     after = pseudo_r2_idx[1]
   )
 }
-modified_output <- add_panel(modified_output, "Panel C: Supermajority split", ncols = 3)
 
 writeLines(modified_output, paste0(tbl_dir, "/media_coverage_super_majority.tex"))
