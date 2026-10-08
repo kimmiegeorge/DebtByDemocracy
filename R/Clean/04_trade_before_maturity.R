@@ -3,6 +3,7 @@ rm(list = ls())
 library(pacman)
 p_load(data.table, dplyr, stargazer, DescTools, arrow, glue, lfe, ggplot2, gridExtra, sandwich, zoo, fixest)
 source('/Users/kmunevar/Dropbox/Voting on Bonds/Code/R/Clean/00_modify_etable_rounding.R')
+source('/Users/kmunevar/Dropbox/Voting on Bonds/Code/R/Clean/00_state_policy_definitions.R')
 tables_wd <- Sys.getenv(
   "RESULTS_DIR",
   unset = "/Users/kmunevar/Dropbox/Voting on Bonds/Code/R/Clean/output/revision_tables/"
@@ -16,6 +17,8 @@ regression_data_dir <- Sys.getenv(
 data <- fread(file.path(regression_data_dir, 'trade_full_sample_regression_ready.csv'))
 border_states <- fread(file.path(regression_data_dir, 'trade_border_sample_regression_ready.csv'))
 disclosure_label <- 'Continuing Disclosure'
+# Use the same state supermajority definition as the media coverage test.
+data[, super_majority := as.integer(state %in% super_majority_states)]
 
 #----------------------------------
 # descriptives
@@ -358,3 +361,75 @@ modified_output <- format_table(modified_output, cluster_level = "State-Year")
 modified_output <- add_panel(modified_output, 'Panel B: Border-city sample')
 
 writeLines(modified_output, paste0(tables_wd, '/trade_before_maturity_border_sample_tax.tex'))
+
+
+#----------------------------------
+# Supermajority test - full sample
+#----------------------------------
+# Add the supermajority indicator to each existing full-sample specification.
+# Retain controls in estimation; report only the two policy coefficients.
+r_super <- feols(
+  traded_before_maturity ~ city_go_vote + super_majority +
+    low_state_tax_privilege + disclosure_control + ln_amount + ln_maturity_mths +
+    callable + sinkable + insured + ln_gdp + ln_pop + ln_pers_inc |
+    year + purp_broad + rating_fe,
+  ~state,
+  data = data
+)
+r_super_r <- feols(
+  retail_traded_before_maturity ~ city_go_vote + super_majority +
+    low_state_tax_privilege + disclosure_control + ln_amount + ln_maturity_mths +
+    callable + sinkable + insured + ln_gdp + ln_pop + ln_pers_inc |
+    year + purp_broad + rating_fe,
+  ~state,
+  data = data
+)
+r_super_i <- feols(
+  institutional_traded_before_maturity ~ city_go_vote + super_majority +
+    low_state_tax_privilege + disclosure_control + ln_amount + ln_maturity_mths +
+    callable + sinkable + insured + ln_gdp + ln_pop + ln_pers_inc |
+    year + purp_broad + rating_fe,
+  ~state,
+  data = data
+)
+
+table_call_super <- etable(r_super, r_super_r, r_super_i,
+  coefstat = 'tstat',
+  style.tex = style.tex(main = 'aer', fixef.suffix = ' FE', yesNo = c("Yes", "No")),
+  fitstat = c('n', 'ar2'),
+  se.below = TRUE,
+  digits = "r3",
+  digits.stats = 3,
+  signif.code = c("***" = 0.01, "**" = 0.05, "*" = 0.10),
+  tex = TRUE,
+  keep_raw = c("^city_go_vote$", "^super_majority$"),
+  order = c("%city_go_vote", "%super_majority"),
+  extralines = list(
+    "-^Bond Controls" = rep("Yes", 3),
+    "-^State Controls" = rep("Yes", 3),
+    "-^County Controls" = rep("Yes", 3)
+  ),
+  dict = c(
+    traded_before_maturity = 'Trade',
+    retail_traded_before_maturity = 'Retail Trade',
+    institutional_traded_before_maturity = 'Inst. Trade',
+    city_go_vote = 'Vote',
+    super_majority = 'Supermajority State',
+    year = 'Year',
+    purp_broad = 'Purpose',
+    rating_fe = 'Rating'
+  ),
+  placement = 'H',
+  replace = TRUE
+)
+modified_output_super <- modify_etable_rounding(
+  table_call_super,
+  coef_digits = 3,
+  tstat_digits = 2
+)
+modified_output_super <- format_table(modified_output_super, cluster_level = "State")
+# Standalone table: no panel heading.
+writeLines(
+  modified_output_super,
+  paste0(tables_wd, '/trade_before_maturity_full_sample_super_majority.tex')
+)
