@@ -25,6 +25,9 @@ election <- fread(file.path(regression_data_dir, 'election_media_regression_read
 website_city_year_input <- fread(file.path(regression_data_dir, 'website_city_year_regression_ready.csv'))
 website_election_input <- fread(file.path(regression_data_dir, 'website_election_regression_ready.csv'))
 
+# Preserve the full election file for the prior submission's outcome descriptives.
+election_brb_all <- copy(election)
+
 # Python supplies coverage indicators, logs, county-year IDs, and vote margins.
 # The election-level regressions retain elections where pre-election source
 # diversity is positive. This matches the paper's media-analysis sample.
@@ -81,7 +84,7 @@ desc_city_month_col <- summarize_desc_cols(
   c('Bond Coverage', 'Election [0, +3]', 'Bond Issuance [0, +3]')
 )
 
-# Election Level descriptives: common complete media-election inputs.
+# Complete media-election inputs for the media descriptive rows below.
 election_desc_vars <- c(
   'failed', 'abs_vote_margin', 'coverage_3', 'ln_Amount',
   'unique_sources_12m_prior', 'ln_county_gdp_prior', 'ln_county_pop_prior',
@@ -90,7 +93,10 @@ election_desc_vars <- c(
 election_desc_sample <- election[
   complete.cases(election[, ..election_desc_vars]) & is.finite(ln_Amount)
 ]
-desc_election <- election_desc_sample[, .(failed = as.integer(failed), abs_vote_margin)]
+# Outcome descriptives use all 2000--2021 elections, as in the prior submission.
+desc_election <- election_brb_all[year >= 2000 & year <= 2021,
+  .(failed = as.integer(failed), abs_vote_margin)
+]
 desc_election_col <- summarize_desc_cols(
   desc_election,
   'Election',
