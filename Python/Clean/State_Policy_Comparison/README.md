@@ -114,7 +114,7 @@ The table uses a wider policy-label column to keep labels on one line.
 Truth-in-Taxation and GFOA recipient rates remain in the data outputs but are
 omitted from the displayed comparison table.
 
-### Debt-limit variables
+### Debt-limit policies
 
 * **Any municipal debt limit.** Indicator equal to one when the statutory
   debt-limit workbook codes the state as having a municipal debt limit.  States
@@ -130,7 +130,7 @@ omitted from the displayed comparison table.
   not require that the override be by referendum; the separate raw field
   `debt_limit_voter_override` retains that distinction.
 
-### Tax-related variables
+### Tax-related policies
 
 * **Property-tax levy cap.** Indicator for a state-imposed cap on annual
   increases in the property-tax levy, using the Lincoln Institute's 2024
@@ -157,7 +157,7 @@ omitted from the displayed comparison table.
   Truth-in-Taxation rollback rate (or, for Arizona, to approve a covered
   increase).  This is distinct from a voter referendum.
 
-### Financial reporting and oversight variables
+### Financial reporting and oversight policies
 
 * **State fiscal monitor in place by 2020.** Indicator equal to one when the
   fiscal-monitoring adoption file, based on Nakhmurina (2024), identifies the
