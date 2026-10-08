@@ -11,6 +11,8 @@ from pathlib import Path
 import re
 
 import pandas as pd
+import polars as pl
+import pyreadstat
 
 
 ROOT = Path(__file__).resolve().parents[4]
@@ -26,6 +28,8 @@ TEL_FILE = ADDNL_POLICY_DIR / "wen_municipal_tel_index_2020.csv"
 LINCOLN_FEATURES_FILE = ADDNL_POLICY_DIR / "lincoln_property_tax_limit_features_2024.csv"
 GASB_FILE = ADDNL_POLICY_DIR / "gasb_municipal_gaap_requirements_2025.csv"
 AUDIT_FILE = ADDNL_POLICY_DIR / "nasact_state_audit_requirements_2023.csv"
+STATE_BOND_POLICY_FILE = ROOT / "Data" / "Mergent" / "Clean" / "260716_city_issuerlevel_yieldspread.dta"
+PROACTIVE_FILE = ROOT / "Data" / "Gao et al" / "250624_GLM_table1.csv"
 GFOA_AWARD_DIR = ROOT / "Data" / "GFOA Awards" / "analysis" / "city_year_pafr"
 GFOA_AWARD_PANEL = GFOA_AWARD_DIR / "city_year_gfoa_awards_panel.csv"
 
@@ -296,69 +300,73 @@ def escape_tex(value: object) -> str:
 
 
 def render_table(state: pd.DataFrame) -> str:
-    eligible = state.loc[state["eligible_go_vote_comparison"].eq(1)].copy()
-    referendum = eligible.loc[eligible["go_vote_required"].eq(1)]
-    control = eligible.loc[eligible["go_vote_required"].eq(0)]
-
+    # Use the full comparison-group size as the percentage denominator, and
+    # count affirmative policies rather than nonmissing observations.
+    statute_source = "State statutes"
+    tax_source = "Langley, Paquin, and Um (2025)"
     rows = [
-        ("States", None, "count"),
-        ("Debt-limit variables", None, "category"),
-        ("Any municipal debt limit", "municipal_debt_limit", "share"),
-        ("Strict municipal debt limit (threshold and cannot be exceeded)", "strict_municipal_debt_limit", "share"),
-        ("Debt limit can be exceeded", "debt_limit_can_be_exceeded", "share"),
-        ("Tax-related variables", None, "category"),
-        ("Property-tax levy cap", "lincoln_property_tax_levy_cap_2024", "share"),
-        ("Referendum required to exceed property-tax levy cap", "lincoln_property_tax_levy_override_requires_voter_approval_2024", "share"),
-        ("Broad municipal revenue/expenditure cap", "lincoln_broad_municipal_budget_limit_2022", "share"),
-        ("Truth-in-Taxation requirement", "lincoln_truth_in_taxation_2024", "share"),
-        ("Governing-body vote for tax increase", "lincoln_governing_body_vote_for_tax_increase_2024", "share"),
-        ("Financial reporting and oversight variables", None, "category"),
-        ("State fiscal monitor in place by 2020", "state_fiscal_monitor_2020", "share"),
-        ("Municipal GAAP required", "gasb_municipal_gaap_required_any", "share"),
-        ("State auditor audits cities/towns/villages", "nasact_audits_cities_towns_villages", "share"),
-        ("COA recipient rate among GO-bond cities (annual mean)", "gfoa_coa_award_rate_mean_valid_fy2014_2020", "share"),
-        ("PAFR recipient rate among GO-bond cities (annual mean)", "gfoa_pafr_award_rate_mean_fy2014_2020", "share"),
+        ("States", None, statute_source),
+        ("State debt policies", None, None),
+        ("Proactive state", "glm_proactive", "Gao, Lee, and Murphy (2019)"),
+        ("LTGO allowed", "state_ltgo_allowed", "State bond-law coding"),
+        ("State GO vote required", "state_go_vote", "State bond-law coding"),
+        ("Debt-limit variables", None, None),
+        ("Any municipal debt limit", "municipal_debt_limit", statute_source),
+        ("Strict municipal debt limit (threshold and cannot be exceeded)", "strict_municipal_debt_limit", statute_source),
+        ("Debt limit can be exceeded", "debt_limit_can_be_exceeded", statute_source),
+        ("Tax-related variables", None, None),
+        ("Property-tax levy cap", "lincoln_property_tax_levy_cap_2024", tax_source),
+        ("Referendum required to exceed property-tax levy cap", "lincoln_property_tax_levy_override_requires_voter_approval_2024", tax_source),
+        ("Broad municipal revenue/expenditure cap", "lincoln_broad_municipal_budget_limit_2022", tax_source),
+        ("Governing-body vote for tax increase", "lincoln_governing_body_vote_for_tax_increase_2024", tax_source),
+        ("Financial reporting and oversight variables", None, None),
+        ("State fiscal monitor in place by 2020", "state_fiscal_monitor_2020", "Nakhmurina (2024)"),
+        ("Municipal GAAP required", "gasb_municipal_gaap_required_any", "Waymire (2025), Table I.c"),
+        ("State auditor audits cities/towns/villages", "nasact_audits_cities_towns_villages", "NASACT (2023), Table 4.29"),
     ]
+    # Convert only numeric table fields; raw statutory text can mix strings
+    # and numeric codes and is retained in the separate state-level output.
+    table_columns = ["eligible_go_vote_comparison", "go_vote_required"] + [
+        column for _, column, _ in rows if column is not None
+    ]
+    policies = pl.from_pandas(state[table_columns])
+    eligible = policies.filter(pl.col("eligible_go_vote_comparison") == 1)
+    referendum = eligible.filter(pl.col("go_vote_required") == 1)
+    control = eligible.filter(pl.col("go_vote_required") == 0)
     lines = [
         r"\begin{table}[!htbp]\centering",
         r"\caption{State-level fiscal-policy comparison}",
         r"\label{tab:r3_state_policy_comparison}",
         r"\small",
-        r"\begin{tabular}{lccc}",
+        r"\setlength{\tabcolsep}{4pt}",
+        r"\renewcommand{\arraystretch}{1.15}",
+        r"\begin{tabularx}{\textwidth}{@{}>{\raggedright\arraybackslash}X>{\centering\arraybackslash}p{0.18\textwidth}>{\centering\arraybackslash}p{0.18\textwidth}>{\raggedright\arraybackslash}p{0.23\textwidth}@{}}",
         r"\toprule",
-        r" & GO-vote & No-GO-vote & Difference \\",
-        r" & required & requirement & (GO vote $-$ no GO vote) \\",
+        r" & \textbf{Vote-requiring states} & \textbf{Non-requiring states} & \textbf{Source} \\",
+        r" & \textbf{$N$ [\%]} & \textbf{$N$ [\%]} & \\",
         r"\midrule",
     ]
     row_end = r"\\"
-    for label, column, kind in rows:
-        if kind == "category":
+    for label, column, source in rows:
+        if source is None:
             lines.extend([
                 r"\addlinespace[2pt]",
-                f"\\multicolumn{{4}}{{l}}{{\\textit{{{label}}}}} {row_end}",
+                f"\\multicolumn{{4}}{{@{{}}l}}{{\\textit{{{label}}}}} {row_end}",
             ])
-        elif kind == "count":
-            ref_value, control_value = len(referendum), len(control)
-            difference = ref_value - control_value
-            lines.append(f"{label} & {ref_value:d} & {control_value:d} & {difference:d} {row_end}")
-        else:
-            ref_value = referendum[column].mean()
-            control_value = control[column].mean()
-            difference = ref_value - control_value
-            if kind == "share":
-                ref_n = referendum[column].notna().sum()
-                control_n = control[column].notna().sum()
-                display = [
-                    f"{100 * ref_value:.1f}\\% [N={ref_n}]",
-                    f"{100 * control_value:.1f}\\% [N={control_n}]",
-                    f"{100 * difference:.1f}\\%",
-                ]
-            else:
-                display = [f"{value:.1f}" for value in (ref_value, control_value, difference)]
-            lines.append(f"{label} & {display[0]} & {display[1]} & {display[2]} {row_end}")
+            continue
+        display = []
+        for group in (referendum, control):
+            count = group.height if column is None else group.filter(pl.col(column) == 1).height
+            percent = 100 * count / group.height
+            display.append(f"{count} [{percent:.1f}\\%]")
+        lines.append(f"{label} & {display[0]} & {display[1]} & {escape_tex(source)} {row_end}")
     lines.extend([
         r"\bottomrule",
-        r"\end{tabular}",
+        r"\end{tabularx}",
+        r"\par\vspace{2pt}",
+        r"\begin{minipage}{\textwidth}\footnotesize",
+        r"Notes: $N$ counts states meeting each policy; percentages use all states in each column. Unknown policy values are not counted as meeting the policy. State GO vote uses the existing state bond-law coding; comparison groups use the municipal GO-vote requirement.",
+        r"\end{minipage}",
         r"\end{table}",
         "",
     ])
@@ -372,6 +380,25 @@ def main() -> None:
     )
     states = states.merge(make_vote_data(), on="state_abbr", how="left", validate="one_to_one")
     states = states.merge(make_debt_data(), on="state_abbr", how="left", validate="one_to_one")
+    # Retain the state debt policies used by the main debt-choice analyses.
+    # Check that issuer-level records contain a single coding for each state.
+    bond_raw, _ = pyreadstat.read_dta(
+        STATE_BOND_POLICY_FILE,
+        usecols=["state", "state_ltgo_allowed", "state_go_vote"],
+        output_format="dict",
+    )
+    bond_policies = pl.DataFrame(bond_raw).unique().rename({"state": "state_abbr"})
+    if bond_policies["state_abbr"].n_unique() != bond_policies.height:
+        raise ValueError("State bond policies vary within a state.")
+    proactive = pl.read_csv(PROACTIVE_FILE).select(
+        pl.col("state").alias("state_abbr"), "glm_proactive"
+    )
+    state_debt_policies = bond_policies.join(
+        proactive, on="state_abbr", how="full", coalesce=True, validate="1:1"
+    )
+    states = states.merge(
+        state_debt_policies.to_pandas(), on="state_abbr", how="left", validate="one_to_one"
+    )
     monitor = make_monitor_data()
     states = states.merge(monitor, on="state_abbr", how="left", validate="one_to_one")
     tel = pd.read_csv(TEL_FILE).rename(columns={"state": "state_abbr"})
