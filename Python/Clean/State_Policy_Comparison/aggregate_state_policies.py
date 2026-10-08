@@ -303,11 +303,11 @@ def render_table(state: pd.DataFrame) -> str:
     # Use the full comparison-group size as the percentage denominator, and
     # count affirmative policies rather than nonmissing observations.
     statute_source = "State statutes"
-    tax_source = "Langley, Paquin, and Um (2025)"
+    tax_source = "Langley et al. (2025)"
     rows = [
         ("States", None, ""),
         ("State debt policies", None, None),
-        ("Proactive state", "glm_proactive", "Gao, Lee, and Murphy (2019)"),
+        ("Proactive state", "glm_proactive", "Gao et al. (2019)"),
         ("LTGO allowed", "state_ltgo_allowed", "Fidelity"),
         ("State GO vote required", "state_go_vote", "Pew Trusts"),
         ("Debt-limit policies", None, None),
@@ -321,8 +321,8 @@ def render_table(state: pd.DataFrame) -> str:
         ("Governing-body vote for tax increase", "lincoln_governing_body_vote_for_tax_increase_2024", tax_source),
         ("Financial reporting and oversight policies", None, None),
         ("State fiscal monitor in place by 2020", "state_fiscal_monitor_2020", "Nakhmurina (2024)"),
-        ("Municipal GAAP required", "gasb_municipal_gaap_required_any", "Waymire (2025), Table I.c"),
-        ("State auditor audits cities/towns/villages", "nasact_audits_cities_towns_villages", "NASACT (2023), Table 4.29"),
+        ("Municipal GAAP required", "gasb_municipal_gaap_required_any", "Waymire (2025)"),
+        ("State auditor audits cities/towns/villages", "nasact_audits_cities_towns_villages", "NASACT (2023)"),
     ]
     # Convert only numeric table fields; raw statutory text can mix strings
     # and numeric codes and is retained in the separate state-level output.
@@ -340,9 +340,9 @@ def render_table(state: pd.DataFrame) -> str:
         r"\scriptsize",
         r"\setlength{\tabcolsep}{4pt}",
         r"\renewcommand{\arraystretch}{1.15}",
-        r"\begin{tabularx}{\textwidth}{@{}>{\raggedright\arraybackslash}X>{\centering\arraybackslash}p{0.13\textwidth}>{\centering\arraybackslash}p{0.13\textwidth}>{\raggedright\arraybackslash}p{0.20\textwidth}@{}}",
+        r"\begin{tabularx}{\textwidth}{@{}>{\raggedright\arraybackslash}X>{\centering\arraybackslash}p{0.145\textwidth}>{\centering\arraybackslash}p{0.145\textwidth}>{\raggedright\arraybackslash}p{0.20\textwidth}@{}}",
         r"\toprule",
-        r" & \textbf{Vote-requiring states} & \textbf{Non-requiring states} & \textbf{Source} \\",
+        r" & \textbf{\shortstack[t]{Vote-requiring\\states}} & \textbf{\shortstack[t]{Non-requiring\\states}} & \textbf{Source} \\",
         r" & \textbf{$N$ [\%]} & \textbf{$N$ [\%]} & \\",
         r"\midrule",
     ]
@@ -368,7 +368,7 @@ def render_table(state: pd.DataFrame) -> str:
         r"\end{tabularx}",
         r"\par\vspace{2pt}",
         r"\begin{minipage}{\textwidth}\footnotesize",
-        r"Notes: $N$ counts states meeting each policy; percentages use all states in each column. Unknown policy values are not counted as meeting the policy. State GO vote uses the existing state bond-law coding; comparison groups use the municipal GO-vote requirement.",
+        r"Notes: $N$ counts states meeting each policy; percentages use all states in each column. Unknown policy values are not counted as meeting the policy. State GO vote uses the existing state bond-law coding; comparison groups use the municipal GO-vote requirement. Municipal GAAP: Waymire (2025), Table I.c; state audits: NASACT (2023), Table 4.29.",
         r"\end{minipage}",
         r"\end{table}",
         "",
