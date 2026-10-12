@@ -33,6 +33,8 @@ COUNTY_DEMOS_INPUT = DATA / "BEA" / "countydemos_1999_2026.csv"
 ISSUANCE_INPUT = DATA / "Mergent" / "Clean" / "260716_city_cusiplevel_statereq_purpose_yieldspread.dta"
 CITY_MONTH_ISD_INPUT = CLEAN / "TX/Election_Exposure/city_month_high_overlap_isd_failure_exposure.csv"
 WEBSITE_YEAR_ISD_INPUT = CLEAN / "TX/Election_Exposure/website_city_year_high_overlap_isd_failure_exposure.csv"
+CITY_MONTH_RISK_INPUT = CLEAN / "TX/Election_Exposure/city_month_isd_rejection_risk.csv"
+WEBSITE_YEAR_RISK_INPUT = CLEAN / "TX/Election_Exposure/website_city_year_isd_rejection_risk.csv"
 
 CITY_MONTH_OUTPUT = OUTPUT / "city_month_media_regression_ready.csv"
 ELECTION_MEDIA_OUTPUT = OUTPUT / "election_media_regression_ready.csv"
@@ -62,6 +64,8 @@ def check_inputs() -> None:
         ISSUANCE_INPUT,
         CITY_MONTH_ISD_INPUT,
         WEBSITE_YEAR_ISD_INPUT,
+        CITY_MONTH_RISK_INPUT,
+        WEBSITE_YEAR_RISK_INPUT,
     ]:
         if not path.exists():
             raise FileNotFoundError(f"Missing input: {path}")
@@ -325,6 +329,20 @@ city_month = city_month.join(
 )
 if city_month.get_column("prior_isd_failure").null_count():
     raise ValueError("Some city-months did not merge to the prior ISD failure panel.")
+city_month_risk = read_intermediate_csv(CITY_MONTH_RISK_INPUT).select(
+    issuer_key("seed_key").alias("seed_issuer_key"), "year", "month",
+    pl.col("prior_weighted_failure_rate_60m"),
+    pl.col("prior_simple_failure_rate_20pct_60m"),
+)
+city_month = city_month.join(
+    city_month_risk,
+    on=["seed_issuer_key", "year", "month"],
+    how="left",
+    validate="1:1",
+    maintain_order="left",
+)
+if city_month.get_column("prior_weighted_failure_rate_60m").null_count() == city_month.height:
+    raise ValueError("No city-months merged to the ISD rejection-risk panel.")
 write_output(city_month, CITY_MONTH_OUTPUT)
 
 
@@ -400,6 +418,20 @@ website_year = website_year.with_columns(
     pl.when(pl.col("spatial_exposure_observed") == 1)
     .then(pl.col("prior_isd_failure")).otherwise(None).alias("prior_isd_failure")
 )
+website_year_risk = read_intermediate_csv(WEBSITE_YEAR_RISK_INPUT).select(
+    issuer_key("seed_key").alias("seed_issuer"), "year",
+    pl.col("prior_weighted_failure_rate_60m"),
+    pl.col("prior_simple_failure_rate_20pct_60m"),
+)
+website_year = website_year.join(
+    website_year_risk,
+    on=["seed_issuer", "year"],
+    how="left",
+    validate="1:1",
+    maintain_order="left",
+)
+if website_year.get_column("prior_weighted_failure_rate_60m").null_count() == website_year.height:
+    raise ValueError("No website city-years merged to the ISD rejection-risk panel.")
 write_output(website_year, WEBSITE_YEAR_OUTPUT)
 
 

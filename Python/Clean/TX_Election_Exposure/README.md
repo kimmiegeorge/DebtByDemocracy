@@ -43,3 +43,12 @@ regressions and table now also run directly in `R/Clean/03_election_outcomes.R`.
 Scripts 02 and 03 read the upstream `Websites/Texas/time_series_website_data.csv`
 for the website city universe. They therefore run before the regression-input
 builder and do not depend on the regression-ready files they help produce.
+
+Script 03 also writes two five-year local rejection-risk measures from all
+matched ISD bond propositions. `prior_weighted_failure_rate_60m` weights each
+proposition by the ISD's city-area overlap. `prior_simple_failure_rate_20pct_60m`
+equally weights propositions from ISDs covering at least 20 percent of city
+area. Both measures are missing when no qualifying local proposition occurred
+in the preceding five years; no election is not treated as zero risk. The
+outputs include city-month, website-city-year, city-proposition, and
+December-2017 city panels.

@@ -23,6 +23,8 @@ WEBSITE_PANEL_FILE = (
 # 360 months covers the full observed election history (the raw file begins
 # in 1995), so it provides an "any prior recorded failure" sensitivity test.
 HORIZONS = (12, 24, 36, 60, 360)
+REJECTION_RISK_HORIZON_MONTHS = 60
+SIMPLE_RISK_MIN_CITY_AREA_SHARE = 0.20
 
 
 def canonical_name(value: object) -> str:
@@ -78,6 +80,61 @@ def add_prior_failure_exposure(
                 out.at[row_index, f"prior_failure_any_{horizon}m"] = int(count > 0)
                 if share_column and count > 0:
                     out.at[row_index, f"prior_failure_max_area_share_{horizon}m"] = shares[left:right].max()
+    return out
+
+
+def add_prior_rejection_risk(
+    frame: pd.DataFrame,
+    group_column: str,
+    date_column: str,
+    propositions: pd.DataFrame,
+    proposition_group_column: str,
+    proposition_date_column: str,
+) -> pd.DataFrame:
+    """Add five-year local rejection-risk measures from all ISD propositions.
+
+    The area-weighted measure weights each ISD proposition by the share of the
+    city inside the ISD. The simple measure gives equal weight to propositions
+    from ISDs covering at least 20 percent of the city. Both remain missing
+    when there is no qualifying proposition in the lookback window: no local
+    election is absence of revealed voter risk, not evidence of zero risk.
+    """
+    out = frame.copy()
+    weighted_column = f"prior_weighted_failure_rate_{REJECTION_RISK_HORIZON_MONTHS}m"
+    simple_column = (
+        f"prior_simple_failure_rate_{round(SIMPLE_RISK_MIN_CITY_AREA_SHARE * 100)}pct_"
+        f"{REJECTION_RISK_HORIZON_MONTHS}m"
+    )
+    out[weighted_column] = np.nan
+    out[simple_column] = np.nan
+
+    proposition_groups = {
+        group: values.sort_values(proposition_date_column)
+        for group, values in propositions.groupby(proposition_group_column, sort=False)
+    }
+    for group, index in out.groupby(group_column, sort=False).groups.items():
+        history = proposition_groups.get(group)
+        if history is None or history.empty:
+            continue
+        dates = history[proposition_date_column].to_numpy(dtype="datetime64[ns]")
+        failures = history["failed"].to_numpy(dtype=float)
+        area_shares = history["city_area_share"].to_numpy(dtype=float)
+        for row_index in index:
+            outcome_date = out.at[row_index, date_column]
+            if pd.isna(outcome_date):
+                continue
+            right = np.searchsorted(dates, np.datetime64(outcome_date), side="left")
+            left_date = outcome_date - pd.DateOffset(months=REJECTION_RISK_HORIZON_MONTHS)
+            left = np.searchsorted(dates, np.datetime64(left_date), side="left")
+            window_failures = failures[left:right]
+            window_area_shares = area_shares[left:right]
+            if len(window_failures) > 0:
+                out.at[row_index, weighted_column] = np.average(
+                    window_failures, weights=window_area_shares
+                )
+            simple_mask = window_area_shares >= SIMPLE_RISK_MIN_CITY_AREA_SHARE
+            if simple_mask.any():
+                out.at[row_index, simple_column] = window_failures[simple_mask].mean()
     return out
 
 
@@ -187,6 +244,19 @@ def main(overlap_threshold: float = 0.80) -> None:
         ).astype(int)
     city_isd_failures.to_csv(OUT_DIR / exposure_events_file, index=False)
 
+    # Rejection risk is calculated from all prior ISD propositions, not just
+    # failures. A rate conditions failures on the number of locally relevant
+    # opportunities for voter rejection.
+    city_isd_propositions = isd_props.loc[
+        isd_props["isd_geoid"].notna() & isd_props["vote_total"].gt(0),
+        ["isd_geoid", "election_date", "boundary_vintage", "failed"],
+    ].merge(
+        overlaps[["seed_key", "isd_geoid", "boundary_vintage", "city_area_share"]],
+        on=["isd_geoid", "boundary_vintage"],
+        how="inner",
+        validate="many_to_many",
+    )
+
     # City-month panel for election-incidence and media analyses.
     # ========================================================================
     # STEP 4: Create city-month exposures for city-election-incidence models.
@@ -208,7 +278,25 @@ def main(overlap_threshold: float = 0.80) -> None:
         "failure_date",
         "city_area_share",
     )
+    city_month = add_prior_rejection_risk(
+        city_month,
+        "seed_key",
+        "month_date",
+        city_isd_propositions,
+        "seed_key",
+        "election_date",
+    )
     city_month.to_csv(OUT_DIR / city_month_file, index=False)
+
+    city_month_risk_columns = [
+        "seed_key", "year", "month",
+        f"prior_weighted_failure_rate_{REJECTION_RISK_HORIZON_MONTHS}m",
+        f"prior_simple_failure_rate_{round(SIMPLE_RISK_MIN_CITY_AREA_SHARE * 100)}pct_"
+        f"{REJECTION_RISK_HORIZON_MONTHS}m",
+    ]
+    city_month[city_month_risk_columns].to_csv(
+        OUT_DIR / "city_month_isd_rejection_risk.csv", index=False
+    )
 
     # City propositions are the validation sample for the cross-jurisdictional
     # failure-risk test: conditional on a city proposition being offered, did it
@@ -233,6 +321,14 @@ def main(overlap_threshold: float = 0.80) -> None:
         "seed_key",
         "failure_date",
         "city_area_share",
+    )
+    city_props = add_prior_rejection_risk(
+        city_props,
+        "seed_key",
+        "election_date",
+        city_isd_propositions,
+        "seed_key",
+        "election_date",
     )
     city_props.to_csv(OUT_DIR / city_props_file, index=False)
 
@@ -275,13 +371,26 @@ def main(overlap_threshold: float = 0.80) -> None:
         "failure_date",
         "city_area_share",
     )
+    website_outcome_dates = add_prior_rejection_risk(
+        website_outcome_dates,
+        "seed_key",
+        "exposure_date",
+        city_isd_propositions,
+        "seed_key",
+        "election_date",
+    )
     exposure_columns = [
         column for column in website_outcome_dates.columns
         if column.startswith("prior_failure_")
     ]
+    rejection_risk_columns = [
+        f"prior_weighted_failure_rate_{REJECTION_RISK_HORIZON_MONTHS}m",
+        f"prior_simple_failure_rate_{round(SIMPLE_RISK_MIN_CITY_AREA_SHARE * 100)}pct_"
+        f"{REJECTION_RISK_HORIZON_MONTHS}m",
+    ]
     website_city_year_exposure = website_outcome_dates.groupby(
         ["seed_key", "year"], as_index=False
-    )[exposure_columns].max()
+    )[exposure_columns + rejection_risk_columns].max()
 
     # A zero is valid only when the place boundary needed to evaluate the
     # relevant historical period is observed.  Retain one audit flag per
@@ -328,6 +437,23 @@ def main(overlap_threshold: float = 0.80) -> None:
             validate="one_to_one",
         )
     website_city_year_exposure.to_csv(OUT_DIR / website_city_year_file, index=False)
+    website_city_year_exposure.to_csv(
+        OUT_DIR / "website_city_year_isd_rejection_risk.csv", index=False
+    )
+
+    # A point-in-time city panel supports the 2017 debt-substitution analysis.
+    # It uses information available through December 31, 2017.
+    city_2017_risk = city_keys[["seed_key"]].drop_duplicates().copy()
+    city_2017_risk["risk_date"] = pd.Timestamp("2017-12-31")
+    city_2017_risk = add_prior_rejection_risk(
+        city_2017_risk,
+        "seed_key",
+        "risk_date",
+        city_isd_propositions,
+        "seed_key",
+        "election_date",
+    )
+    city_2017_risk.to_csv(OUT_DIR / "city_2017_isd_rejection_risk.csv", index=False)
 
     # Same-ISD persistence validation: this uses only later propositions by the
     # same matched ISD and excludes failures on the same election date.
@@ -357,6 +483,7 @@ def main(overlap_threshold: float = 0.80) -> None:
             "city_propositions": len(city_props),
             "city_propositions_with_analysis_city": int(city_props["seed_key"].notna().sum()),
             "city_isd_failure_exposure_events": len(city_isd_failures),
+            "city_isd_proposition_exposure_events": len(city_isd_propositions),
             "area_overlap_threshold": overlap_threshold,
             "area_overlap_failure_exposure_events": int(city_isd_failures["meets_area_overlap_threshold"].sum()),
             "website_cities": int(website_city_year_exposure["seed_key"].nunique()),
