@@ -222,10 +222,14 @@ format_table <- function(tex, cluster_level = "FIPS", fixed_width = TRUE, width 
     obs_idx <- obs_idx + 1  # Update index after insertion
   }
   
-  # 5. Remove empty line between R2 and fixed effects
+  # 5. Remove empty line between R2/Controls and fixed effects
   r2_idx <- grep("(Pseudo R\\$\\^2\\$|Adjusted R\\$\\^2\\$)", lines)
   if (length(r2_idx) > 0 && r2_idx < length(lines)) {
     next_idx <- r2_idx + 1
+    # Controls can be the final statistics row, immediately after adjusted R2.
+    if (grepl("^[[:space:]]*Controls[[:space:]]*&", lines[next_idx])) {
+      next_idx <- next_idx + 1
+    }
     if (grepl("^[[:space:]]*\\\\\\\\[[:space:]]*$", lines[next_idx])) {
       lines <- lines[-next_idx]
     }
