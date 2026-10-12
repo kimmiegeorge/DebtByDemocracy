@@ -1,10 +1,10 @@
 """Attach local Texas ISD rejection-risk measures to the 2017 debt-choice panel.
 
-The exposure builder creates city-level five-year risk as of December 31,
-2017. This script keeps the Texas rows in the issuer-level cross section used
-by the main point-in-time debt-choice table and adds the two analysis measures
-used in the Texas mechanism tables: an area-weighted rate and an equal-weight
-rate for ISDs covering at least 20 percent of city area.
+The exposure builder creates city-level rejection risk from every matched ISD
+proposition through 2016. This script keeps the Texas rows in the issuer-level
+cross section used by the main point-in-time debt-choice table and adds the
+area-weighted and 20-percent-overlap simple rates used in the Texas mechanism
+tables.
 """
 
 from pathlib import Path
@@ -49,6 +49,8 @@ def main() -> None:
             "risk_date",
             "prior_weighted_failure_rate_60m",
             "prior_simple_failure_rate_20pct_60m",
+            "prior_weighted_failure_rate_all_history_pre2017",
+            "prior_simple_failure_rate_20pct_all_history_pre2017",
         )
         .unique(subset="seed_key", keep="first")
     )

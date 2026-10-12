@@ -50,5 +50,6 @@ proposition by the ISD's city-area overlap. `prior_simple_failure_rate_20pct_60m
 equally weights propositions from ISDs covering at least 20 percent of city
 area. Both measures are missing when no qualifying local proposition occurred
 in the preceding five years; no election is not treated as zero risk. The
-outputs include city-month, website-city-year, city-proposition, and
-December-2017 city panels.
+outputs include city-month, website-city-year, city-proposition, and a
+January-2017 city panel. The January-2017 panel also contains all recorded
+pre-2017 ISD history for the outstanding-debt cross section.

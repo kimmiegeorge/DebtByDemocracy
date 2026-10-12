@@ -105,13 +105,14 @@ debt_choice_weighted <- debt_choice[
   insample == 1L & insample_allgo == 1L &
     mergent_go_revenue_bonds_outstanding >= 2L &
     !is.na(frac_rev_outstanding) & !is.na(fips) &
-    !is.na(prior_weighted_failure_rate_60m) & !is.na(ln_gdp) &
+    !is.na(prior_weighted_failure_rate_all_history_pre2017) & !is.na(ln_gdp) &
     !is.na(ln_census_population) & !is.na(ln_pers_inc) &
     !is.na(ln_1p_county_nonmunicipal_total_debt)
 ]
 debt_choice_weighted[, weighted_risk_z :=
-  (prior_weighted_failure_rate_60m - mean(prior_weighted_failure_rate_60m)) /
-    sd(prior_weighted_failure_rate_60m)
+  (prior_weighted_failure_rate_all_history_pre2017 -
+    mean(prior_weighted_failure_rate_all_history_pre2017)) /
+    sd(prior_weighted_failure_rate_all_history_pre2017)
 ]
 
 weighted_disclosure <- feols(
@@ -211,13 +212,14 @@ debt_choice_simple <- debt_choice[
   insample == 1L & insample_allgo == 1L &
     mergent_go_revenue_bonds_outstanding >= 2L &
     !is.na(frac_rev_outstanding) & !is.na(fips) &
-    !is.na(prior_simple_failure_rate_20pct_60m) & !is.na(ln_gdp) &
+    !is.na(prior_simple_failure_rate_20pct_all_history_pre2017) & !is.na(ln_gdp) &
     !is.na(ln_census_population) & !is.na(ln_pers_inc) &
     !is.na(ln_1p_county_nonmunicipal_total_debt)
 ]
 debt_choice_simple[, simple_risk_z :=
-  (prior_simple_failure_rate_20pct_60m - mean(prior_simple_failure_rate_20pct_60m)) /
-    sd(prior_simple_failure_rate_20pct_60m)
+  (prior_simple_failure_rate_20pct_all_history_pre2017 -
+    mean(prior_simple_failure_rate_20pct_all_history_pre2017)) /
+    sd(prior_simple_failure_rate_20pct_all_history_pre2017)
 ]
 
 simple_disclosure <- feols(

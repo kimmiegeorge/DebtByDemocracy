@@ -90,21 +90,22 @@ def add_prior_rejection_risk(
     propositions: pd.DataFrame,
     proposition_group_column: str,
     proposition_date_column: str,
+    horizon_months: int | None = REJECTION_RISK_HORIZON_MONTHS,
+    column_suffix: str | None = None,
 ) -> pd.DataFrame:
-    """Add five-year local rejection-risk measures from all ISD propositions.
+    """Add local rejection-risk measures from prior ISD propositions.
 
     The area-weighted measure weights each ISD proposition by the share of the
     city inside the ISD. The simple measure gives equal weight to propositions
     from ISDs covering at least 20 percent of the city. Both remain missing
     when there is no qualifying proposition in the lookback window: no local
     election is absence of revealed voter risk, not evidence of zero risk.
+    A ``None`` horizon uses all available prior records.
     """
     out = frame.copy()
-    weighted_column = f"prior_weighted_failure_rate_{REJECTION_RISK_HORIZON_MONTHS}m"
-    simple_column = (
-        f"prior_simple_failure_rate_{round(SIMPLE_RISK_MIN_CITY_AREA_SHARE * 100)}pct_"
-        f"{REJECTION_RISK_HORIZON_MONTHS}m"
-    )
+    suffix = column_suffix or f"{horizon_months}m"
+    weighted_column = f"prior_weighted_failure_rate_{suffix}"
+    simple_column = f"prior_simple_failure_rate_{round(SIMPLE_RISK_MIN_CITY_AREA_SHARE * 100)}pct_{suffix}"
     out[weighted_column] = np.nan
     out[simple_column] = np.nan
 
@@ -124,8 +125,11 @@ def add_prior_rejection_risk(
             if pd.isna(outcome_date):
                 continue
             right = np.searchsorted(dates, np.datetime64(outcome_date), side="left")
-            left_date = outcome_date - pd.DateOffset(months=REJECTION_RISK_HORIZON_MONTHS)
-            left = np.searchsorted(dates, np.datetime64(left_date), side="left")
+            if horizon_months is None:
+                left = 0
+            else:
+                left_date = outcome_date - pd.DateOffset(months=horizon_months)
+                left = np.searchsorted(dates, np.datetime64(left_date), side="left")
             window_failures = failures[left:right]
             window_area_shares = area_shares[left:right]
             if len(window_failures) > 0:
@@ -441,10 +445,10 @@ def main(overlap_threshold: float = 0.80) -> None:
         OUT_DIR / "website_city_year_isd_rejection_risk.csv", index=False
     )
 
-    # A point-in-time city panel supports the 2017 debt-substitution analysis.
-    # It uses information available through December 31, 2017.
+    # The 2017 outstanding-debt cross section uses all recorded local ISD
+    # elections through 2016, reflecting debt issuance accumulated before 2017.
     city_2017_risk = city_keys[["seed_key"]].drop_duplicates().copy()
-    city_2017_risk["risk_date"] = pd.Timestamp("2017-12-31")
+    city_2017_risk["risk_date"] = pd.Timestamp("2017-01-01")
     city_2017_risk = add_prior_rejection_risk(
         city_2017_risk,
         "seed_key",
@@ -452,6 +456,16 @@ def main(overlap_threshold: float = 0.80) -> None:
         city_isd_propositions,
         "seed_key",
         "election_date",
+    )
+    city_2017_risk = add_prior_rejection_risk(
+        city_2017_risk,
+        "seed_key",
+        "risk_date",
+        city_isd_propositions,
+        "seed_key",
+        "election_date",
+        horizon_months=None,
+        column_suffix="all_history_pre2017",
     )
     city_2017_risk.to_csv(OUT_DIR / "city_2017_isd_rejection_risk.csv", index=False)
 
