@@ -18,6 +18,11 @@ debt_choice_file <- file.path(
   "Data/Clean_Intermediate/Census COG Finance/processed",
   "texas_2017_debt_choice_rejection_risk.csv"
 )
+outstanding_debt_file <- file.path(
+  root,
+  "Data/Mergent/Outstanding Debt",
+  "260709_issuer_year_outstanding_debt.csv"
+)
 city_propositions_file <- file.path(
   root,
   "Data/Clean_Intermediate/TX/Election_Exposure",
@@ -37,12 +42,25 @@ city_month <- fread(
 )
 debt_choice <- fread(debt_choice_file)
 city_propositions <- fread(city_propositions_file)
+outstanding_debt <- fread(outstanding_debt_file)
 
 website_city_year[, seed_issuer := tolower(trimws(seed_issuer))]
 city_month[, seed_issuer := tolower(trimws(seed_issuer))]
 debt_choice[, seed_issuer := tolower(trimws(seed_issuer))]
 debt_choice[, ln_census_population := log(census_population)]
 city_propositions[, seed_key := tolower(trimws(seed_key))]
+
+# The year-t annual-election regressions use total debt outstanding at the end
+# of year t - 1, which is the stock available at the beginning of year t.
+outstanding_debt <- outstanding_debt[
+  state == "TX",
+  .(
+    seed_issuer_id = as.numeric(seed_issuer_id),
+    year = as.integer(year) + 1L,
+    ln_1p_outstanding_debt_lag1 = ln_1p_total_outstanding_debt
+  )
+]
+stopifnot(!anyDuplicated(outstanding_debt, by = c("seed_issuer_id", "year")))
 
 # Predictive-validity sample: risk is calculated using only ISD propositions
 # strictly before each later city bond proposition. The proposition-level sample
@@ -74,6 +92,14 @@ annual_election <- annual_election_outcome[
   annual_election,
   on = .(seed_issuer, year)
 ]
+annual_election[, seed_issuer_id := as.numeric(seed_issuer_id)]
+annual_election <- merge(
+  annual_election,
+  outstanding_debt,
+  by = c("seed_issuer_id", "year"),
+  all.x = TRUE,
+  sort = FALSE
+)
 
 # ==============================================================================
 # AREA-OVERLAP-WEIGHTED FAILURE RATE
@@ -93,6 +119,7 @@ website_weighted[, weighted_risk_z :=
 annual_weighted <- annual_election[
   !is.na(city_bond_election_year) & !is.na(fips) &
     !is.na(prior_weighted_failure_rate_60m) &
+    !is.na(ln_1p_outstanding_debt_lag1) &
     !is.na(ln_county_gdp_prior) & !is.na(ln_county_pop_prior) &
     !is.na(ln_county_pers_inc_prior)
 ]
@@ -123,8 +150,8 @@ weighted_disclosure <- feols(
   cluster = ~fips
 )
 weighted_annual_election <- feols(
-  city_bond_election_year ~ weighted_risk_z + ln_county_gdp_prior +
-    ln_county_pop_prior + ln_county_pers_inc_prior |
+  city_bond_election_year ~ weighted_risk_z + ln_1p_outstanding_debt_lag1 +
+    ln_county_gdp_prior + ln_county_pop_prior + ln_county_pers_inc_prior |
     seed_issuer + year,
   data = annual_weighted,
   cluster = ~fips
@@ -200,6 +227,7 @@ website_simple[, simple_risk_z :=
 annual_simple <- annual_election[
   !is.na(city_bond_election_year) & !is.na(fips) &
     !is.na(prior_simple_failure_rate_20pct_60m) &
+    !is.na(ln_1p_outstanding_debt_lag1) &
     !is.na(ln_county_gdp_prior) & !is.na(ln_county_pop_prior) &
     !is.na(ln_county_pers_inc_prior)
 ]
@@ -230,8 +258,8 @@ simple_disclosure <- feols(
   cluster = ~fips
 )
 simple_annual_election <- feols(
-  city_bond_election_year ~ simple_risk_z + ln_county_gdp_prior +
-    ln_county_pop_prior + ln_county_pers_inc_prior |
+  city_bond_election_year ~ simple_risk_z + ln_1p_outstanding_debt_lag1 +
+    ln_county_gdp_prior + ln_county_pop_prior + ln_county_pers_inc_prior |
     seed_issuer + year,
   data = annual_simple,
   cluster = ~fips
