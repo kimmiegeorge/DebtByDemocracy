@@ -13,10 +13,10 @@ source("/Users/kmunevar/Dropbox/Voting on Bonds/Code/R/Clean/00_modify_etable_ro
 
 root <- "/Users/kmunevar/Dropbox/Voting on Bonds"
 regression_data_dir <- file.path(root, "Data/Clean_Intermediate/TX/Regression")
-substitution_file <- file.path(
+debt_choice_file <- file.path(
   root,
   "Data/Clean_Intermediate/Census COG Finance/processed",
-  "texas_2017_purpose_substitution_rejection_risk.csv"
+  "texas_2017_debt_choice_rejection_risk.csv"
 )
 city_propositions_file <- file.path(
   root,
@@ -35,12 +35,13 @@ website_city_year <- fread(
 city_month <- fread(
   file.path(regression_data_dir, "city_month_media_regression_ready.csv")
 )
-substitution <- fread(substitution_file)
+debt_choice <- fread(debt_choice_file)
 city_propositions <- fread(city_propositions_file)
 
 website_city_year[, seed_issuer := tolower(trimws(seed_issuer))]
 city_month[, seed_issuer := tolower(trimws(seed_issuer))]
-substitution[, seed_issuer := tolower(trimws(seed_issuer))]
+debt_choice[, seed_issuer := tolower(trimws(seed_issuer))]
+debt_choice[, ln_census_population := log(census_population)]
 city_propositions[, seed_key := tolower(trimws(seed_key))]
 
 # Predictive-validity sample: risk is calculated using only ISD propositions
@@ -100,13 +101,15 @@ annual_weighted[, weighted_risk_z :=
     sd(prior_weighted_failure_rate_60m)
 ]
 
-substitution_weighted <- substitution[
-  !is.na(share_revenue_vs_go_amount) & !is.na(fips) &
+debt_choice_weighted <- debt_choice[
+  insample == 1L & insample_allgo == 1L &
+    mergent_go_revenue_bonds_outstanding >= 2L &
+    !is.na(frac_rev_outstanding) & !is.na(fips) &
     !is.na(prior_weighted_failure_rate_60m) & !is.na(ln_gdp) &
     !is.na(ln_census_population) & !is.na(ln_pers_inc) &
-    !is.na(ln_1p_census_total_debt) & !is.na(ln_1p_county_nonmunicipal_total_debt)
+    !is.na(ln_1p_county_nonmunicipal_total_debt)
 ]
-substitution_weighted[, weighted_risk_z :=
+debt_choice_weighted[, weighted_risk_z :=
   (prior_weighted_failure_rate_60m - mean(prior_weighted_failure_rate_60m)) /
     sd(prior_weighted_failure_rate_60m)
 ]
@@ -126,10 +129,9 @@ weighted_annual_election <- feols(
   cluster = ~fips
 )
 weighted_substitution <- feols(
-  share_revenue_vs_go_amount ~ weighted_risk_z + ln_gdp + ln_census_population +
-    ln_pers_inc + ln_1p_census_total_debt + ln_1p_county_nonmunicipal_total_debt |
-    purpose_category,
-  data = substitution_weighted,
+  frac_rev_outstanding ~ weighted_risk_z + ln_gdp + ln_census_population +
+    ln_pers_inc + ln_1p_county_nonmunicipal_total_debt,
+  data = debt_choice_weighted,
   cluster = ~fips
 )
 
@@ -149,7 +151,7 @@ weighted_table <- etable(
   dict = c(
     positive_delta_bond_debt1 = "Increase in Bond Text",
     city_bond_election_year = "Any City Bond Election",
-    share_revenue_vs_go_amount = "Revenue-Bond Share",
+    frac_rev_outstanding = "Pct Revenue",
     weighted_risk_z = "Local Rejection Risk (1 SD)",
     `election:weighted_risk_z` = "Election Year $\\times$ Local Rejection Risk",
     election = "Election Year"
@@ -205,13 +207,15 @@ annual_simple[, simple_risk_z :=
     sd(prior_simple_failure_rate_20pct_60m)
 ]
 
-substitution_simple <- substitution[
-  !is.na(share_revenue_vs_go_amount) & !is.na(fips) &
+debt_choice_simple <- debt_choice[
+  insample == 1L & insample_allgo == 1L &
+    mergent_go_revenue_bonds_outstanding >= 2L &
+    !is.na(frac_rev_outstanding) & !is.na(fips) &
     !is.na(prior_simple_failure_rate_20pct_60m) & !is.na(ln_gdp) &
     !is.na(ln_census_population) & !is.na(ln_pers_inc) &
-    !is.na(ln_1p_census_total_debt) & !is.na(ln_1p_county_nonmunicipal_total_debt)
+    !is.na(ln_1p_county_nonmunicipal_total_debt)
 ]
-substitution_simple[, simple_risk_z :=
+debt_choice_simple[, simple_risk_z :=
   (prior_simple_failure_rate_20pct_60m - mean(prior_simple_failure_rate_20pct_60m)) /
     sd(prior_simple_failure_rate_20pct_60m)
 ]
@@ -231,10 +235,9 @@ simple_annual_election <- feols(
   cluster = ~fips
 )
 simple_substitution <- feols(
-  share_revenue_vs_go_amount ~ simple_risk_z + ln_gdp + ln_census_population +
-    ln_pers_inc + ln_1p_census_total_debt + ln_1p_county_nonmunicipal_total_debt |
-    purpose_category,
-  data = substitution_simple,
+  frac_rev_outstanding ~ simple_risk_z + ln_gdp + ln_census_population +
+    ln_pers_inc + ln_1p_county_nonmunicipal_total_debt,
+  data = debt_choice_simple,
   cluster = ~fips
 )
 
@@ -254,7 +257,7 @@ simple_table <- etable(
   dict = c(
     positive_delta_bond_debt1 = "Increase in Bond Text",
     city_bond_election_year = "Any City Bond Election",
-    share_revenue_vs_go_amount = "Revenue-Bond Share",
+    frac_rev_outstanding = "Pct Revenue",
     simple_risk_z = "Local Rejection Risk (1 SD)",
     `election:simple_risk_z` = "Election Year $\\times$ Local Rejection Risk",
     election = "Election Year"
