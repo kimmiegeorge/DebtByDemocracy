@@ -1091,6 +1091,56 @@ writeLines(
   file.path(tbl_dir, "tx_rejection_risk_indicator_50pct_10yr_final_panel_b.tex")
 )
 
+# Response 2 reports the same annual models in a compact table that suppresses
+# the displayed control coefficients. Generate it from the current-window
+# models so the response cannot retain a stale annual sample.
+indicator_10yr_no_news_annual_table <- etable(
+  indicator_10yr_annual, indicator_10yr_go_issuance,
+  indicator_10yr_any_issuance, indicator_10yr_revenue_issuance,
+  coefstat = "tstat",
+  keep_raw = "^failure_50pct_10yr$",
+  style.tex = style.tex(main = "aer", fixef.suffix = " FE", yesNo = c("Yes", "No")),
+  fitstat = c("n", "ar2"),
+  se.below = TRUE,
+  digits = 3,
+  digits.stats = 3,
+  signif.code = c("***" = 0.01, "**" = 0.05, "*" = 0.10),
+  tex = TRUE,
+  dict = c(
+    city_bond_election_year = "\\shortstack{Any City Bond\\\\ Election}",
+    go_bond_issuance_year = "\\shortstack{Any City GO\\\\ Bond Issuance}",
+    any_debt_issuance_year = "\\shortstack{Any City Debt\\\\ Issuance}",
+    revenue_bond_issuance_year = "\\shortstack{Any City Revenue\\\\ Bond Issuance}",
+    failure_50pct_10yr = "Prior ISD Failure",
+    seed_issuer = "City", year = "Year"
+  ),
+  extralines = list("Controls" = c("Yes", "Yes", "Yes", "Yes")),
+  placement = "H",
+  replace = TRUE
+)
+indicator_10yr_no_news_annual_output <- modify_etable_rounding(
+  indicator_10yr_no_news_annual_table,
+  coef_digits = 3,
+  tstat_digits = 2
+)
+indicator_10yr_no_news_annual_output <- format_table(
+  indicator_10yr_no_news_annual_output,
+  cluster_level = "County"
+)
+indicator_10yr_no_news_annual_output <- add_panel(
+  indicator_10yr_no_news_annual_output,
+  "Texas annual outcomes, no-news city panel: 10-year local rejection-risk indicator",
+  ncols = 5,
+  zero_width = TRUE
+)
+writeLines(
+  indicator_10yr_no_news_annual_output,
+  file.path(
+    tbl_dir,
+    "tx_rejection_risk_indicator_50pct_10yr_no_news_annual.tex"
+  )
+)
+
 indicator_all_history_panel_a_table <- etable(
   indicator_all_history_website, indicator_all_history_media,
   coefstat = "tstat",
