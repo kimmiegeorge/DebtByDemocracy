@@ -73,7 +73,6 @@ control_dict <- c(
   utgo_vote_only = "UTGO Vote Only",
   utgo_ltgo_vote = "UTGO LTGO Vote",
   go_rev_vote = "GO Rev. Vote",
-  super_majority = "Supermajority State",
   low_state_tax_privilege = "Low Tax Priv.",
   state_go_vote = "State GO Vote",
   state_ltgo_allowed = "LTGO Allowed",
@@ -386,17 +385,6 @@ modified_output <- format_table(modified_output, cluster_level = "State")
 modified_output <- add_panel(modified_output, "Panel B: Only UTGO vote required")
 writeLines(modified_output, file.path(tbl_dir, "point_in_time_debt_choice_2017_utgo_only.tex"))
 
-# 2017 supermajority specification used in Table 11 ----
-
-supermajority_utgo_2017 <- feols(
-  frac_utgo_outstanding ~ city_go_vote + super_majority + ln_gdp + ln_census_population + ln_pers_inc +
-    ln_1p_county_nonmunicipal_total_debt + glm_proactive + state_ltgo_allowed + state_go_vote + low_state_tax_privilege +
-    strict_municipal_debt_limit,
-  data = full_sample_2017,
-  vcov = vcov_cluster(~state)
-)
-summary(supermajority_utgo_2017)
-
 # 2017 full sample yield spreads: all city GO vote variation ----
 
 yield_2017_all_uncontrolled <- feols(
@@ -546,59 +534,6 @@ writeLines(
   )
 )
 
-# 2017 robustness table, Panel B: supermajority cross section ----
-
-supermajority_yield_2017 <- feols(
-  mergent_wavg_yield_spread_go_revenue ~ city_go_vote + super_majority +
-    ln_gdp + ln_census_population + ln_pers_inc +
-    ln_1p_county_nonmunicipal_total_debt +
-    mergent_wavg_rating_go_revenue_zero_unrated +
-    mergent_wavg_original_maturity_years_go_revenue +
-    mergent_any_insured_go_revenue + mergent_any_callable_go_revenue +
-    mergent_any_sinkable_go_revenue +
-    glm_proactive + state_ltgo_allowed + state_go_vote + low_state_tax_privilege + strict_municipal_debt_limit,
-  data = full_sample_2017,
-  vcov = vcov_cluster(~state)
-)
-summary(supermajority_yield_2017)
-
-table_call <- etable(
-  supermajority_utgo_2017, supermajority_yield_2017,
-  coefstat = "tstat",
-  drop = "Constant",
-  style.tex = style.tex(main = "aer", fixef.suffix = " FE", yesNo = c("Yes", "No")),
-  fitstat = c("n", "ar2"),
-  se.below = TRUE,
-  digits = 3,
-  digits.stats = 3,
-  signif.code = c("***" = 0.01, "**" = 0.05, "*" = 0.10),
-  tex = TRUE,
-  keep_raw = c("^city_go_vote$", "^super_majority$"),
-  order = c("%city_go_vote", "%super_majority"),
-  dict = c(
-    control_dict[!(names(control_dict) %in% c("city_go_vote", "super_majority"))],
-    city_go_vote = "Vote",
-    super_majority = "Vote $\\times$ Supermajority"
-  ),
-  placement = "H"
-)
-
-modified_output <- modify_etable_rounding(table_call, coef_digits = 3, tstat_digits = 2)
-modified_output <- format_table(modified_output, cluster_level = "State")
-adj_r2_idx <- grep("^[[:space:]]*Adj\\. R\\$\\^2\\$[[:space:]]*&", modified_output)
-if (length(adj_r2_idx) > 0) {
-  modified_output <- append(
-    modified_output,
-    "   Controls                   & Yes            & Yes\\\\",
-    after = adj_r2_idx[1]
-  )
-}
-modified_output <- add_panel(modified_output, "Panel B: Supermajority cross section", ncols = 3)
-writeLines(
-  modified_output,
-  file.path(tbl_dir, "point_in_time_robustness_super_majority.tex")
-)
-
 # 2017 PPML debt stock: all city GO vote variation ----
 
 full_sample_2017 <- full_sample_2017_unrestricted
@@ -669,116 +604,3 @@ modified_output <- sub(
 )
 modified_output <- format_table(modified_output, cluster_level = "State")
 writeLines(modified_output, file.path(tbl_dir, "point_in_time_census_debt_poisson_2017_full_sample.tex"))
-
-# 2017 border-state test ----
-
-border_2017 <- fread(
-  file.path(root, "Data/Clean_Intermediate/Census COG Finance/processed/no_refundings/census_mergent_debt_cross_section_2017_border_sample.csv")
-)
-
-border_2017[, fips := as.character(fips)]
-add_low_state_tax_privilege(border_2017, year_value = 2017)
-
-border_2017[, ln_census_population := log(census_population)]
-border_2017[, state_year := interaction(state, year, drop = TRUE)]
-
-border_2017 <- filter_debt_yield_border_pairs(border_2017, "border_group")
-
-border_2017 <- border_2017[
-  !is.na(ln_gdp) &
-    !is.na(ln_census_population) &
-    !is.na(ln_pers_inc) &
-    !is.na(ln_1p_county_nonmunicipal_total_debt) &
-    !is.na(state_go_vote) &
-    !is.na(low_state_tax_privilege)
-]
-
-# Match the full-sample eligibility rule before estimating the border design.
-# The full-sample tables use insample == 1, which excludes cities where revenue
-# bonds also require voter approval. After that restriction and the common
-# control screen, retain only state-border groups with both city_go_vote values;
-# groups without within-pair treatment variation do not identify the vote effect.
-border_2017 <- border_2017[
-  insample == 1 &
-    !is.na(mergent_go_revenue_bonds_outstanding) &
-    mergent_go_revenue_bonds_outstanding >= 2
-]
-
-identifying_border_groups_2017 <- border_2017[
-  , .(vote_values = uniqueN(city_go_vote)),
-  by = border_group
-][vote_values == 2, border_group]
-border_2017 <- border_2017[border_group %in% identifying_border_groups_2017]
-
-# 2017 robustness table, Panel A: border-state cross section ----
-
-border_utgo_2017 <- feols(
-  frac_utgo_outstanding ~ city_go_vote + ln_gdp + ln_census_population + ln_pers_inc +
-    ln_1p_county_nonmunicipal_total_debt + state_go_vote + low_state_tax_privilege + strict_municipal_debt_limit | border_group,
-  data = border_2017,
-  vcov = vcov_cluster(~state_year)
-)
-
-border_yield_2017 <- feols(
-  mergent_wavg_yield_spread_go_revenue ~ city_go_vote + ln_gdp + ln_census_population + ln_pers_inc + ln_1p_county_nonmunicipal_total_debt +
-    mergent_wavg_rating_go_revenue_zero_unrated + mergent_wavg_original_maturity_years_go_revenue +
-    mergent_wavg_insured_go_revenue + mergent_wavg_sinkable_go_revenue +
-    state_go_vote + low_state_tax_privilege + strict_municipal_debt_limit | border_group,
-  data = border_2017,
-  vcov = vcov_cluster(~state_year)
-)
-
-table_call <- etable(
-  border_utgo_2017, border_yield_2017,
-  coefstat = "tstat",
-  drop = "Constant",
-  style.tex = style.tex(main = "aer", fixef.suffix = " FE", yesNo = c("Yes", "No")),
-  fitstat = c("n", "ar2"),
-  se.below = TRUE,
-  digits = 3,
-  digits.stats = 3,
-  signif.code = c("***" = 0.01, "**" = 0.05, "*" = 0.10),
-  tex = TRUE,
-  keep_raw = "^city_go_vote$",
-  order = "%city_go_vote",
-  dict = c(control_dict[names(control_dict) != "city_go_vote"], city_go_vote = "Vote"),
-  placement = "H"
-)
-
-modified_output <- modify_etable_rounding(table_call, coef_digits = 3, tstat_digits = 2)
-modified_output <- format_table(modified_output, cluster_level = "State-Year")
-adj_r2_idx <- grep("^[[:space:]]*Adj\\. R\\$\\^2\\$[[:space:]]*&", modified_output)
-if (length(adj_r2_idx) > 0) {
-  modified_output <- append(
-    modified_output,
-    "   Controls                   & Yes            & Yes\\\\",
-    after = adj_r2_idx[1]
-  )
-}
-modified_output <- add_panel(modified_output, "Panel A: Border-city sample", ncols = 3)
-writeLines(
-  modified_output,
-  file.path(tbl_dir, "point_in_time_robustness_border_state.tex")
-)
-
-# Export combined robustness table ----
-
-dir.create(processed_dir, recursive = TRUE, showWarnings = FALSE)
-writeLines(c(
-  "\\newpage",
-  "\\begin{table}[H]\\centering",
-  "\\caption{\\textbf{Point-in-Time Robustness: Border-City and Supermajority Specifications}}",
-  "\\label{tab:point_in_time_robustness}",
-  paste0(
-    "\\parbox{\\textwidth}{This table reports 2017 point-in-time cross-sectional estimates. ",
-    "Panel A applies the full-sample eligibility rule, restricts the sample to cities near state borders, ",
-    "retains only state-border pairs containing both vote and non-vote cities, and includes state-border fixed effects. ",
-    "Panel B adds the supermajority-state indicator to the full-sample specification. ",
-    "Both panels use the strict outcome-specific controls from the main debt-choice and aggregate-yield tables. ",
-    "Controls are suppressed. Standard errors are clustered by state-year in Panel A and by state in Panel B.}"
-  ),
-  "\\end{table}",
-  "\\input{tables/clean/raw/point_in_time_robustness_border_state}",
-  "\\vspace{10pt}",
-  "\\input{tables/clean/raw/point_in_time_robustness_super_majority}"
-), file.path(processed_dir, "point_in_time_robustness.tex"))

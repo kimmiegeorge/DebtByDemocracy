@@ -88,6 +88,9 @@ Run these after the Python intermediate data files exist.
 | `Code/R/Clean/09_census_county_debt_issuance_share_2017.R` | Clean Census county debt files | Online-appendix county debt table |
 | `Code/R/Clean/10_wild_cluster_bootstrap_border_tests.R` | Clean website, media, point-in-time, and MSRB files | Online-appendix wild-bootstrap table and wrapper |
 | `Code/R/Clean/11_media_coverage_exclude_month_zero.R` | Clean RavenPack/Mergent media files | Online-appendix month-zero robustness table and wrapper |
+| `Code/R/Clean/12_leave_one_out_control_states.R` | Same prepared inputs and controlled specifications as steps 01, 02, 04, and 05 | Response 2 leave-one-out sensitivity summary |
+| `Code/R/Clean/14_supermajority.R` | Prepared media full sample and clean 2017 Census-Mergent cross section | Full-sample supermajority specifications |
+| `Code/R/Clean/15_point_in_time_border_state_robustness.R` | Clean 2017 Census-Mergent border sample | Border-city robustness table and point-in-time robustness wrapper |
 
 ## Wrapper-to-Component Mapping
 
