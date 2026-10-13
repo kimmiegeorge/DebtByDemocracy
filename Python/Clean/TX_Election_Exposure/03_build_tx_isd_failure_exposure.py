@@ -1,10 +1,9 @@
-"""Create city and ISD election panels with historical overlapping-ISD exposure."""
+"""Create Texas city and ISD panels with overlapping-ISD election exposure."""
 
-from __future__ import annotations
-
+#%% Paths and exposure definitions
+import argparse
 import re
 import unicodedata
-import argparse
 from pathlib import Path
 
 import numpy as np
@@ -145,6 +144,7 @@ def add_prior_rejection_risk(
 OUT_DIR.mkdir(parents=True, exist_ok=True)
 
 
+#%% Build the city and ISD exposure panels
 def main(overlap_threshold: float = 0.80) -> None:
     if not 0 <= overlap_threshold <= 1:
         raise ValueError("The area-overlap threshold must be between 0 and 1.")
@@ -168,103 +168,195 @@ def main(overlap_threshold: float = 0.80) -> None:
         website_city_year_file = f"website_city_year_isd_failure_exposure_{threshold_tag}.csv"
         coverage_file = f"isd_failure_exposure_coverage_{threshold_tag}.csv"
 
-    # ========================================================================
-    # STEP 1: Load and clean the proposition-level Texas election data.
-    # Polars handles the tabular cleaning; pandas is used below only for the
-    # transparent group-by-date rolling-window calculation.
-    # ========================================================================
+    #%% Step 1: Clean the proposition-level Texas election data
+    # Polars handles all regular tabular work. Pandas is used only for the
+    # repeated rolling date windows, where its DateOffset behavior defines the
+    # existing exposure measures.
     elections = (
         pl.read_csv(ELECTION_FILE)
         .with_columns(
-            pl.col("ElectionDate").str.strptime(pl.Date, format="%m/%d/%Y", strict=False).alias("election_date")
+            pl.col("ElectionDate")
+            .str.strptime(pl.Date, format="%m/%d/%Y", strict=False)
+            .alias("election_date")
         )
-        .filter(pl.col("election_date").is_between(pl.date(1995, 1, 1), pl.date(2024, 12, 31)))
-        .to_pandas()
-    )
-    elections["election_date"] = pd.to_datetime(elections["election_date"])
-    elections["year"] = elections["election_date"].dt.year.astype(int)
-    elections["boundary_vintage"] = np.select(
-        [elections["year"].le(2004), elections["year"].le(2014)],
-        [2000, 2010],
-        default=2020,
-    ).astype(int)
-    elections["government_name_key"] = elections["GovernmentName"].map(canonical_name)
-    elections["failed"] = elections["Result"].eq("Defeated").astype(int)
-    elections["vote_total"] = elections["VotesFor"].fillna(0) + elections["VotesAgainst"].fillna(0)
-    elections["vote_margin_signed"] = np.where(
-        elections["vote_total"] > 0,
-        (elections["VotesFor"].fillna(0) - elections["VotesAgainst"].fillna(0)) / elections["vote_total"],
-        np.nan,
+        .filter(
+            pl.col("election_date").is_between(
+                pl.date(1995, 1, 1), pl.date(2024, 12, 31)
+            )
+        )
+        .with_columns(
+            pl.col("election_date").dt.year().alias("year"),
+            pl.col("GovernmentName")
+            .map_elements(canonical_name, return_dtype=pl.String)
+            .alias("government_name_key"),
+            (pl.col("Result") == "Defeated").cast(pl.Int64).alias("failed"),
+            (
+                pl.col("VotesFor").fill_null(0)
+                + pl.col("VotesAgainst").fill_null(0)
+            ).alias("vote_total"),
+        )
+        .with_columns(
+            pl.when(pl.col("year") <= 2004)
+            .then(pl.lit(2000))
+            .when(pl.col("year") <= 2014)
+            .then(pl.lit(2010))
+            .otherwise(pl.lit(2020))
+            .cast(pl.Int64)
+            .alias("boundary_vintage"),
+            pl.when(pl.col("vote_total") > 0)
+            .then(
+                (pl.col("VotesFor").fill_null(0) - pl.col("VotesAgainst").fill_null(0))
+                / pl.col("vote_total")
+            )
+            .otherwise(None)
+            .alias("vote_margin_signed"),
+        )
+        .select(
+            pl.exclude(
+                "election_date",
+                "year",
+                "boundary_vintage",
+                "government_name_key",
+                "failed",
+                "vote_total",
+                "vote_margin_signed",
+            ),
+            "election_date",
+            "year",
+            "boundary_vintage",
+            "government_name_key",
+            "failed",
+            "vote_total",
+            "vote_margin_signed",
+        )
     )
 
-    # ========================================================================
-    # STEP 2: Load the city-place and ISD-boundary matches from Script 02.
-    # ========================================================================
-    city_matches = pl.read_csv(OUT_DIR / "city_place_boundary_matches.csv").to_pandas()
-    city_keys = city_matches[["seed_key", "city_name_key"]].drop_duplicates()
-
-    isd_matches = pl.read_csv(OUT_DIR / "isd_election_boundary_matches.csv").to_pandas()
-    isd_matches = isd_matches.loc[isd_matches["match_status"].eq("exact_normalized")].copy()
-    isd_matches = isd_matches[["boundary_vintage", "isd_name_key", "isd_geoid", "isd_name"]].drop_duplicates(
-        ["boundary_vintage", "isd_name_key"]
+    #%% Step 2: Attach the Census boundary matches created by Script 02
+    city_matches = pl.read_csv(OUT_DIR / "city_place_boundary_matches.csv")
+    city_keys = city_matches.select("seed_key", "city_name_key").unique(
+        maintain_order=True
     )
 
-    isd_props = elections.loc[elections["GovernmentType"].eq("ISD")].merge(
+    isd_matches = (
+        pl.read_csv(OUT_DIR / "isd_election_boundary_matches.csv")
+        .filter(pl.col("match_status") == "exact_normalized")
+        .select(
+            "boundary_vintage",
+            "isd_name_key",
+            pl.col("isd_name_key").alias("matched_isd_name_key"),
+            pl.col("isd_geoid").cast(pl.Float64),
+            "isd_name",
+        )
+        .unique(subset=["boundary_vintage", "isd_name_key"], maintain_order=True)
+    )
+
+    isd_props = elections.filter(pl.col("GovernmentType") == "ISD").join(
         isd_matches,
         left_on=["boundary_vintage", "government_name_key"],
         right_on=["boundary_vintage", "isd_name_key"],
         how="left",
-        validate="many_to_one",
+        validate="m:1",
+        maintain_order="left",
+    ).rename(
+        {"matched_isd_name_key": "isd_name_key"}
+    ).with_columns(
+        pl.when(pl.col("isd_geoid").is_not_null())
+        .then(pl.lit("matched"))
+        .otherwise(pl.lit("unmatched"))
+        .alias("boundary_match")
     )
-    isd_props["boundary_match"] = isd_props["isd_geoid"].notna().map(
-        {True: "matched", False: "unmatched"}
+    isd_props.to_pandas().to_csv(
+        OUT_DIR / "isd_propositions_with_boundary_match.csv", index=False
     )
-    isd_props.to_csv(OUT_DIR / "isd_propositions_with_boundary_match.csv", index=False)
 
-    isd_failures = isd_props.loc[
-        isd_props["failed"].eq(1) & isd_props["isd_geoid"].notna(),
-        ["isd_geoid", "isd_name", "election_date", "boundary_vintage", "GovernmentName", "Amount", "Purpose"],
-    ].rename(columns={"election_date": "failure_date", "GovernmentName": "failure_issuer_name"})
-    isd_failures.to_csv(OUT_DIR / "isd_failed_propositions_matched.csv", index=False)
+    isd_failures = (
+        isd_props.filter(
+            (pl.col("failed") == 1) & pl.col("isd_geoid").is_not_null()
+        )
+        .select(
+            "isd_geoid",
+            "isd_name",
+            "election_date",
+            "boundary_vintage",
+            "GovernmentName",
+            "Amount",
+            "Purpose",
+        )
+        .rename(
+            {
+                "election_date": "failure_date",
+                "GovernmentName": "failure_issuer_name",
+            }
+        )
+    )
+    isd_failures.to_pandas().to_csv(
+        OUT_DIR / "isd_failed_propositions_matched.csv", index=False
+    )
 
-    # ========================================================================
-    # STEP 3: Map each failed ISD proposition to every overlapping city.
-    # ========================================================================
-    overlaps = pl.read_csv(OUT_DIR / "city_isd_overlap_area_all_vintages.csv").to_pandas()
-    overlaps = overlaps.loc[overlaps["city_area_share"] > 0].copy()
-    city_isd_failures = isd_failures.merge(
-        overlaps[["seed_key", "isd_geoid", "boundary_vintage", "city_area_share"]],
+    #%% Step 3: Map ISD propositions to every overlapping city
+    overlaps = pl.read_csv(
+        OUT_DIR / "city_isd_overlap_area_all_vintages.csv"
+    ).filter(pl.col("city_area_share") > 0)
+    overlap_keys = overlaps.select(
+        "seed_key",
+        pl.col("isd_geoid").cast(pl.Float64),
+        "boundary_vintage",
+        "city_area_share",
+    )
+    city_isd_failures = isd_failures.join(
+        overlap_keys,
         on=["isd_geoid", "boundary_vintage"],
         how="inner",
-        validate="many_to_many",
+        validate="m:m",
+        maintain_order="left_right",
     )
     if overlap_threshold == 0:
-        city_isd_failures["meets_area_overlap_threshold"] = (
-            city_isd_failures["city_area_share"] > 0
-        ).astype(int)
+        meets_overlap_threshold = pl.col("city_area_share") > 0
     else:
-        city_isd_failures["meets_area_overlap_threshold"] = (
-            city_isd_failures["city_area_share"] >= overlap_threshold
-        ).astype(int)
-    city_isd_failures.to_csv(OUT_DIR / exposure_events_file, index=False)
+        meets_overlap_threshold = pl.col("city_area_share") >= overlap_threshold
+    city_isd_failures = city_isd_failures.with_columns(
+        meets_overlap_threshold.cast(pl.Int64).alias(
+            "meets_area_overlap_threshold"
+        )
+    )
+    city_isd_failures.to_pandas().to_csv(
+        OUT_DIR / exposure_events_file, index=False
+    )
 
     # Rejection risk is calculated from all prior ISD propositions, not just
     # failures. A rate conditions failures on the number of locally relevant
     # opportunities for voter rejection.
-    city_isd_propositions = isd_props.loc[
-        isd_props["isd_geoid"].notna() & isd_props["vote_total"].gt(0),
-        ["isd_geoid", "election_date", "boundary_vintage", "failed"],
-    ].merge(
-        overlaps[["seed_key", "isd_geoid", "boundary_vintage", "city_area_share"]],
+    city_isd_propositions = isd_props.filter(
+        pl.col("isd_geoid").is_not_null() & (pl.col("vote_total") > 0)
+    ).select(
+        "isd_geoid", "election_date", "boundary_vintage", "failed"
+    ).join(
+        overlap_keys,
         on=["isd_geoid", "boundary_vintage"],
         how="inner",
-        validate="many_to_many",
+        validate="m:m",
+        maintain_order="left_right",
     )
 
-    # City-month panel for election-incidence and media analyses.
-    # ========================================================================
-    # STEP 4: Create city-month exposures for city-election-incidence models.
-    # ========================================================================
+    # Convert only the frames used by the repeated pandas date-window helper.
+    elections = elections.to_pandas()
+    elections["election_date"] = pd.to_datetime(elections["election_date"])
+    city_matches = city_matches.to_pandas()
+    city_keys = city_keys.to_pandas()
+    isd_props = isd_props.to_pandas()
+    isd_props["election_date"] = pd.to_datetime(isd_props["election_date"])
+    isd_failures = isd_failures.to_pandas()
+    isd_failures["failure_date"] = pd.to_datetime(isd_failures["failure_date"])
+    city_isd_failures = city_isd_failures.to_pandas()
+    city_isd_failures["failure_date"] = pd.to_datetime(
+        city_isd_failures["failure_date"]
+    )
+    city_isd_propositions = city_isd_propositions.to_pandas()
+    city_isd_propositions["election_date"] = pd.to_datetime(
+        city_isd_propositions["election_date"]
+    )
+
+    #%% Step 4: Create city-month exposure for election and media models
     city_month = pl.read_csv(
         CITY_MONTH_FILE,
         schema_overrides={"rp_entity_id": pl.Utf8},
@@ -302,12 +394,9 @@ def main(overlap_threshold: float = 0.80) -> None:
         OUT_DIR / "city_month_isd_rejection_risk.csv", index=False
     )
 
-    # City propositions are the validation sample for the cross-jurisdictional
-    # failure-risk test: conditional on a city proposition being offered, did it
-    # fail more often after an overlapping ISD failure?
-    # ========================================================================
-    # STEP 5: Create city-proposition exposures for failure-risk validation.
-    # ========================================================================
+    #%% Step 5: Create city-proposition exposure for validation
+    # Conditional on a city proposition being offered, this panel tests whether
+    # it failed more often after a nearby ISD failure.
     city_props = elections.loc[elections["GovernmentType"].eq("CITY")].merge(
         city_keys,
         left_on="government_name_key",
@@ -336,14 +425,12 @@ def main(overlap_threshold: float = 0.80) -> None:
     )
     city_props.to_csv(OUT_DIR / city_props_file, index=False)
 
-    # ========================================================================
-    # STEP 6: Build exposure for every city-year in the website panel.
+    #%% Step 6: Create city-year exposure for the website panel
     # This deliberately starts with the full website city universe, rather
     # than the RavenPack city-month panel.  In an election year, exposure is
     # measured immediately before each recorded city election and takes the
-    # maximum across that year's election dates.  In a non-election year, it
-    # is measured on December 1, matching the previous city-year aggregation.
-    # ========================================================================
+    # maximum across that year's election dates. In a non-election year, it is
+    # measured on December 1, matching the previous city-year aggregation.
     website_city_year = (
         pl.read_csv(WEBSITE_PANEL_FILE, columns=["seed_issuer", "year"])
         .filter(pl.col("seed_issuer").is_not_null() & (pl.col("seed_issuer").str.strip_chars() != ""))
@@ -351,7 +438,7 @@ def main(overlap_threshold: float = 0.80) -> None:
             pl.col("seed_issuer").str.strip_chars().str.to_lowercase().alias("seed_key"),
             pl.col("year").cast(pl.Int64),
         ])
-        .unique()
+        .unique(maintain_order=True)
         .to_pandas()
     )
     city_election_dates = city_props[["seed_key", "year", "election_date"]].dropna().drop_duplicates()
@@ -469,11 +556,9 @@ def main(overlap_threshold: float = 0.80) -> None:
     )
     city_2017_risk.to_csv(OUT_DIR / "city_2017_isd_rejection_risk.csv", index=False)
 
-    # Same-ISD persistence validation: this uses only later propositions by the
-    # same matched ISD and excludes failures on the same election date.
-    # ========================================================================
-    # STEP 7: Create the same-ISD persistence validation sample.
-    # ========================================================================
+    #%% Step 7: Create the same-ISD persistence validation sample
+    # Use only later propositions by the same matched ISD and exclude failures
+    # on the same election date.
     isd_history = isd_props.loc[isd_props["isd_geoid"].notna()].copy()
     isd_history = add_prior_failure_exposure(
         isd_history,
@@ -485,9 +570,7 @@ def main(overlap_threshold: float = 0.80) -> None:
     )
     isd_history.to_csv(OUT_DIR / "isd_proposition_failure_persistence_sample.csv", index=False)
 
-    # ========================================================================
-    # STEP 8: Save a coverage report for audit before running regressions.
-    # ========================================================================
+    #%% Step 8: Save a coverage report before running regressions
     coverage = pd.DataFrame([
         {
             "isd_propositions": len(isd_props),

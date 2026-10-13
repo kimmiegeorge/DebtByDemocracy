@@ -1,5 +1,6 @@
 """Prepare analysis panels for the Texas ISD rejection-risk regressions."""
 
+#%% Paths and shared helpers
 from datetime import date
 from pathlib import Path
 
@@ -25,9 +26,9 @@ def key(column: str) -> pl.Expr:
     return pl.col(column).cast(pl.String).str.strip_chars().str.to_lowercase()
 
 
-def parsed_date(column: str, format: str | None = None) -> pl.Expr:
+def parsed_date(column: str, date_format: str | None = None) -> pl.Expr:
     return pl.col(column).cast(pl.String).str.to_date(
-        format=format, strict=False
+        format=date_format, strict=False
     )
 
 
@@ -47,7 +48,9 @@ def add_risk_flags(
         pl.lit(1, dtype=pl.Int64).alias("failure_50pct_10yr")
     )
 
-    flags = dates.select(keys).unique().join(ten_year, on=keys, how="left")
+    flags = dates.select(keys).unique(maintain_order=True).join(
+        ten_year, on=keys, how="left"
+    )
     if all_history:
         history = (
             matches.filter(pl.col("failure_date") < pl.col("risk_date"))
@@ -103,17 +106,10 @@ def add_threshold_flags(
     output_columns = [f"{names[column]}{suffix}" for column in names]
     return (
         dates.select(keys)
-        .unique()
+        .unique(maintain_order=True)
         .join(flags, on=keys, how="left")
         .with_columns(pl.col(output_columns).fill_null(0).cast(pl.Int64))
     )
-
-
-def subtract_ten_years(value: date) -> date | None:
-    try:
-        return value.replace(year=value.year - 10)
-    except ValueError:
-        return None
 
 
 def normalize_city_year(frame: pl.DataFrame) -> pl.DataFrame:
@@ -123,7 +119,9 @@ def normalize_city_year(frame: pl.DataFrame) -> pl.DataFrame:
     )
 
 
+#%% Build every rejection-risk analysis panel
 def main() -> None:
+    #%% Step 1: Load the three outcome panels and spatial inputs
     website_city_year = normalize_city_year(
         read_csv(REGRESSION / "website_city_year_regression_ready.csv")
     )
@@ -162,7 +160,8 @@ def main() -> None:
         EXPOSURE / "city_place_boundary_matches.csv"
     ).with_columns(key("seed_key").alias("seed_key"))
 
-    # Proposition controls align to the election month, as in the original R prep.
+    #%% Step 2: Attach same-month controls to city propositions
+    # This matches the timing convention in the original R preparation script.
     proposition_controls = (
         city_month.select(
             "seed_issuer",
@@ -172,7 +171,7 @@ def main() -> None:
             "ln_county_pop_prior",
             "ln_county_pers_inc_prior",
         )
-        .unique()
+        .unique(maintain_order=True)
     )
     city_propositions = (
         city_propositions.with_columns(
@@ -187,7 +186,8 @@ def main() -> None:
         .with_columns(pl.col("Amount").log1p().alias("ln_amount"))
     )
 
-    # Create the balanced city-year outcomes using the same complete-boundary sample.
+    #%% Step 3: Create a balanced city-year panel for the no-news outcomes
+    # Keep cities with a successful boundary match in all three Census vintages.
     complete_spatial_cities = (
         city_boundary_matches.filter(
             (pl.col("match_status") == "exact_normalized")
@@ -204,13 +204,14 @@ def main() -> None:
             pl.col("seed_issuer_id").cast(pl.Float64),
             pl.col("fips").cast(pl.Int64).cast(pl.String).str.pad_start(5, "0"),
         )
-        .unique()
+        .unique(maintain_order=True)
         .join(complete_spatial_cities, on="seed_issuer", how="inner")
     )
     years = pl.DataFrame({"year": range(1996, 2024)}, schema={"year": pl.Int64})
     annual_election = annual_city_universe.join(years, how="cross")
 
-    # Link city propositions and form election outcomes by mapped issuer and year.
+    #%% Step 4: Create annual city election outcomes
+    # Link city propositions to the balanced panel by mapped issuer and year.
     tx_elections = read_csv(DATA / "TX" / "20240510_TX_local_election.csv")
     seed_crosswalk = read_csv(
         DATA / "TX" / "241120_tx_uniquegovt_fuzzymatch_crosswalk.csv"
@@ -218,7 +219,7 @@ def main() -> None:
     municipality_crosswalk = seed_crosswalk.select(
         key("muni_upper").alias("muni_key"),
         key("seed_issuer").alias("seed_issuer"),
-    ).unique()
+    ).unique(maintain_order=True)
     election_outcomes = (
         tx_elections.with_columns(
             parsed_date("ElectionDate", "%m/%d/%Y").alias("election_date"),
@@ -245,7 +246,7 @@ def main() -> None:
         )
     )
 
-    # Attach beginning-of-year outstanding debt and prior-year county controls.
+    #%% Step 5: Attach beginning-of-year debt and lagged county controls
     outstanding_debt = read_csv(
         DATA
         / "Mergent"
@@ -314,7 +315,8 @@ def main() -> None:
         .drop("ln_county_gdp_2001_fallback")
     )
 
-    # Recover the annual issuance indicators from the underlying bond panel.
+    #%% Step 6: Recover annual issuance outcomes from the bond panel
+    # Pandas only decodes the Stata file; all filtering and aggregation use Polars.
     city_issuance_pdf = pd.read_stata(
         DATA
         / "Mergent"
@@ -365,7 +367,7 @@ def main() -> None:
         pl.col(issuance_columns).fill_null(0).cast(pl.Int64)
     )
 
-    # Match failed propositions to cities covering at least half their area.
+    #%% Step 7: Build the primary 50-percent-overlap rejection-risk indicators
     failure_events = (
         isd_failures.join(
             city_isd_overlaps.filter(pl.col("city_area_share") >= 0.50).select(
@@ -378,11 +380,11 @@ def main() -> None:
             key("seed_key").alias("seed_issuer"),
             "failure_date",
         )
-        .unique()
+        .unique(maintain_order=True)
     )
     city_month_dates = (
         city_month.select("seed_issuer", "year", "month")
-        .unique()
+        .unique(maintain_order=True)
         .with_columns(
             pl.date(pl.col("year"), pl.col("month"), pl.lit(1)).alias("risk_date"),
             pl.date(
@@ -402,7 +404,8 @@ def main() -> None:
         how="left",
     )
 
-    # Keep the original RavenPack-linked January panel for rate-measure models.
+    #%% Step 8: Build the RavenPack-linked January panel
+    # Keep the original sample used for the rate-measure specifications.
     annual_news_election_outcome = (
         city_month.filter(pl.col("year").is_between(1996, 2023, closed="both"))
         .group_by("seed_issuer", "year")
@@ -439,6 +442,7 @@ def main() -> None:
         pl.col(issuance_columns).fill_null(0).cast(pl.Int64)
     )
 
+    #%% Step 9: Add rejection risk to the balanced annual panel
     # The no-news annual panel uses January 1 outcome dates.
     annual_dates = annual_election.select("seed_issuer", "year").with_columns(
         pl.date(pl.col("year"), pl.lit(1), pl.lit(1)).alias("risk_date"),
@@ -456,17 +460,18 @@ def main() -> None:
         annual_flags, on=["seed_issuer", "year"], how="left"
     )
 
-    # Website risk uses the city proposition date, or December 1 without an election.
+    #%% Step 10: Add rejection risk to the website panel
+    # Use the city proposition date, or December 1 when there is no election.
     election_dates = city_propositions.filter(
         pl.col("seed_key").is_not_null()
     ).select(
         pl.col("seed_key").alias("seed_issuer"),
         "year",
         "election_date",
-    ).unique()
+    ).unique(maintain_order=True)
     website_dates = (
         website_city_year.select("seed_issuer", "year")
-        .unique()
+        .unique(maintain_order=True)
         .join(election_dates, on=["seed_issuer", "year"], how="left")
         .with_columns(
             pl.coalesce(
@@ -475,9 +480,7 @@ def main() -> None:
             ).alias("risk_date")
         )
         .with_columns(
-            pl.col("risk_date")
-            .map_elements(subtract_ten_years, return_dtype=pl.Date)
-            .alias("risk_date_10yr")
+            pl.col("risk_date").dt.offset_by("-10y").alias("risk_date_10yr")
         )
     )
     website_flags = add_risk_flags(
@@ -494,7 +497,7 @@ def main() -> None:
         website_flags, on=["seed_issuer", "year"], how="left"
     )
 
-    # Vary the city-area overlap cutoff for the robustness indicators.
+    #%% Step 11: Build indicators for alternative city-area overlap cutoffs
     thresholds = pl.DataFrame(
         {
             "threshold_key": ["any", "20pct", "25pct", "80pct"],
@@ -519,7 +522,7 @@ def main() -> None:
             "failure_date",
             "threshold_key",
         )
-        .unique()
+        .unique(maintain_order=True)
     )
 
     annual_threshold_10yr = add_threshold_flags(
@@ -585,8 +588,57 @@ def main() -> None:
         website_thresholds, on=["seed_issuer", "year"], how="left"
     )
 
-    # 2017 debt choice and full-period issuance analyses share pre-2017 risk.
-    debt_choice_dates = debt_choice.select("seed_issuer").unique().with_columns(
+    # Preserve the established CSV column order. Polars pivot columns otherwise
+    # follow the order in which threshold values happen to appear in each panel.
+    threshold_columns = [
+        f"failure_{threshold}_{window}"
+        for window in ("10yr", "all_history")
+        for threshold in ("any", "20pct", "25pct", "80pct")
+    ]
+    annual_threshold_order = [
+        "failure_25pct_10yr",
+        "failure_20pct_10yr",
+        "failure_80pct_10yr",
+        "failure_any_10yr",
+        "failure_80pct_all_history",
+        "failure_20pct_all_history",
+        "failure_25pct_all_history",
+        "failure_any_all_history",
+    ]
+    month_threshold_order = [
+        "failure_25pct_10yr",
+        "failure_any_10yr",
+        "failure_80pct_10yr",
+        "failure_20pct_10yr",
+        "failure_any_all_history",
+        "failure_25pct_all_history",
+        "failure_80pct_all_history",
+        "failure_20pct_all_history",
+    ]
+    website_threshold_order = [
+        "failure_20pct_10yr",
+        "failure_80pct_10yr",
+        "failure_25pct_10yr",
+        "failure_any_10yr",
+        "failure_80pct_all_history",
+        "failure_any_all_history",
+        "failure_25pct_all_history",
+        "failure_20pct_all_history",
+    ]
+    annual_election = annual_election.select(
+        pl.exclude(threshold_columns), *annual_threshold_order
+    ).sort("seed_issuer", "year")
+    city_month = city_month.select(
+        pl.exclude(threshold_columns), *month_threshold_order
+    )
+    website_city_year = website_city_year.select(
+        pl.exclude(threshold_columns), *website_threshold_order
+    )
+
+    #%% Step 12: Add pre-2017 risk to the debt-choice and issuance samples
+    debt_choice_dates = debt_choice.select("seed_issuer").unique(
+        maintain_order=True
+    ).with_columns(
         pl.lit(date(2017, 1, 1)).alias("risk_date"),
         pl.lit(date(2007, 1, 1)).alias("risk_date_10yr"),
     )
@@ -633,13 +685,15 @@ def main() -> None:
         )
     )
 
-    # Keep the media-election regression universe used by the old R script.
+    #%% Step 13: Identify the original media-election regression universe
     election_media = read_csv(
         REGRESSION / "election_media_regression_ready.csv"
     )
     media_issuers = election_media.filter(
         pl.col("unique_sources_12m_prior") > 0
-    ).select(key("seed_issuer").alias("seed_issuer")).unique()
+    ).select(key("seed_issuer").alias("seed_issuer")).unique(
+        maintain_order=True
+    )
     media_panel_indicator = city_month.join(
         media_issuers, on="seed_issuer", how="inner"
     ).filter(
@@ -650,6 +704,7 @@ def main() -> None:
         & pl.col("ln_county_pers_inc_prior").is_not_null()
     )
 
+    #%% Step 14: Write all regression inputs
     outputs = {
         "website_city_year_analysis.csv": website_city_year,
         "city_month_analysis.csv": city_month,

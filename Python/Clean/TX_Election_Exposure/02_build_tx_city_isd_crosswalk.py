@@ -1,11 +1,6 @@
-"""Build auditable city--ISD area-overlap crosswalks for 2000, 2010, and 2020.
+"""Build city--ISD area-overlap crosswalks for 2000, 2010, and 2020."""
 
-The crosswalk uses Census incorporated-place polygons and unified-school-district
-polygons.  It measures jurisdictional area overlap, not population or voters.
-"""
-
-from __future__ import annotations
-
+#%% Paths and geographic definitions
 import re
 import unicodedata
 from pathlib import Path
@@ -23,6 +18,10 @@ CITY_PANEL_FILE = ROOT / "Data" / "Clean_Intermediate" / "TX" / "City_Month_Elec
 WEBSITE_PANEL_FILE = (
     ROOT / "Data" / "Clean_Intermediate" / "Websites" / "Texas" / "time_series_website_data.csv"
 )
+DEBT_CHOICE_FILE = (
+    ROOT / "Data" / "Clean_Intermediate" / "Census COG Finance" / "processed"
+    / "texas_2017_debt_choice_rejection_risk.csv"
+)
 SEED_CROSSWALK_FILE = ROOT / "Data" / "TX" / "241120_tx_uniquegovt_fuzzymatch_crosswalk.csv"
 
 VINTAGES = {
@@ -36,7 +35,10 @@ AREA_CRS = "EPSG:3083"  # NAD83 / Texas Centric Albers Equal Area
 # rather than handled with a fuzzy geographic match.  The key is the Census
 # boundary vintage because Spring Valley's Census place name changed after 2000.
 CITY_PLACE_NAME_ALIASES = {
-    2000: {"BUNKER HILL": "BUNKER HILL VILLAGE"},
+    2000: {
+        "BUNKER HILL": "BUNKER HILL VILLAGE",
+        "SPRING VALLEY VILLAGE": "SPRING VALLEY",
+    },
     2010: {
         "BUNKER HILL": "BUNKER HILL VILLAGE",
         "SPRING VALLEY": "SPRING VALLEY VILLAGE",
@@ -87,13 +89,13 @@ def standardize_boundaries(path: Path, geography: str) -> gpd.GeoDataFrame:
     return out.to_crs(AREA_CRS)
 
 
-def build_city_universe() -> pd.DataFrame:
+def build_city_universe() -> pl.DataFrame:
     # Step 1A. Retain the city-month panel cities used for the media and
     # election-incidence outcomes.  This was the original spatial universe.
     city_month_seeds = (
         pl.read_csv(CITY_PANEL_FILE, columns=["seed_issuer"])
         .select(pl.col("seed_issuer").str.strip_chars().str.to_lowercase().alias("seed_key"))
-        .unique()
+        .unique(maintain_order=True)
     )
 
     # Step 1B. Attach the existing Texas city-name crosswalk to those cities.
@@ -103,7 +105,7 @@ def build_city_universe() -> pd.DataFrame:
             pl.col("seed_issuer").str.strip_chars().str.to_lowercase().alias("seed_key"),
             pl.col("muni_upper").str.strip_chars().alias("city_name_source"),
         ])
-        .unique(subset=["seed_key"], keep="first")
+        .unique(subset=["seed_key"], keep="first", maintain_order=True)
     )
     city_month_cities = (
         city_month_seeds
@@ -125,56 +127,120 @@ def build_city_universe() -> pd.DataFrame:
             pl.col("GovernmentName").str.strip_chars().alias("city_name_source"),
             pl.lit("website").alias("city_universe_source"),
         ])
-        .unique(subset=["seed_key"], keep="first")
+        .unique(subset=["seed_key"], keep="first", maintain_order=True)
     )
 
-    # Step 1D. The union is the full city universe for the three outcomes.
-    # Website names take precedence because the website panel is the outcome
-    # sample that previously lost cities when the RavenPack-only universe was
-    # used to construct spatial exposure.
+    # Step 1D. Add the full 2017 Census/COG municipal universe. This supplies
+    # the no-news annual election and issuance panel, so its spatial exposure
+    # is not limited to cities with a RavenPack match. Census municipal names
+    # are used for debt-only cities because they map directly to place names.
+    debt_choice_cities = (
+        pl.read_csv(DEBT_CHOICE_FILE, columns=["seed_issuer", "census_name"])
+        .select([
+            pl.col("seed_issuer").str.strip_chars().str.to_lowercase().alias("seed_key"),
+            pl.col("census_name").str.strip_chars().str.replace(
+                r" (CITY|TOWN|VILLAGE)$", ""
+            ).alias("city_name_source"),
+            pl.lit("debt_choice").alias("city_universe_source"),
+        ])
+        .unique(subset=["seed_key"], keep="first", maintain_order=True)
+    )
+
+    # Step 1E. The union is the full city universe for all outcomes. Website
+    # names take precedence, followed by the original city-month crosswalk;
+    # the Census/COG name is used for cities otherwise absent from those panels.
     city_month_only = city_month_cities.join(
         website_cities.select("seed_key"), on="seed_key", how="anti"
     )
-    cities = pl.concat([website_cities, city_month_only], how="vertical").to_pandas()
+    debt_choice_only = debt_choice_cities.join(
+        pl.concat([website_cities.select("seed_key"), city_month_cities.select("seed_key")]),
+        on="seed_key",
+        how="anti",
+    )
+    cities = pl.concat(
+        [website_cities, city_month_only, debt_choice_only], how="vertical"
+    )
 
-    # Step 1E. Create a name key for matching to Census place names.
-    cities["city_name_key"] = cities["city_name_source"].map(canonical_name)
+    # Step 1F. Create a name key for matching to Census place names.
     # The historical website panel labels BURNET TEX as Burkburnett.  This is
     # a documented source-data error; correct only that issuer.  Other shared
     # municipal names (for example, two website records for El Paso) are kept
     # as separate outcome-panel records and can legitimately share a boundary.
-    cities.loc[cities["seed_key"].eq("burnet tex"), "city_name_source"] = "BURNET"
-    cities["city_name_key"] = cities["city_name_source"].map(canonical_name)
-    return cities
+    return cities.with_columns(
+        pl.when(pl.col("seed_key") == "burnet tex")
+        .then(pl.lit("BURNET"))
+        .otherwise(pl.col("city_name_source"))
+        .alias("city_name_source")
+    ).with_columns(
+        pl.col("city_name_source")
+        .map_elements(canonical_name, return_dtype=pl.String)
+        .alias("city_name_key")
+    )
 
 
-def build_isd_universe() -> pd.DataFrame:
-    # Step 1D. Pull the distinct ISD names directly from the election data.
-    isds = (
+def build_isd_universe() -> pl.DataFrame:
+    # Pull the distinct ISD names directly from the election data.
+    return (
         pl.read_csv(ELECTION_FILE)
         .filter(pl.col("GovernmentType") == "ISD")
         .select(pl.col("GovernmentName").alias("isd_election_name"))
-        .unique()
-        .to_pandas()
+        .unique(maintain_order=True)
+        .with_columns(
+            pl.col("isd_election_name")
+            .map_elements(canonical_name, return_dtype=pl.String)
+            .alias("isd_name_key")
+        )
     )
-    isds["isd_name_key"] = isds["isd_election_name"].map(canonical_name)
-    return isds
 
 
 def name_match(
-    source: pd.DataFrame,
+    source: pl.DataFrame,
     target: gpd.GeoDataFrame,
     source_key: str,
     target_key: str,
     target_id: str,
     target_name: str,
 ) -> pd.DataFrame:
-    target_lookup = target[[target_key, target_id, target_name]].drop_duplicates(target_key)
-    matched = source.merge(target_lookup, left_on=source_key, right_on=target_key, how="left")
-    matched["match_status"] = matched[target_id].notna().map({True: "exact_normalized", False: "unmatched"})
-    return matched
+    """Match normalized names in Polars and return rows for GeoPandas."""
+    target_lookup = pl.from_pandas(
+        target[[target_key, target_id, target_name]].drop_duplicates(target_key)
+    )
+    # Pandas retained the right-side key when the two join keys had different
+    # names. Keep that audit column and its original position in the CSV.
+    if source_key != target_key:
+        matched_target_key = f"matched_{target_key}"
+        target_lookup = target_lookup.select(
+            target_key,
+            pl.col(target_key).alias(matched_target_key),
+            target_id,
+            target_name,
+        )
+    else:
+        matched_target_key = None
+
+    matched = source.join(
+        target_lookup,
+        left_on=source_key,
+        right_on=target_key,
+        how="left",
+        maintain_order="left",
+    )
+    if matched_target_key:
+        matched = matched.rename({matched_target_key: target_key})
+
+    return (
+        matched
+        .with_columns(
+            pl.when(pl.col(target_id).is_not_null())
+            .then(pl.lit("exact_normalized"))
+            .otherwise(pl.lit("unmatched"))
+            .alias("match_status")
+        )
+        .to_pandas()
+    )
 
 
+#%% Build the three historical overlap crosswalks
 def main() -> None:
     OUT_DIR.mkdir(parents=True, exist_ok=True)
 
@@ -195,9 +261,10 @@ def main() -> None:
         places = standardize_boundaries(RAW_DIR / place_file, "place")
         isds = standardize_boundaries(RAW_DIR / isd_file, "isd")
 
-        city_match_input = cities.copy()
-        city_match_input["city_name_match_key"] = city_match_input["city_name_key"].replace(
-            CITY_PLACE_NAME_ALIASES.get(vintage, {})
+        city_match_input = cities.with_columns(
+            pl.col("city_name_key")
+            .replace(CITY_PLACE_NAME_ALIASES.get(vintage, {}))
+            .alias("city_name_match_key")
         )
         city_match = name_match(
             city_match_input,
