@@ -1141,6 +1141,54 @@ writeLines(
   )
 )
 
+# Retain the parallel all-history robustness output on the same annual sample.
+indicator_all_history_no_news_annual_table <- etable(
+  indicator_all_history_annual, indicator_all_history_go_issuance,
+  indicator_all_history_any_issuance, indicator_all_history_revenue_issuance,
+  coefstat = "tstat",
+  keep_raw = "^failure_50pct_all_history$",
+  style.tex = style.tex(main = "aer", fixef.suffix = " FE", yesNo = c("Yes", "No")),
+  fitstat = c("n", "ar2"),
+  se.below = TRUE,
+  digits = 3,
+  digits.stats = 3,
+  signif.code = c("***" = 0.01, "**" = 0.05, "*" = 0.10),
+  tex = TRUE,
+  dict = c(
+    city_bond_election_year = "\\shortstack{Any City Bond\\\\ Election}",
+    go_bond_issuance_year = "\\shortstack{Any City GO\\\\ Bond Issuance}",
+    any_debt_issuance_year = "\\shortstack{Any City Debt\\\\ Issuance}",
+    revenue_bond_issuance_year = "\\shortstack{Any City Revenue\\\\ Bond Issuance}",
+    failure_50pct_all_history = "Prior ISD Failure",
+    seed_issuer = "City", year = "Year"
+  ),
+  extralines = list("Controls" = c("Yes", "Yes", "Yes", "Yes")),
+  placement = "H",
+  replace = TRUE
+)
+indicator_all_history_no_news_annual_output <- modify_etable_rounding(
+  indicator_all_history_no_news_annual_table,
+  coef_digits = 3,
+  tstat_digits = 2
+)
+indicator_all_history_no_news_annual_output <- format_table(
+  indicator_all_history_no_news_annual_output,
+  cluster_level = "County"
+)
+indicator_all_history_no_news_annual_output <- add_panel(
+  indicator_all_history_no_news_annual_output,
+  "Texas annual outcomes, no-news city panel: all-history local rejection-risk indicator",
+  ncols = 5,
+  zero_width = TRUE
+)
+writeLines(
+  indicator_all_history_no_news_annual_output,
+  file.path(
+    tbl_dir,
+    "tx_rejection_risk_indicator_50pct_all_history_no_news_annual.tex"
+  )
+)
+
 indicator_all_history_panel_a_table <- etable(
   indicator_all_history_website, indicator_all_history_media,
   coefstat = "tstat",
