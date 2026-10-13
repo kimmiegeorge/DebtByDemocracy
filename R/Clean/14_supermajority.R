@@ -206,7 +206,7 @@ modified_output <- modified_output[
 
 modified_output <- add_panel(
   modified_output,
-  "Supermajority specifications",
+  "Panel C: Supermajority rejection risk",
   ncols = 4
 )
 modified_output <- sub("[[:space:]]+$", "", modified_output)
