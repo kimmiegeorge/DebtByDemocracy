@@ -235,5 +235,13 @@ table_call <- etable(
 
 modified_output <- modify_etable_rounding(table_call, coef_digits = 3, tstat_digits = 2)
 modified_output <- format_table(modified_output, cluster_level = "State")
+# Report controls immediately below adjusted R-squared.
+r2_idx <- grep("R\\$\\^2\\$", modified_output)
+stopifnot(length(r2_idx) == 1L)
+modified_output <- append(
+    modified_output,
+    "   Controls                   & Yes & Yes & Yes & Yes & Yes\\\\",
+    after = r2_idx
+)
 modified_output <- add_panel(modified_output, "Panel C: Pct Revenue by purpose")
 writeLines(modified_output, file.path(tbl_dir, "panel_c_dg_pct_rev_purpose.tex"))

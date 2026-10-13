@@ -196,6 +196,14 @@ table_call <- etable(
 
 modified_output <- modify_etable_rounding(table_call, coef_digits = 3, tstat_digits = 2)
 modified_output <- format_table(modified_output, cluster_level = "State")
+# Report controls immediately below the model fit statistic.
+r2_idx <- grep("R\\$\\^2\\$", modified_output)
+stopifnot(length(r2_idx) == 1L)
+modified_output <- append(
+    modified_output,
+    "   Controls                   & No & Yes & Yes & Yes\\\\",
+    after = r2_idx
+)
 modified_output <- add_panel(
   modified_output,
   "Panel B: Debt substitution with GO vote required and Rev. vote required",
@@ -245,6 +253,14 @@ table_call <- etable(
 
 modified_output <- modify_etable_rounding(table_call, coef_digits = 3, tstat_digits = 2)
 modified_output <- format_table(modified_output, cluster_level = "State")
+# Report controls immediately below the model fit statistic.
+r2_idx <- grep("R\\$\\^2\\$", modified_output)
+stopifnot(length(r2_idx) == 1L)
+modified_output <- append(
+    modified_output,
+    "   Controls                   & No & Yes\\\\",
+    after = r2_idx
+)
 modified_output <- add_panel(
   modified_output,
   "Panel D: Weighted average yield spread",
@@ -320,6 +336,14 @@ modified_output <- sub(
   fixed = TRUE
 )
 modified_output <- format_table(modified_output, cluster_level = "State")
+# Report controls immediately below the model fit statistic.
+r2_idx <- grep("R\\$\\^2\\$", modified_output)
+stopifnot(length(r2_idx) == 1L)
+modified_output <- append(
+    modified_output,
+    "   Controls                   & Yes & Yes & Yes\\\\",
+    after = r2_idx
+)
 modified_output <- add_panel(
   modified_output,
   "Panel A: Outstanding debt",
