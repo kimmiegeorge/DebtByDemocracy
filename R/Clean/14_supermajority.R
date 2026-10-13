@@ -210,4 +210,4 @@ modified_output <- add_panel(
   ncols = 4
 )
 modified_output <- sub("[[:space:]]+$", "", modified_output)
-writeLines(modified_output, file.path(tbl_dir, "14_supermajority.tex"))
+writeLines(modified_output, file.path(tbl_dir, "14_supermajority_panel_c.tex"))
