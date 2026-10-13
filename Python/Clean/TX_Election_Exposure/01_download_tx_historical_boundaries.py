@@ -32,45 +32,40 @@ def sha256(path: Path) -> str:
 
 
 #%% Download missing files and document every local archive
-def main():
-    raw_dir.mkdir(parents=True, exist_ok=True)
-    manifest: list[dict[str, str | int]] = []
+raw_dir.mkdir(parents=True, exist_ok=True)
+manifest: list[dict[str, str | int]] = []
 
-    for label, url in census_files.items():
-        target = raw_dir / Path(url).name
+for label, url in census_files.items():
+    target = raw_dir / Path(url).name
 
-        # Keep the cached archive when it has already been downloaded.
-        if target.exists() and target.stat().st_size > 0:
-            print(f'Using cached {target.name}')
-        else:
-            print(f'Downloading {label}: {url}')
-            temporary = target.with_suffix(target.suffix + '.part')
-            with requests.get(
-                url,
-                headers={'User-Agent': 'Voting-on-Bonds research pipeline'},
-                timeout=120,
-                stream=True,
-            ) as response, temporary.open('wb') as handle:
-                response.raise_for_status()
-                for chunk in response.iter_content(chunk_size=1024 * 1024):
-                    if chunk:
-                        handle.write(chunk)
-            temporary.replace(target)
+    # Keep the cached archive when it has already been downloaded.
+    if target.exists() and target.stat().st_size > 0:
+        print(f'Using cached {target.name}')
+    else:
+        print(f'Downloading {label}: {url}')
+        temporary = target.with_suffix(target.suffix + '.part')
+        with requests.get(
+            url,
+            headers={'User-Agent': 'Voting-on-Bonds research pipeline'},
+            timeout=120,
+            stream=True,
+        ) as response, temporary.open('wb') as handle:
+            response.raise_for_status()
+            for chunk in response.iter_content(chunk_size=1024 * 1024):
+                if chunk:
+                    handle.write(chunk)
+        temporary.replace(target)
 
-        # Record the URL, file size, checksum, and verification date.
-        manifest.append({
-            'label': label,
-            'url': url,
-            'local_file': target.name,
-            'bytes': target.stat().st_size,
-            'sha256': sha256(target),
-            'download_verified_on': str(date.today()),
-        })
+    # Record the URL, file size, checksum, and verification date.
+    manifest.append({
+        'label': label,
+        'url': url,
+        'local_file': target.name,
+        'bytes': target.stat().st_size,
+        'sha256': sha256(target),
+        'download_verified_on': str(date.today()),
+    })
 
-    manifest_file = raw_dir / 'manifest.json'
-    manifest_file.write_text(json.dumps(manifest, indent=2) + '\n')
-    print(f'Wrote {manifest_file}')
-
-
-if __name__ == '__main__':
-    main()
+manifest_file = raw_dir / 'manifest.json'
+manifest_file.write_text(json.dumps(manifest, indent=2) + '\n')
+print(f'Wrote {manifest_file}')

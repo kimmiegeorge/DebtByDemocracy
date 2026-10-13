@@ -241,93 +241,88 @@ def name_match(
 
 
 #%% Build the three historical overlap crosswalks
-def main() -> None:
-    OUT_DIR.mkdir(parents=True, exist_ok=True)
+OUT_DIR.mkdir(parents=True, exist_ok=True)
 
-    # ========================================================================
-    # STEP 1: Define the city and ISD names we need to locate in Census files.
-    # ========================================================================
-    cities = build_city_universe()
-    isd_elections = build_isd_universe()
-    all_city_diagnostics: list[pd.DataFrame] = []
-    all_isd_diagnostics: list[pd.DataFrame] = []
-    all_overlaps: list[pd.DataFrame] = []
+# ========================================================================
+# STEP 1: Define the city and ISD names we need to locate in Census files.
+# ========================================================================
+cities = build_city_universe()
+isd_elections = build_isd_universe()
+all_city_diagnostics: list[pd.DataFrame] = []
+all_isd_diagnostics: list[pd.DataFrame] = []
+all_overlaps: list[pd.DataFrame] = []
 
-    for vintage, (place_file, isd_file) in VINTAGES.items():
-        # ====================================================================
-        # STEP 2: Read one historical Census vintage and match names.
-        # ====================================================================
-        print(f"Building {vintage} city--ISD overlap crosswalk")
-        places = standardize_boundaries(RAW_DIR / place_file, "place")
-        isds = standardize_boundaries(RAW_DIR / isd_file, "isd")
+for vintage, (place_file, isd_file) in VINTAGES.items():
+    # ====================================================================
+    # STEP 2: Read one historical Census vintage and match names.
+    # ====================================================================
+    print(f"Building {vintage} city--ISD overlap crosswalk")
+    places = standardize_boundaries(RAW_DIR / place_file, "place")
+    isds = standardize_boundaries(RAW_DIR / isd_file, "isd")
 
-        city_match_input = cities.with_columns(
-            pl.col("city_name_key")
-            .replace(CITY_PLACE_NAME_ALIASES.get(vintage, {}))
-            .alias("city_name_match_key")
-        )
-        city_match = name_match(
-            city_match_input,
-            places,
-            "city_name_match_key",
-            "place_name_key",
-            "place_geoid",
-            "place_name",
-        )
-        city_match["boundary_vintage"] = vintage
-        all_city_diagnostics.append(city_match)
-
-        isd_match = name_match(
-            isd_elections, isds, "isd_name_key", "isd_name_key", "isd_geoid", "isd_name"
-        )
-        isd_match["boundary_vintage"] = vintage
-        all_isd_diagnostics.append(isd_match)
-
-        # ====================================================================
-        # STEP 3: Overlay matched cities and ISDs to calculate area shares.
-        # ====================================================================
-        matched_cities = city_match.loc[city_match["match_status"].eq("exact_normalized")].merge(
-            places[["place_geoid", "geometry"]], on="place_geoid", how="left", validate="many_to_one"
-        )
-        city_geo = gpd.GeoDataFrame(matched_cities, geometry="geometry", crs=AREA_CRS)
-        city_geo["city_area_sq_m"] = city_geo.geometry.area
-
-        overlap = gpd.overlay(
-            city_geo[["seed_key", "city_name_source", "place_geoid", "city_area_sq_m", "geometry"]],
-            isds[["isd_geoid", "isd_name", "geometry"]],
-            how="intersection",
-            keep_geom_type=False,
-        )
-        overlap["intersection_area_sq_m"] = overlap.geometry.area
-        overlap = overlap.loc[overlap["intersection_area_sq_m"] > 0].copy()
-        overlap["city_area_share"] = overlap["intersection_area_sq_m"] / overlap["city_area_sq_m"]
-        overlap["boundary_vintage"] = vintage
-        overlap = overlap.drop(columns="geometry")
-        all_overlaps.append(pd.DataFrame(overlap))
-
-        overlap.to_csv(OUT_DIR / f"city_isd_overlap_area_{vintage}.csv", index=False)
-        print(
-            f"  matched cities: {city_match['place_geoid'].notna().sum():,}/{len(city_match):,}; "
-            f"matched ISD election names: {isd_match['isd_geoid'].notna().sum():,}/{len(isd_match):,}; "
-            f"overlap rows: {len(overlap):,}"
-        )
-
-    # ========================================================================
-    # STEP 4: Save crosswalks and all unmatched names for manual audit.
-    # ========================================================================
-    city_diagnostics = pd.concat(all_city_diagnostics, ignore_index=True)
-    isd_diagnostics = pd.concat(all_isd_diagnostics, ignore_index=True)
-    overlaps = pd.concat(all_overlaps, ignore_index=True)
-    city_diagnostics.to_csv(OUT_DIR / "city_place_boundary_matches.csv", index=False)
-    isd_diagnostics.to_csv(OUT_DIR / "isd_election_boundary_matches.csv", index=False)
-    city_diagnostics.loc[city_diagnostics["match_status"].eq("unmatched")].to_csv(
-        OUT_DIR / "city_place_boundary_unmatched.csv", index=False
+    city_match_input = cities.with_columns(
+        pl.col("city_name_key")
+        .replace(CITY_PLACE_NAME_ALIASES.get(vintage, {}))
+        .alias("city_name_match_key")
     )
-    isd_diagnostics.loc[isd_diagnostics["match_status"].eq("unmatched")].to_csv(
-        OUT_DIR / "isd_election_boundary_unmatched.csv", index=False
+    city_match = name_match(
+        city_match_input,
+        places,
+        "city_name_match_key",
+        "place_name_key",
+        "place_geoid",
+        "place_name",
     )
-    overlaps.to_csv(OUT_DIR / "city_isd_overlap_area_all_vintages.csv", index=False)
+    city_match["boundary_vintage"] = vintage
+    all_city_diagnostics.append(city_match)
 
+    isd_match = name_match(
+        isd_elections, isds, "isd_name_key", "isd_name_key", "isd_geoid", "isd_name"
+    )
+    isd_match["boundary_vintage"] = vintage
+    all_isd_diagnostics.append(isd_match)
 
-if __name__ == "__main__":
-    main()
+    # ====================================================================
+    # STEP 3: Overlay matched cities and ISDs to calculate area shares.
+    # ====================================================================
+    matched_cities = city_match.loc[city_match["match_status"].eq("exact_normalized")].merge(
+        places[["place_geoid", "geometry"]], on="place_geoid", how="left", validate="many_to_one"
+    )
+    city_geo = gpd.GeoDataFrame(matched_cities, geometry="geometry", crs=AREA_CRS)
+    city_geo["city_area_sq_m"] = city_geo.geometry.area
+
+    overlap = gpd.overlay(
+        city_geo[["seed_key", "city_name_source", "place_geoid", "city_area_sq_m", "geometry"]],
+        isds[["isd_geoid", "isd_name", "geometry"]],
+        how="intersection",
+        keep_geom_type=False,
+    )
+    overlap["intersection_area_sq_m"] = overlap.geometry.area
+    overlap = overlap.loc[overlap["intersection_area_sq_m"] > 0].copy()
+    overlap["city_area_share"] = overlap["intersection_area_sq_m"] / overlap["city_area_sq_m"]
+    overlap["boundary_vintage"] = vintage
+    overlap = overlap.drop(columns="geometry")
+    all_overlaps.append(pd.DataFrame(overlap))
+
+    overlap.to_csv(OUT_DIR / f"city_isd_overlap_area_{vintage}.csv", index=False)
+    print(
+        f"  matched cities: {city_match['place_geoid'].notna().sum():,}/{len(city_match):,}; "
+        f"matched ISD election names: {isd_match['isd_geoid'].notna().sum():,}/{len(isd_match):,}; "
+        f"overlap rows: {len(overlap):,}"
+    )
+
+# ========================================================================
+# STEP 4: Save crosswalks and all unmatched names for manual audit.
+# ========================================================================
+city_diagnostics = pd.concat(all_city_diagnostics, ignore_index=True)
+isd_diagnostics = pd.concat(all_isd_diagnostics, ignore_index=True)
+overlaps = pd.concat(all_overlaps, ignore_index=True)
+city_diagnostics.to_csv(OUT_DIR / "city_place_boundary_matches.csv", index=False)
+isd_diagnostics.to_csv(OUT_DIR / "isd_election_boundary_matches.csv", index=False)
+city_diagnostics.loc[city_diagnostics["match_status"].eq("unmatched")].to_csv(
+    OUT_DIR / "city_place_boundary_unmatched.csv", index=False
+)
+isd_diagnostics.loc[isd_diagnostics["match_status"].eq("unmatched")].to_csv(
+    OUT_DIR / "isd_election_boundary_unmatched.csv", index=False
+)
+overlaps.to_csv(OUT_DIR / "city_isd_overlap_area_all_vintages.csv", index=False)
