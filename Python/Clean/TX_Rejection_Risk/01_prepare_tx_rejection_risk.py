@@ -15,10 +15,10 @@ REGRESSION = CLEAN / "TX" / "Regression"
 EXPOSURE = CLEAN / "TX" / "Election_Exposure"
 OUTPUT = CLEAN / "TX" / "Rejection_Risk"
 
-# The balanced annual panel is used for the incidence of city elections and
-# each bond-issuance outcome. Keep that shared analysis window in the input.
-ANNUAL_START_YEAR = 2001
-ANNUAL_END_YEAR = 2020
+# Use one common window for the Texas website, media, election-incidence, and
+# issuance-incidence analyses. Cross-sectional 2017 outcomes are unaffected.
+ANALYSIS_START_YEAR = 2001
+ANALYSIS_END_YEAR = 2020
 
 
 def read_csv(path: Path) -> pl.DataFrame:
@@ -129,10 +129,10 @@ def main() -> None:
     #%% Step 1: Load the three outcome panels and spatial inputs
     website_city_year = normalize_city_year(
         read_csv(REGRESSION / "website_city_year_regression_ready.csv")
-    )
+    ).filter(pl.col("year").is_between(ANALYSIS_START_YEAR, ANALYSIS_END_YEAR))
     city_month = normalize_city_year(
         read_csv(REGRESSION / "city_month_media_regression_ready.csv")
-    )
+    ).filter(pl.col("year").is_between(ANALYSIS_START_YEAR, ANALYSIS_END_YEAR))
     debt_choice = normalize_city_year(
         read_csv(
             CLEAN
@@ -148,7 +148,7 @@ def main() -> None:
     ).with_columns(
         key("seed_key").alias("seed_key"),
         parsed_date("election_date").alias("election_date"),
-    )
+    ).filter(pl.col("year").is_between(ANALYSIS_START_YEAR, ANALYSIS_END_YEAR))
     isd_failures = read_csv(
         EXPOSURE / "isd_failed_propositions_matched.csv"
     ).with_columns(
@@ -213,7 +213,7 @@ def main() -> None:
         .join(complete_spatial_cities, on="seed_issuer", how="inner")
     )
     years = pl.DataFrame(
-        {"year": range(ANNUAL_START_YEAR, ANNUAL_END_YEAR + 1)},
+        {"year": range(ANALYSIS_START_YEAR, ANALYSIS_END_YEAR + 1)},
         schema={"year": pl.Int64},
     )
     annual_election = annual_city_universe.join(years, how="cross")
@@ -415,7 +415,11 @@ def main() -> None:
     #%% Step 8: Build the RavenPack-linked January panel
     # Keep the original sample used for the rate-measure specifications.
     annual_news_election_outcome = (
-        city_month.filter(pl.col("year").is_between(1996, 2023, closed="both"))
+        city_month.filter(
+            pl.col("year").is_between(
+                ANALYSIS_START_YEAR, ANALYSIS_END_YEAR, closed="both"
+            )
+        )
         .group_by("seed_issuer", "year")
         .agg(
             (pl.col("has_bond_election") == 1)
@@ -427,7 +431,9 @@ def main() -> None:
     annual_news_election = (
         city_month.filter(
             (pl.col("month") == 1)
-            & pl.col("year").is_between(1996, 2023, closed="both")
+            & pl.col("year").is_between(
+                ANALYSIS_START_YEAR, ANALYSIS_END_YEAR, closed="both"
+            )
         )
         .join(
             annual_news_election_outcome,
@@ -705,7 +711,7 @@ def main() -> None:
     media_panel_indicator = city_month.join(
         media_issuers, on="seed_issuer", how="inner"
     ).filter(
-        (pl.col("year") >= 2003)
+        pl.col("year").is_between(ANALYSIS_START_YEAR, ANALYSIS_END_YEAR)
         & pl.col("fips").is_not_null()
         & pl.col("ln_county_gdp_prior").is_not_null()
         & pl.col("ln_county_pop_prior").is_not_null()

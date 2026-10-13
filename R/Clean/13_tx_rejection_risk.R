@@ -46,6 +46,26 @@ media_panel_indicator <- fread(
   file.path(analysis_data_dir, "media_panel_indicator_analysis.csv")
 )
 
+# Keep every time-series rejection-risk specification on the same window as
+# the Texas election, media, and website analyses.
+analysis_start_year <- 2001L
+analysis_end_year <- 2020L
+website_city_year <- website_city_year[
+  year >= analysis_start_year & year <= analysis_end_year
+]
+annual_election <- annual_election[
+  year >= analysis_start_year & year <= analysis_end_year
+]
+annual_news_election <- annual_news_election[
+  year >= analysis_start_year & year <= analysis_end_year
+]
+city_propositions <- city_propositions[
+  year >= analysis_start_year & year <= analysis_end_year
+]
+media_panel_indicator <- media_panel_indicator[
+  year >= analysis_start_year & year <= analysis_end_year
+]
+
 indicator_10yr_website <- feols(
   positive_delta_bond_debt1 ~ election * failure_50pct_10yr + issuance_year +
     ln_county_gdp_prior + ln_county_pop_prior + ln_county_pers_inc_prior |

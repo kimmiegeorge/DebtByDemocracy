@@ -7,7 +7,8 @@ transparent 2001 county-GDP fallback because the BEA county-GDP series begins
 in 2001 and contains no 2000 or earlier values.
 The election-media output also includes coverage indicators, article and
 financial logs, county-year identifiers, and absolute vote margins. All
-elections remain in the export; analysis sample restrictions remain in R.
+elections from the common 2001--2020 window remain in the export; the positive
+pre-election source-diversity restriction remains in R.
 The website city-year output is normalized and unique by city-year, and
 includes preceding-calendar-year bond text, its change, and an increase flag.
 The city-month and website city-year panels include prior overlapping-ISD
@@ -50,6 +51,12 @@ CONTROL_SOURCE_COLUMNS = {
     "employment": "ln_county_employment_prior",
 }
 CONTROL_OUTPUT_COLUMNS = list(CONTROL_SOURCE_COLUMNS.values())
+
+# Use one common window for every Texas election, media, and website analysis.
+# Apply this after constructing lags and leads so boundary-year observations
+# retain information from the adjacent calendar year.
+ANALYSIS_START_YEAR = 2001
+ANALYSIS_END_YEAR = 2020
 
 
 # %% Step 2: Define small helpers
@@ -343,6 +350,9 @@ city_month = city_month.join(
 )
 if city_month.get_column("prior_weighted_failure_rate_60m").null_count() == city_month.height:
     raise ValueError("No city-months merged to the ISD rejection-risk panel.")
+city_month = city_month.filter(
+    pl.col("year").is_between(ANALYSIS_START_YEAR, ANALYSIS_END_YEAR)
+)
 write_output(city_month, CITY_MONTH_OUTPUT)
 
 
@@ -366,6 +376,9 @@ election_media = election_media.with_columns(
         separator="",
     ).alias("county_year"),
     pl.col("vote_margin").abs().alias("abs_vote_margin"),
+)
+election_media = election_media.filter(
+    pl.col("year").is_between(ANALYSIS_START_YEAR, ANALYSIS_END_YEAR)
 )
 write_output(election_media, ELECTION_MEDIA_OUTPUT)
 
@@ -432,12 +445,18 @@ website_year = website_year.join(
 )
 if website_year.get_column("prior_weighted_failure_rate_60m").null_count() == website_year.height:
     raise ValueError("No website city-years merged to the ISD rejection-risk panel.")
+website_year = website_year.filter(
+    pl.col("year").is_between(ANALYSIS_START_YEAR, ANALYSIS_END_YEAR)
+)
 write_output(website_year, WEBSITE_YEAR_OUTPUT)
 
 
 # %% Step 7: Build the website-election regression panel
 website_election = add_fips(website_election_source, issuer_fips, county_name_fips)
 website_election = add_prior_year_county_controls(website_election, county_controls)
+website_election = website_election.filter(
+    pl.col("year").is_between(ANALYSIS_START_YEAR, ANALYSIS_END_YEAR)
+)
 write_output(website_election, WEBSITE_ELECTION_OUTPUT)
 
 

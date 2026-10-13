@@ -20,12 +20,27 @@ tbl_dir <- Sys.getenv(
 regression_data_dir <- path.expand('~/Dropbox/Voting on Bonds/Data/Clean_Intermediate/TX/Regression')
 dir.create(tbl_dir, recursive = TRUE, showWarnings = FALSE)
 
+# Use the same window for every Texas election, media, and website regression.
+analysis_start_year <- 2001L
+analysis_end_year <- 2020L
+
 city_month <- fread(file.path(regression_data_dir, 'city_month_media_regression_ready.csv'))
 election <- fread(file.path(regression_data_dir, 'election_media_regression_ready.csv'))
 website_city_year_input <- fread(file.path(regression_data_dir, 'website_city_year_regression_ready.csv'))
 website_election_input <- fread(file.path(regression_data_dir, 'website_election_regression_ready.csv'))
 
-# Preserve the full election file for the prior submission's outcome descriptives.
+# Enforce the common window here as well as in Python so stale input files
+# cannot silently change a regression sample.
+city_month <- city_month[year >= analysis_start_year & year <= analysis_end_year]
+election <- election[year >= analysis_start_year & year <= analysis_end_year]
+website_city_year_input <- website_city_year_input[
+  year >= analysis_start_year & year <= analysis_end_year
+]
+website_election_input <- website_election_input[
+  year >= analysis_start_year & year <= analysis_end_year
+]
+
+# Preserve the common-window election file for outcome descriptives.
 election_brb_all <- copy(election)
 
 # Python supplies coverage indicators, logs, county-year IDs, and vote margins.
@@ -64,7 +79,8 @@ desc_city_year_col <- summarize_desc_cols(
 
 # City-Month Level descriptives: retain the regression's date/city restrictions.
 media_panel_sample <- city_month[
-  seed_issuer %in% election$seed_issuer & year >= 2003L &
+  seed_issuer %in% election$seed_issuer &
+    year >= analysis_start_year & year <= analysis_end_year &
     !is.na(fips) & !is.na(ln_county_gdp_prior) &
     !is.na(ln_county_pop_prior) & !is.na(ln_county_pers_inc_prior)
 ]
@@ -93,8 +109,9 @@ election_desc_vars <- c(
 election_desc_sample <- election[
   complete.cases(election[, ..election_desc_vars]) & is.finite(ln_Amount)
 ]
-# Outcome descriptives use all 2000--2021 elections, as in the prior submission.
-desc_election <- election_brb_all[year >= 2000 & year <= 2021,
+# Outcome descriptives use the same 2001--2020 analysis window.
+desc_election <- election_brb_all[
+  year >= analysis_start_year & year <= analysis_end_year,
   .(failed = as.integer(failed), abs_vote_margin)
 ]
 desc_election_col <- summarize_desc_cols(
