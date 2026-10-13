@@ -1,55 +1,22 @@
-#!/usr/bin/env Rscript
+# Set up ----
 
 # 15: Point-in-time border-state robustness specifications
-
 rm(list = ls())
 
-required_packages <- c("data.table", "fixest")
-missing_packages <- required_packages[
-  !vapply(required_packages, requireNamespace, logical(1), quietly = TRUE)
-]
-if (length(missing_packages) > 0L) {
-  stop("Missing required R packages: ", paste(missing_packages, collapse = ", "))
-}
+library(pacman)
+p_load(data.table, fixest)
 
-suppressPackageStartupMessages({
-  library(data.table)
-  library(fixest)
-})
+source("/Users/kmunevar/Dropbox/Voting on Bonds/Code/R/Clean/00_modify_etable_rounding.R")
+source("/Users/kmunevar/Dropbox/Voting on Bonds/Code/R/Clean/00_tax_privilege_definitions.R")
+source("/Users/kmunevar/Dropbox/Voting on Bonds/Code/R/Clean/00_border_pair_definitions.R")
 
-find_project_root <- function() {
-  file_arg <- grep("^--file=", commandArgs(FALSE), value = TRUE)
-  start <- if (length(file_arg) > 0L) {
-    dirname(normalizePath(sub("^--file=", "", file_arg[[1L]]), mustWork = TRUE))
-  } else {
-    normalizePath(getwd(), mustWork = TRUE)
-  }
-
-  candidate <- start
-  for (i in seq_len(8L)) {
-    if (dir.exists(file.path(candidate, "Code")) &&
-        dir.exists(file.path(candidate, "Data"))) {
-      return(normalizePath(candidate, mustWork = TRUE))
-    }
-    parent <- dirname(candidate)
-    if (identical(parent, candidate)) break
-    candidate <- parent
-  }
-  stop("Could not locate the project root from: ", start)
-}
-
-root <- find_project_root()
-clean_dir <- file.path(root, "Code", "R", "Clean")
+root <- "/Users/kmunevar/Dropbox/Voting on Bonds"
 tbl_dir <- Sys.getenv(
   "RESULTS_DIR",
-  unset = file.path(clean_dir, "output", "revision_tables")
+  unset = "/Users/kmunevar/Dropbox/Voting on Bonds/Code/R/Clean/output/revision_tables"
 )
-processed_dir <- file.path(clean_dir, "output", "processed")
+processed_dir <- "/Users/kmunevar/Dropbox/Voting on Bonds/Code/R/Clean/output/processed"
 dir.create(tbl_dir, recursive = TRUE, showWarnings = FALSE)
-
-source(file.path(clean_dir, "00_modify_etable_rounding.R"))
-source(file.path(clean_dir, "00_tax_privilege_definitions.R"))
-source(file.path(clean_dir, "00_border_pair_definitions.R"))
 
 border_2017 <- fread(
   file.path(
