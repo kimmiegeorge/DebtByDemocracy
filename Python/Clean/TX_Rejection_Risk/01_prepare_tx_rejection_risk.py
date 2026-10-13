@@ -15,6 +15,11 @@ REGRESSION = CLEAN / "TX" / "Regression"
 EXPOSURE = CLEAN / "TX" / "Election_Exposure"
 OUTPUT = CLEAN / "TX" / "Rejection_Risk"
 
+# The balanced annual panel is used for the incidence of city elections and
+# each bond-issuance outcome. Keep that shared analysis window in the input.
+ANNUAL_START_YEAR = 2001
+ANNUAL_END_YEAR = 2020
+
 
 def read_csv(path: Path) -> pl.DataFrame:
     if not path.exists():
@@ -207,7 +212,10 @@ def main() -> None:
         .unique(maintain_order=True)
         .join(complete_spatial_cities, on="seed_issuer", how="inner")
     )
-    years = pl.DataFrame({"year": range(1996, 2024)}, schema={"year": pl.Int64})
+    years = pl.DataFrame(
+        {"year": range(ANNUAL_START_YEAR, ANNUAL_END_YEAR + 1)},
+        schema={"year": pl.Int64},
+    )
     annual_election = annual_city_universe.join(years, how="cross")
 
     #%% Step 4: Create annual city election outcomes
