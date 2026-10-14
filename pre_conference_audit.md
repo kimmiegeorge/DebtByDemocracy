@@ -15,7 +15,8 @@ inputs, the scripts in `Python/Clean` and `R/Clean`, their declared inputs, and
 the table fragments currently present in the Code and paper repositories. I did
 not rerun the complete pipeline: several acquisition stages scrape websites,
 download external data, call APIs, or rebuild multi-gigabyte Mergent files, and
-the Code worktree contains in-progress changes. No analysis script was changed.
+the Code worktree contains in-progress changes. Remediations made after the
+initial review are marked as completed below.
 
 ## Executive summary
 
@@ -27,10 +28,11 @@ priority issues are:
    `260917` all-bond extension and `260923` refunding sensitivity retain narrow
    documented roles; the coauthor's `261013` expanded sample is excluded. See
    `mergent_vintage_update.md` for the before/after results.
-2. **`05d_census_mergent_point_in_time_debt_choice_refundings.R` can overwrite
-   production results.** It writes four filenames also written by the main
-   no-refundings pipeline, and writes the main outstanding-debt filename twice
-   within the same run.
+2. **The refunding-output collision was resolved after this audit.** Step 05d
+   now writes only to sensitivity-specific directories, uses
+   `_with_refundings` filenames, and refuses the main production output roots.
+   Its exploratory excess-debt result also has a separate, correctly labeled
+   table.
 3. **The active border table, wild-bootstrap table, and leave-one-out exercise
    do not currently use the same border specification/sample.** Their controls
    and identifying-pair screens differ.
@@ -133,29 +135,37 @@ sample/results and slightly change the Texas event-time figure. Full details are
 in `mergent_vintage_update.md`; those changed artifacts have not yet been
 promoted to production or the paper repository.
 
-### 2. The refunding sensitivity script overwrites production filenames — critical
+### 2. The refunding sensitivity output collision — resolved
 
-`R/Clean/05d_census_mergent_point_in_time_debt_choice_refundings.R` reads the
-refunding-inclusive cross section but writes these active production filenames:
+At the time of the initial audit,
+`R/Clean/05d_census_mergent_point_in_time_debt_choice_refundings.R` read the
+refunding-inclusive cross section but wrote these active production filenames:
 
 - `point_in_time_yield_spread_2017_full_sample.tex`
 - `point_in_time_yield_spread_2017_full_sample_panel_b_utgo_ltgo_revenue.tex`
 - `point_in_time_census_debt_poisson_2017_full_sample.tex`
 - `point_in_time_robustness_border_state.tex`
 
-The outstanding-debt filename is written twice inside 05d. The second write
-uses an exploratory excess-debt outcome while retaining column labels intended
+The outstanding-debt filename was written twice inside 05d. The second write
+used an exploratory excess-debt outcome while retaining column labels intended
 for total debt, long-term debt, and Mergent debt. The script also predates the
 current strict-municipal-debt-limit control used in the main point-in-time
-analysis.
+analysis. That specification-alignment question was not changed as part of the
+output quarantine and remains in the broader reconciliation work in finding 3.
 
-Because the main no-refundings script and 05d share output names, the existing
-TeX fragments have ambiguous provenance: file contents and timestamps alone do
-not prove which script wrote them last.
+Because the main no-refundings script and 05d shared output names, the
+pre-remediation TeX fragments had ambiguous provenance: file contents and
+timestamps alone did not prove which script wrote them last.
 
-**Action:** before any full run, isolate all 05d outputs in a sensitivity-only
-directory with unique filenames. Do not run 05d into the production
-`revision_tables` directory.
+**Resolution:** step 05d now defaults to `revision_tables/refundings` and
+`processed/refundings`, assigns `_with_refundings` to every artifact, and stops
+if configured to use either main production root. The exploratory excess-debt
+model now writes a separate
+`point_in_time_excess_census_debt_poisson_2017_with_refundings.tex` file with
+outcome-specific labels rather than overwriting the total-debt table. The safe
+sensitivity command and promotion warning are documented in `R/Clean/README.md`.
+The orphaned, undefined `excluded_state` filter was also removed so the script
+can complete from a clean R session.
 
 ### 3. Border specifications have drifted — high priority
 
@@ -344,7 +354,7 @@ rebuild an active paper figure.
 
 1. **Completed:** freeze the paper Mergent contract at `260716`, document the
    permitted extensions, and exclude the coauthor's `261013` expanded sample.
-2. Quarantine step 05d so it cannot write production names.
+2. **Completed:** quarantine step 05d so it cannot write production names.
 3. Reconcile the common point-in-time and border control/sample definitions.
 4. Regenerate the dark-green expanded result from the main no-refundings data.
 5. Decide whether Texas Panel C is active; either restore its input or remove

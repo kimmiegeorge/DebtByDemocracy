@@ -222,8 +222,27 @@ after step 05 in the same R session; it is not a standalone `Rscript` entry
 point. Its canonical outputs should be under `revision_tables/with_other`.
 
 Do **not** run Census step 2a or R step 05d in the routine production path. They
-are refunding-inclusive sensitivity stages. Step 05d currently writes several
-main production filenames and can overwrite no-refundings results.
+are refunding-inclusive sensitivity stages. Step 05d is quarantined by default:
+
+- raw TeX fragments go to `output/revision_tables/refundings`;
+- its processed wrapper goes to `output/processed/refundings`;
+- every artifact is named with the suffix `_with_refundings`; and
+- the script stops if either output is pointed at the corresponding main
+  production directory.
+
+To test the sensitivity in an empty staging tree, use the dedicated overrides:
+
+```sh
+REFUNDINGS_RESULTS_DIR='/absolute/path/to/staging/revision_tables/refundings' \
+REFUNDINGS_PROCESSED_RESULTS_DIR='/absolute/path/to/staging/processed/refundings' \
+Rscript R/Clean/05d_census_mergent_point_in_time_debt_choice_refundings.R
+```
+
+`RESULTS_DIR` remains a fallback for the raw fragments, but it must not be the
+main `output/revision_tables` directory. Prefer `REFUNDINGS_RESULTS_DIR` so the
+sensitivity destination is explicit. Review these results separately; do not
+promote them into main-paper filenames without an explicit specification
+decision.
 
 ### 8. Purpose substitution
 
@@ -330,7 +349,7 @@ step 02, rather than the older `r3b_media_supermajority.tex` promotion entry.
 | CAFR OpenAI/EMMA retry scripts | External API/download work and not in the active paper dependency graph |
 | `State_Policy_Comparison/prepare_addnl_state_policy_sources.py` | Source refresh/manual review, not table generation |
 | `Mergent/261013_clean_mergent_raw.py` | Separate coauthor expanded-sample build; not an approved paper-pipeline input |
-| Census step 2a and R step 05d | Refunding-inclusive sensitivity; step 05d collides with production filenames |
+| Census step 2a and R step 05d | Refunding-inclusive sensitivity; step 05d is safely quarantined but is not part of the main-paper run |
 | Archived map/statute code | Archive code is not an approved routine production stage |
 | `99_promote_tables_to_overleaf.R --apply` | Mutates the paper repository and must follow numerical/visual review |
 

@@ -1,4 +1,4 @@
-# 05: Point-in-time Census/Mergent results (Tables 7, 8, 10, and 11; also Table 1 inputs) with refundings
+# 05d: Point-in-time Census/Mergent results (Tables 7, 8, 10, and 11; also Table 1 inputs) with refundings
 rm(list = ls())
 
 library(pacman)
@@ -10,12 +10,37 @@ source('/Users/kmunevar/Dropbox/Voting on Bonds/Code/R/Clean/00_state_policy_def
 source('/Users/kmunevar/Dropbox/Voting on Bonds/Code/R/Clean/00_border_pair_definitions.R')
 
 root <- '/Users/kmunevar/Dropbox/Voting on Bonds'
+production_tbl_dir <- file.path(root, 'Code/R/Clean/output/revision_tables')
+production_processed_dir <- file.path(root, 'Code/R/Clean/output/processed')
 tbl_dir <- Sys.getenv(
-  'RESULTS_DIR',
-  unset = '/Users/kmunevar/Dropbox/Voting on Bonds/Code/R/Clean/output/revision_tables'
+  'REFUNDINGS_RESULTS_DIR',
+  unset = Sys.getenv(
+    'RESULTS_DIR',
+    unset = file.path(production_tbl_dir, 'refundings')
+  )
 )
+processed_dir <- Sys.getenv(
+  'REFUNDINGS_PROCESSED_RESULTS_DIR',
+  unset = file.path(production_processed_dir, 'refundings')
+)
+
+normalize_output_path <- function(path) {
+  normalizePath(path.expand(path), winslash = '/', mustWork = FALSE)
+}
+if (normalize_output_path(tbl_dir) == normalize_output_path(production_tbl_dir)) {
+  stop(
+    'Refunding sensitivity cannot write to the main revision_tables directory. ',
+    'Use REFUNDINGS_RESULTS_DIR or a non-production RESULTS_DIR.'
+  )
+}
+if (normalize_output_path(processed_dir) == normalize_output_path(production_processed_dir)) {
+  stop(
+    'Refunding sensitivity cannot write to the main processed-output directory. ',
+    'Use REFUNDINGS_PROCESSED_RESULTS_DIR.'
+  )
+}
 dir.create(tbl_dir, recursive = TRUE, showWarnings = FALSE)
-processed_dir <- '/Users/kmunevar/Dropbox/Voting on Bonds/Code/R/Clean/output/processed'
+dir.create(processed_dir, recursive = TRUE, showWarnings = FALSE)
 
 #----------------------------
 # Shared table labels
@@ -37,6 +62,7 @@ control_dict <- c(
   mergent_wavg_yield_spread_ltgo = 'Wtd. Avg. Yield Spread (LTGO)',
   mergent_wavg_yield_spread_revenue = 'Wtd. Avg. Yield Spread (Rev)',
   census_total_debt_mil = 'Census Total Debt',
+  excess_census_debt_mil = 'Census Less Mergent Debt',
   census_lt_debt_mil = 'Census Long-Term Debt',
   mergent_go_revenue_outstanding_debt_mil = 'Mergent GO + Revenue Debt',
   ln_1p_county_nonmunicipal_total_debt = 'County Non-City Debt',
@@ -248,7 +274,10 @@ summary_tex_2017 <- add_panel(
   'Panel E: Debt choice descriptive statistics',
   ncols = 10
 )
-writeLines(summary_tex_2017, file.path(tbl_dir, 'issuer_level_desc_with_ref.tex'))
+writeLines(
+  summary_tex_2017,
+  file.path(tbl_dir, 'issuer_level_desc_with_refundings.tex')
+)
 
 #----------------------------
 # 2017 full sample debt substitution: GO vote required
@@ -307,7 +336,10 @@ table_call <- etable(
 modified_output <- modify_etable_rounding(table_call, coef_digits = 3, tstat_digits = 2)
 modified_output <- format_table(modified_output, cluster_level = 'State')
 modified_output <- add_panel(modified_output, 'Panel A: GO vote required')
-writeLines(modified_output, file.path(tbl_dir, 'point_in_time_debt_choice_2017_allgo_with_ref.tex'))
+writeLines(
+  modified_output,
+  file.path(tbl_dir, 'point_in_time_debt_choice_2017_allgo_with_refundings.tex')
+)
 
 #----------------------------
 # 2017 full sample debt substitution: only UTGO vote required
@@ -365,7 +397,10 @@ table_call <- etable(
 modified_output <- modify_etable_rounding(table_call, coef_digits = 3, tstat_digits = 2)
 modified_output <- format_table(modified_output, cluster_level = 'State')
 modified_output <- add_panel(modified_output, 'Panel B: Only UTGO vote required')
-writeLines(modified_output, file.path(tbl_dir, 'point_in_time_debt_choice_2017_utgo_only_with_ref.tex'))
+writeLines(
+  modified_output,
+  file.path(tbl_dir, 'point_in_time_debt_choice_2017_utgo_only_with_refundings.tex')
+)
 
 
 #----------------------------
@@ -466,7 +501,10 @@ summary_tex_2017 <- add_panel(
   'Panel: Debt choice descriptive statistics with Other category',
   ncols = 10
 )
-writeLines(summary_tex_2017, file.path(tbl_dir, 'issuer_level_desc_other_with_ref.tex'))
+writeLines(
+  summary_tex_2017,
+  file.path(tbl_dir, 'issuer_level_desc_other_with_refundings.tex')
+)
 
 
 #----------------------------
@@ -543,7 +581,10 @@ table_call <- etable(
 modified_output <- modify_etable_rounding(table_call, coef_digits = 3, tstat_digits = 2)
 modified_output <- format_table(modified_output, cluster_level = 'State')
 modified_output <- add_panel(modified_output, 'Panel A: GO vote required')
-writeLines(modified_output, file.path(tbl_dir, 'point_in_time_debt_choice_2017_allgo_all_with_ref.tex'))
+writeLines(
+  modified_output,
+  file.path(tbl_dir, 'point_in_time_debt_choice_2017_allgo_all_with_refundings.tex')
+)
 
 #----------------------------
 # 2017 full sample debt substitution: only UTGO vote required
@@ -610,7 +651,10 @@ table_call <- etable(
 modified_output <- modify_etable_rounding(table_call, coef_digits = 3, tstat_digits = 2)
 modified_output <- format_table(modified_output, cluster_level = 'State')
 modified_output <- add_panel(modified_output, 'Panel B: Only UTGO vote required')
-writeLines(modified_output, file.path(tbl_dir, 'point_in_time_debt_choice_2017_utgo_only_all_with_ref.tex'))
+writeLines(
+  modified_output,
+  file.path(tbl_dir, 'point_in_time_debt_choice_2017_utgo_only_all_with_refundings.tex')
+)
 
 
 
@@ -688,7 +732,13 @@ table_call <- etable(
 modified_output <- modify_etable_rounding(table_call, coef_digits = 3, tstat_digits = 2)
 modified_output <- format_table(modified_output, cluster_level = 'State')
 modified_output <- add_panel(modified_output, 'Panel A: GO vote required')
-writeLines(modified_output, file.path(tbl_dir, 'point_in_time_debt_choice_2017_allgo_all_with_ref_drop_MA.tex'))
+writeLines(
+  modified_output,
+  file.path(
+    tbl_dir,
+    'point_in_time_debt_choice_2017_allgo_all_drop_MA_with_refundings.tex'
+  )
+)
 
 #----------------------------
 # 2017 full sample debt substitution: only UTGO vote required
@@ -755,7 +805,13 @@ table_call <- etable(
 modified_output <- modify_etable_rounding(table_call, coef_digits = 3, tstat_digits = 2)
 modified_output <- format_table(modified_output, cluster_level = 'State')
 modified_output <- add_panel(modified_output, 'Panel B: Only UTGO vote required')
-writeLines(modified_output, file.path(tbl_dir, 'point_in_time_debt_choice_2017_utgo_only_all_with_ref_drop_MA.tex'))
+writeLines(
+  modified_output,
+  file.path(
+    tbl_dir,
+    'point_in_time_debt_choice_2017_utgo_only_all_drop_MA_with_refundings.tex'
+  )
+)
 
 
 
@@ -817,7 +873,10 @@ modified_output <- add_panel(
 )
 writeLines(
   modified_output,
-  file.path(tbl_dir, 'point_in_time_yield_spread_2017_full_sample.tex')
+  file.path(
+    tbl_dir,
+    'point_in_time_yield_spread_2017_full_sample_with_refundings.tex'
+  )
 )
 
 #----------------------------
@@ -915,7 +974,10 @@ writeLines(
   modified_output,
   file.path(
     tbl_dir,
-    'point_in_time_yield_spread_2017_full_sample_panel_b_utgo_ltgo_revenue.tex'
+    paste0(
+      'point_in_time_yield_spread_2017_full_sample_',
+      'panel_b_utgo_ltgo_revenue_with_refundings.tex'
+    )
   )
 )
 
@@ -969,7 +1031,10 @@ if (length(adj_r2_idx) > 0) {
 modified_output <- add_panel(modified_output, 'Panel B: Supermajority cross section', ncols = 3)
 writeLines(
   modified_output,
-  file.path(tbl_dir, 'point_in_time_robustness_super_majority.tex')
+  file.path(
+    tbl_dir,
+    'point_in_time_robustness_super_majority_with_refundings.tex'
+  )
 )
 
 
@@ -1057,7 +1122,13 @@ modified_output <- sub(
   fixed = TRUE
 )
 modified_output <- format_table(modified_output, cluster_level = 'State')
-writeLines(modified_output, file.path(tbl_dir, 'point_in_time_census_debt_poisson_2017_full_sample.tex'))
+writeLines(
+  modified_output,
+  file.path(
+    tbl_dir,
+    'point_in_time_census_debt_poisson_2017_full_sample_with_refundings.tex'
+  )
+)
 
 
 
@@ -1069,7 +1140,7 @@ writeLines(modified_output, file.path(tbl_dir, 'point_in_time_census_debt_poisso
 #----------------------------
 full_sample_2017 <- full_sample_2017_unrestricted
 full_sample_2017[, excess_census_debt_mil := census_total_debt_mil - mergent_go_revenue_outstanding_debt_mil]
-census_total_debt_ppml_2017 <- fepois(
+excess_census_debt_ppml_2017 <- fepois(
   excess_census_debt_mil ~ city_go_vote + ln_gdp + ln_census_population + ln_pers_inc +
     ln_1p_county_nonmunicipal_total_debt + glm_proactive + state_ltgo_allowed + state_go_vote + low_state_tax_privilege,
   data = full_sample_2017[excess_census_debt_mil > 0],
@@ -1091,10 +1162,10 @@ mergent_debt_ppml_2017 <- fepois(
 )
 
 table_call <- etable(
-  census_total_debt_ppml_2017,
+  excess_census_debt_ppml_2017,
   census_long_term_debt_ppml_2017,
   mergent_debt_ppml_2017,
-  headers = c('Total', 'Long-term', 'GO + Revenue'),
+  headers = c('Excess', 'Long-term', 'GO + Revenue'),
   coefstat = 'tstat',
   drop = 'Constant',
   style.tex = style.tex(main = 'aer', fixef.suffix = ' FE', yesNo = c('Yes', 'No')),
@@ -1111,19 +1182,32 @@ table_call <- etable(
 
 modified_output <- modify_etable_rounding(table_call, coef_digits = 3, tstat_digits = 2)
 modified_output <- sub(
-  ' & Census Total Debt & Census Long-Term Debt & Mergent GO + Revenue Debt\\\\',
-  paste0(' & ', '\\', 'multicolumn{2}{c}{Census Debt} & ', '\\', 'multicolumn{1}{c}{Mergent Debt}\\\\'),
+  ' & Census Less Mergent Debt & Census Long-Term Debt & Mergent GO + Revenue Debt\\\\',
+  paste0(
+    ' & ', '\\', 'multicolumn{1}{c}{Census Less Mergent Debt} & ',
+    '\\', 'multicolumn{1}{c}{Census Debt} & ',
+    '\\', 'multicolumn{1}{c}{Mergent Debt}\\\\'
+  ),
   modified_output,
   fixed = TRUE
 )
 modified_output <- sub(
-  ' & Total & Long-term & GO + Revenue \\\\',
-  ' & Total & Long-term & GO + Revenue \\\\\n   \\\\cmidrule(lr){2-3}\\cmidrule(lr){4-4}',
+  ' & Excess & Long-term & GO + Revenue \\\\',
+  paste0(
+    ' & Excess & Long-term & GO + Revenue \\\\\n   ',
+    '\\cmidrule(lr){2-2}\\cmidrule(lr){3-3}\\cmidrule(lr){4-4}'
+  ),
   modified_output,
   fixed = TRUE
 )
 modified_output <- format_table(modified_output, cluster_level = 'State')
-writeLines(modified_output, file.path(tbl_dir, 'point_in_time_census_debt_poisson_2017_full_sample.tex'))
+writeLines(
+  modified_output,
+  file.path(
+    tbl_dir,
+    'point_in_time_excess_census_debt_poisson_2017_with_refundings.tex'
+  )
+)
 
 
 #----------------------------
@@ -1195,7 +1279,13 @@ modified_output <- sub(
   fixed = TRUE
 )
 modified_output <- format_table(modified_output, cluster_level = 'State')
-writeLines(modified_output, file.path(tbl_dir, 'point_in_time_census_debt_poisson_2017_expanded_sample.tex'))
+writeLines(
+  modified_output,
+  file.path(
+    tbl_dir,
+    'point_in_time_census_debt_poisson_2017_expanded_sample_with_refundings.tex'
+  )
+)
 
 
 #----------------------------
@@ -1204,7 +1294,6 @@ writeLines(modified_output, file.path(tbl_dir, 'point_in_time_census_debt_poisso
 border_2017 <- fread(
   file.path(root, 'Data/Clean_Intermediate/Census COG Finance/processed/census_mergent_debt_cross_section_2017_border_sample.csv')
 )
-if (nzchar(excluded_state)) border_2017 <- border_2017[state != excluded_state]
 
 border_2017[, fips := as.character(fips)]
 add_low_state_tax_privilege(border_2017, year_value = 2017)
@@ -1291,15 +1380,15 @@ if (length(adj_r2_idx) > 0) {
 modified_output <- add_panel(modified_output, 'Panel A: Border-city sample', ncols = 3)
 writeLines(
   modified_output,
-  file.path(tbl_dir, 'point_in_time_robustness_border_state.tex')
+  file.path(tbl_dir, 'point_in_time_robustness_border_state_with_refundings.tex')
 )
 
 dir.create(processed_dir, recursive = TRUE, showWarnings = FALSE)
 writeLines(c(
   '\\newpage',
   '\\begin{table}[H]\\centering',
-  '\\caption{\\textbf{Point-in-Time Robustness: Border-City and Supermajority Specifications}}',
-  '\\label{tab:point_in_time_robustness}',
+  '\\caption{\\textbf{Refunding-Inclusive Point-in-Time Robustness: Border-City and Supermajority Specifications}}',
+  '\\label{tab:point_in_time_robustness_with_refundings}',
   paste0(
     '\\parbox{\\textwidth}{This table reports 2017 point-in-time cross-sectional estimates. ',
     'Panel A applies the full-sample eligibility rule, restricts the sample to cities near state borders, ',
@@ -1309,7 +1398,7 @@ writeLines(c(
     'Controls are suppressed. Standard errors are clustered by state-year in Panel A and by state in Panel B.}'
   ),
   '\\end{table}',
-  '\\input{tables/clean/raw/point_in_time_robustness_border_state}',
+  '\\input{tables/clean/raw/refundings/point_in_time_robustness_border_state_with_refundings}',
   '\\vspace{10pt}',
-  '\\input{tables/clean/raw/point_in_time_robustness_super_majority}'
-), file.path(processed_dir, 'point_in_time_robustness.tex'))
+  '\\input{tables/clean/raw/refundings/point_in_time_robustness_super_majority_with_refundings}'
+), file.path(processed_dir, 'point_in_time_robustness_with_refundings.tex'))
