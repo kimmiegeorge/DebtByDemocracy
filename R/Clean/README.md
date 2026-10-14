@@ -235,6 +235,13 @@ residual-other debt universe. Step 05c restricts that source to
 excluding refunding bonds from the analysis. Its canonical outputs should be
 under `revision_tables/with_other`.
 
+The response robustness table combines Revenue and Other into one exhaustive
+non-GO category. Step 05c writes Panels A--C and E as
+`with_other/panel_*_other_*.tex`; step 06c writes Panel D and assembles
+`output/processed/with_other_robustness.tex`. The detailed separate Revenue,
+Other, and COO/COP fragments remain available as diagnostics, but the assembled
+robustness table uses only the combined Revenue/Other outcomes.
+
 Do **not** run Census step 2a or R step 05d in the routine production path. They
 are refunding-inclusive sensitivity stages. Step 05d is quarantined by default:
 

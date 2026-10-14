@@ -182,6 +182,10 @@ expanded_yield_2017 <- expanded_bonds_2017[, .(
   expanded_wavg_yield_spread_other = expanded_weighted_mean(
     offering_yield_spread_nc, amount, bond_type %chin% c("cop", "other")
   ),
+  expanded_wavg_yield_spread_revenue_other = expanded_weighted_mean(
+    offering_yield_spread_nc, amount,
+    rev == 1 | bond_type %chin% c("cop", "other")
+  ),
   expanded_wavg_maturity_all = expanded_weighted_mean(
     original_maturity_years, amount, rep(TRUE, .N)
   ),
@@ -196,6 +200,10 @@ expanded_yield_2017 <- expanded_bonds_2017[, .(
   ),
   expanded_wavg_maturity_other = expanded_weighted_mean(
     original_maturity_years, amount, bond_type %chin% c("cop", "other")
+  ),
+  expanded_wavg_maturity_revenue_other = expanded_weighted_mean(
+    original_maturity_years, amount,
+    rev == 1 | bond_type %chin% c("cop", "other")
   ),
   expanded_wavg_rating_all = expanded_weighted_mean_zero_missing(
     rating_issue_max, amount, rep(TRUE, .N)
@@ -212,6 +220,10 @@ expanded_yield_2017 <- expanded_bonds_2017[, .(
   expanded_wavg_rating_other = expanded_weighted_mean_zero_missing(
     rating_issue_max, amount, bond_type %chin% c("cop", "other")
   ),
+  expanded_wavg_rating_revenue_other = expanded_weighted_mean_zero_missing(
+    rating_issue_max, amount,
+    rev == 1 | bond_type %chin% c("cop", "other")
+  ),
   expanded_any_insured_all = expanded_any_indicator(
     insured, amount, rep(TRUE, .N)
   ),
@@ -226,6 +238,9 @@ expanded_yield_2017 <- expanded_bonds_2017[, .(
   ),
   expanded_any_insured_other = expanded_any_indicator(
     insured, amount, bond_type %chin% c("cop", "other")
+  ),
+  expanded_any_insured_revenue_other = expanded_any_indicator(
+    insured, amount, rev == 1 | bond_type %chin% c("cop", "other")
   ),
   expanded_any_callable_all = expanded_any_indicator(
     callable, amount, rep(TRUE, .N)
@@ -242,6 +257,9 @@ expanded_yield_2017 <- expanded_bonds_2017[, .(
   expanded_any_callable_other = expanded_any_indicator(
     callable, amount, bond_type %chin% c("cop", "other")
   ),
+  expanded_any_callable_revenue_other = expanded_any_indicator(
+    callable, amount, rev == 1 | bond_type %chin% c("cop", "other")
+  ),
   expanded_any_sinkable_all = expanded_any_indicator(
     sinkable, amount, rep(TRUE, .N)
   ),
@@ -256,6 +274,9 @@ expanded_yield_2017 <- expanded_bonds_2017[, .(
   ),
   expanded_any_sinkable_other = expanded_any_indicator(
     sinkable, amount, bond_type %chin% c("cop", "other")
+  ),
+  expanded_any_sinkable_revenue_other = expanded_any_indicator(
+    sinkable, amount, rev == 1 | bond_type %chin% c("cop", "other")
   )
 ), by = .(seed_issuer_id_join, state)]
 
@@ -286,6 +307,9 @@ expanded_debt_2017[, `:=`(
   frac_other_outstanding_expanded =
     (expanded_certificate_debt + expanded_other_ex_certificate_debt) /
       expanded_total_debt,
+  frac_revenue_other_outstanding_expanded =
+    (expanded_revenue_debt + expanded_certificate_debt +
+      expanded_other_ex_certificate_debt) / expanded_total_debt,
   frac_certificate_outstanding_expanded =
     expanded_certificate_debt / expanded_total_debt,
   frac_coo_outstanding_expanded = expanded_coo_debt / expanded_total_debt,
@@ -330,6 +354,7 @@ full_sample_2017_unrestricted[, `:=`(
   frac_ltgo_outstanding_all = NA_real_,
   frac_rev_outstanding_all = NA_real_,
   frac_other_outstanding_all = NA_real_,
+  frac_revenue_other_outstanding_all = NA_real_,
   frac_certificate_outstanding_all = NA_real_,
   frac_coo_outstanding_all = NA_real_,
   frac_cop_outstanding_all = NA_real_,
@@ -339,31 +364,37 @@ full_sample_2017_unrestricted[, `:=`(
   mergent_wavg_yield_spread_ltgo = NA_real_,
   mergent_wavg_yield_spread_revenue = NA_real_,
   mergent_wavg_yield_spread_other = NA_real_,
+  mergent_wavg_yield_spread_revenue_other = NA_real_,
   mergent_wavg_original_maturity_years_all = NA_real_,
   mergent_wavg_original_maturity_years_utgo = NA_real_,
   mergent_wavg_original_maturity_years_ltgo = NA_real_,
   mergent_wavg_original_maturity_years_revenue = NA_real_,
   mergent_wavg_original_maturity_years_other = NA_real_,
+  mergent_wavg_original_maturity_years_revenue_other = NA_real_,
   mergent_wavg_rating_all_zero_unrated = NA_real_,
   mergent_wavg_rating_utgo_zero_unrated = NA_real_,
   mergent_wavg_rating_ltgo_zero_unrated = NA_real_,
   mergent_wavg_rating_revenue_zero_unrated = NA_real_,
   mergent_wavg_rating_other_zero_unrated = NA_real_,
+  mergent_wavg_rating_revenue_other_zero_unrated = NA_real_,
   mergent_any_insured_all = NA_integer_,
   mergent_any_insured_utgo = NA_integer_,
   mergent_any_insured_ltgo = NA_integer_,
   mergent_any_insured_revenue = NA_integer_,
   mergent_any_insured_other = NA_integer_,
+  mergent_any_insured_revenue_other = NA_integer_,
   mergent_any_callable_all = NA_integer_,
   mergent_any_callable_utgo = NA_integer_,
   mergent_any_callable_ltgo = NA_integer_,
   mergent_any_callable_revenue = NA_integer_,
   mergent_any_callable_other = NA_integer_,
+  mergent_any_callable_revenue_other = NA_integer_,
   mergent_any_sinkable_all = NA_integer_,
   mergent_any_sinkable_utgo = NA_integer_,
   mergent_any_sinkable_ltgo = NA_integer_,
   mergent_any_sinkable_revenue = NA_integer_,
-  mergent_any_sinkable_other = NA_integer_
+  mergent_any_sinkable_other = NA_integer_,
+  mergent_any_sinkable_revenue_other = NA_integer_
 )]
 full_sample_2017_unrestricted[
   expanded_debt_2017,
@@ -408,6 +439,8 @@ full_sample_2017_unrestricted[
     frac_ltgo_outstanding_all = i.frac_ltgo_outstanding_expanded,
     frac_rev_outstanding_all = i.frac_rev_outstanding_expanded,
     frac_other_outstanding_all = i.frac_other_outstanding_expanded,
+    frac_revenue_other_outstanding_all =
+      i.frac_revenue_other_outstanding_expanded,
     frac_certificate_outstanding_all = i.frac_certificate_outstanding_expanded,
     frac_coo_outstanding_all = i.frac_coo_outstanding_expanded,
     frac_cop_outstanding_all = i.frac_cop_outstanding_expanded,
@@ -418,36 +451,46 @@ full_sample_2017_unrestricted[
     mergent_wavg_yield_spread_ltgo = i.expanded_wavg_yield_spread_ltgo,
     mergent_wavg_yield_spread_revenue = i.expanded_wavg_yield_spread_revenue,
     mergent_wavg_yield_spread_other = i.expanded_wavg_yield_spread_other,
+    mergent_wavg_yield_spread_revenue_other =
+      i.expanded_wavg_yield_spread_revenue_other,
     mergent_wavg_original_maturity_years_all = i.expanded_wavg_maturity_all,
     mergent_wavg_original_maturity_years_utgo = i.expanded_wavg_maturity_utgo,
     mergent_wavg_original_maturity_years_ltgo = i.expanded_wavg_maturity_ltgo,
     mergent_wavg_original_maturity_years_revenue = i.expanded_wavg_maturity_revenue,
     mergent_wavg_original_maturity_years_other = i.expanded_wavg_maturity_other,
+    mergent_wavg_original_maturity_years_revenue_other =
+      i.expanded_wavg_maturity_revenue_other,
     mergent_wavg_rating_all_zero_unrated = i.expanded_wavg_rating_all,
     mergent_wavg_rating_utgo_zero_unrated = i.expanded_wavg_rating_utgo,
     mergent_wavg_rating_ltgo_zero_unrated = i.expanded_wavg_rating_ltgo,
     mergent_wavg_rating_revenue_zero_unrated = i.expanded_wavg_rating_revenue,
     mergent_wavg_rating_other_zero_unrated = i.expanded_wavg_rating_other,
+    mergent_wavg_rating_revenue_other_zero_unrated =
+      i.expanded_wavg_rating_revenue_other,
     mergent_any_insured_all = i.expanded_any_insured_all,
     mergent_any_insured_utgo = i.expanded_any_insured_utgo,
     mergent_any_insured_ltgo = i.expanded_any_insured_ltgo,
     mergent_any_insured_revenue = i.expanded_any_insured_revenue,
     mergent_any_insured_other = i.expanded_any_insured_other,
+    mergent_any_insured_revenue_other = i.expanded_any_insured_revenue_other,
     mergent_any_callable_all = i.expanded_any_callable_all,
     mergent_any_callable_utgo = i.expanded_any_callable_utgo,
     mergent_any_callable_ltgo = i.expanded_any_callable_ltgo,
     mergent_any_callable_revenue = i.expanded_any_callable_revenue,
     mergent_any_callable_other = i.expanded_any_callable_other,
+    mergent_any_callable_revenue_other = i.expanded_any_callable_revenue_other,
     mergent_any_sinkable_all = i.expanded_any_sinkable_all,
     mergent_any_sinkable_utgo = i.expanded_any_sinkable_utgo,
     mergent_any_sinkable_ltgo = i.expanded_any_sinkable_ltgo,
     mergent_any_sinkable_revenue = i.expanded_any_sinkable_revenue,
-    mergent_any_sinkable_other = i.expanded_any_sinkable_other
+    mergent_any_sinkable_other = i.expanded_any_sinkable_other,
+    mergent_any_sinkable_revenue_other = i.expanded_any_sinkable_revenue_other
   )
 ]
 full_sample_2017_unrestricted[, seed_issuer_id_join := NULL]
 
 control_dict["frac_other_outstanding_all"] <- "Pct Other"
+control_dict["frac_revenue_other_outstanding_all"] <- "Pct Revenue/Other"
 control_dict <- c(
   control_dict,
   mergent_total_outstanding_debt_mil = "Mergent Total Public Debt",
@@ -457,17 +500,26 @@ control_dict <- c(
   frac_other_ex_certificate_outstanding_all = "Pct Other (excl. COO/COP)",
   mergent_wavg_yield_spread_all = "Wtd. Avg. Yield Spread",
   mergent_wavg_yield_spread_other = "Wtd. Avg. Yield Spread (Other)",
+  mergent_wavg_yield_spread_revenue_other =
+    "Wtd. Avg. Yield Spread (Revenue/Other)",
   mergent_wavg_rating_all_zero_unrated = "Wtd. Avg. Rating",
   mergent_wavg_rating_other_zero_unrated = "Wtd. Avg. Rating (Other)",
+  mergent_wavg_rating_revenue_other_zero_unrated =
+    "Wtd. Avg. Rating (Revenue/Other)",
   mergent_wavg_original_maturity_years_all = "Wtd. Avg. Original Maturity",
   mergent_wavg_original_maturity_years_other =
     "Wtd. Avg. Original Maturity (Other)",
+  mergent_wavg_original_maturity_years_revenue_other =
+    "Wtd. Avg. Original Maturity (Revenue/Other)",
   mergent_any_insured_all = "Any Insured",
   mergent_any_callable_all = "Any Callable",
   mergent_any_sinkable_all = "Any Sinkable",
   mergent_any_insured_other = "Any Insured",
   mergent_any_callable_other = "Any Callable",
-  mergent_any_sinkable_other = "Any Sinkable"
+  mergent_any_sinkable_other = "Any Sinkable",
+  mergent_any_insured_revenue_other = "Any Insured",
+  mergent_any_callable_revenue_other = "Any Callable",
+  mergent_any_sinkable_revenue_other = "Any Sinkable"
 )
 
 #----------------------------
@@ -697,6 +749,66 @@ writeLines(
   )
 )
 
+# Robustness-table Panel A: replace the submitted Mergent GO + Revenue column
+# with all public debt, including the expanded Other category.
+table_call <- etable(
+  census_total_debt_ppml_2017_expanded_other,
+  census_long_term_debt_ppml_2017_expanded_other,
+  mergent_total_debt_ppml_2017_expanded_other,
+  headers = c("Total", "Long-term", "All public"),
+  coefstat = "tstat",
+  drop = "Constant",
+  style.tex = style.tex(main = "aer", fixef.suffix = " FE", yesNo = c("Yes", "No")),
+  fitstat = c("n", "pr2"),
+  se.below = TRUE,
+  digits = 3,
+  digits.stats = 3,
+  signif.code = c("***" = 0.01, "**" = 0.05, "*" = 0.10),
+  tex = TRUE,
+  keep_raw = "^city_go_vote$",
+  order = c("%city_go_vote"),
+  dict = control_dict,
+  placement = "H"
+)
+
+modified_output <- modify_etable_rounding(
+  table_call,
+  coef_digits = 3,
+  tstat_digits = 2
+)
+modified_output <- sub(
+  " & Census Total Debt & Census Long-Term Debt & Mergent Total Public Debt\\\\",
+  paste0(
+    " & ", "\\", "multicolumn{2}{c}{Census Debt} & ",
+    "\\", "multicolumn{1}{c}{Mergent Debt}\\\\"
+  ),
+  modified_output,
+  fixed = TRUE
+)
+modified_output <- sub(
+  " & Total & Long-term & All public \\\\",
+  " & Total & Long-term & All public \\\\\n   \\cmidrule(lr){2-3}\\cmidrule(lr){4-4}",
+  modified_output,
+  fixed = TRUE
+)
+modified_output <- format_table(modified_output, cluster_level = "State")
+r2_idx <- grep("R\\$\\^2\\$", modified_output)
+stopifnot(length(r2_idx) == 1L)
+modified_output <- append(
+  modified_output,
+  "   Controls                   & Yes & Yes & Yes\\\\",
+  after = r2_idx
+)
+modified_output <- add_panel(
+  modified_output,
+  "Panel A: Outstanding debt",
+  ncols = 3
+)
+writeLines(
+  modified_output,
+  file.path(tbl_dir_other, "panel_a_other_outstanding_debt.tex")
+)
+
 allgo_utgo_uncontrolled_2017 <- feols(
   frac_utgo_outstanding_all ~ city_go_vote,
   data = full_sample_other_2017[insample_allgo == 1],
@@ -739,6 +851,16 @@ allgo_other_controlled_2017 <- feols(
 )
 summary(allgo_other_controlled_2017)
 
+allgo_revenue_other_controlled_2017 <- feols(
+  frac_revenue_other_outstanding_all ~ city_go_vote + ln_gdp +
+    ln_census_population + ln_pers_inc +
+    ln_1p_county_nonmunicipal_total_debt + glm_proactive +
+    state_ltgo_allowed + state_go_vote + low_state_tax_privilege +
+    strict_municipal_debt_limit,
+  data = full_sample_other_2017[insample_allgo == 1],
+  vcov = vcov_cluster(~state)
+)
+
 table_call <- etable(
   allgo_utgo_uncontrolled_2017,
   allgo_utgo_controlled_2017,
@@ -763,6 +885,55 @@ modified_output <- modify_etable_rounding(table_call, coef_digits = 3, tstat_dig
 modified_output <- format_table(modified_output, cluster_level = "State")
 modified_output <- add_panel(modified_output, "Panel A: GO vote required")
 writeLines(modified_output, file.path(tbl_dir_other, "point_in_time_debt_choice_2017_allgo_all.tex"))
+
+# Robustness-table Panel B: Revenue and Other are a single exhaustive
+# non-GO category, so the three controlled debt shares sum to one.
+table_call <- etable(
+  allgo_utgo_uncontrolled_2017,
+  allgo_utgo_controlled_2017,
+  allgo_ltgo_controlled_2017,
+  allgo_revenue_other_controlled_2017,
+  coefstat = "tstat",
+  drop = "Constant",
+  style.tex = style.tex(main = "aer", fixef.suffix = " FE", yesNo = c("Yes", "No")),
+  fitstat = c("n", "ar2"),
+  se.below = TRUE,
+  digits = 3,
+  digits.stats = 3,
+  signif.code = c("***" = 0.01, "**" = 0.05, "*" = 0.10),
+  tex = TRUE,
+  keep_raw = "^city_go_vote$",
+  order = c("%city_go_vote"),
+  dict = c(
+    control_dict[names(control_dict) != "city_go_vote"],
+    city_go_vote = "GO Vote"
+  ),
+  placement = "H"
+)
+
+modified_output <- modify_etable_rounding(
+  table_call,
+  coef_digits = 3,
+  tstat_digits = 2
+)
+modified_output <- format_table(modified_output, cluster_level = "State")
+r2_idx <- grep("R\\$\\^2\\$", modified_output)
+stopifnot(length(r2_idx) == 1L)
+modified_output <- append(
+  modified_output,
+  "   Controls                   & No & Yes & Yes & Yes\\\\",
+  after = r2_idx
+)
+modified_output <- add_panel(
+  modified_output,
+  "Panel B: Debt substitution with all GO vote required",
+  ncols = 5,
+  zero_width = TRUE
+)
+writeLines(
+  modified_output,
+  file.path(tbl_dir_other, "panel_b_other_debt_choice_allgo.tex")
+)
 
 #----------------------------
 # 2017 full sample debt substitution: only UTGO vote required
@@ -810,6 +981,16 @@ utgo_only_other_controlled_2017 <- feols(
 )
 summary(utgo_only_other_controlled_2017)
 
+utgo_only_revenue_other_controlled_2017 <- feols(
+  frac_revenue_other_outstanding_all ~ city_go_vote + ln_gdp +
+    ln_census_population + ln_pers_inc +
+    ln_1p_county_nonmunicipal_total_debt + glm_proactive +
+    state_ltgo_allowed + state_go_vote + low_state_tax_privilege +
+    strict_municipal_debt_limit,
+  data = full_sample_other_2017[insample_utgo_only == 1],
+  vcov = vcov_cluster(~state)
+)
+
 table_call <- etable(
   utgo_only_utgo_uncontrolled_2017,
   utgo_only_utgo_controlled_2017,
@@ -834,6 +1015,55 @@ modified_output <- modify_etable_rounding(table_call, coef_digits = 3, tstat_dig
 modified_output <- format_table(modified_output, cluster_level = "State")
 modified_output <- add_panel(modified_output, "Panel B: Only UTGO vote required")
 writeLines(modified_output, file.path(tbl_dir_other, "point_in_time_debt_choice_2017_utgo_only_all.tex"))
+
+# Robustness-table Panel C: the same Revenue/Other combination in states where
+# only UTGO debt is subject to a city vote.
+table_call <- etable(
+  utgo_only_utgo_uncontrolled_2017,
+  utgo_only_utgo_controlled_2017,
+  utgo_only_ltgo_controlled_2017,
+  utgo_only_revenue_other_controlled_2017,
+  coefstat = "tstat",
+  drop = "Constant",
+  style.tex = style.tex(main = "aer", fixef.suffix = " FE", yesNo = c("Yes", "No")),
+  fitstat = c("n", "ar2"),
+  se.below = TRUE,
+  digits = 3,
+  digits.stats = 3,
+  signif.code = c("***" = 0.01, "**" = 0.05, "*" = 0.10),
+  tex = TRUE,
+  keep_raw = "^city_go_vote$",
+  order = c("%city_go_vote"),
+  dict = c(
+    control_dict[names(control_dict) != "city_go_vote"],
+    city_go_vote = "UTGO Only Vote"
+  ),
+  placement = "H"
+)
+
+modified_output <- modify_etable_rounding(
+  table_call,
+  coef_digits = 3,
+  tstat_digits = 2
+)
+modified_output <- format_table(modified_output, cluster_level = "State")
+r2_idx <- grep("R\\$\\^2\\$", modified_output)
+stopifnot(length(r2_idx) == 1L)
+modified_output <- append(
+  modified_output,
+  "   Controls                   & No & Yes & Yes & Yes\\\\",
+  after = r2_idx
+)
+modified_output <- add_panel(
+  modified_output,
+  "Panel C: Debt substitution with only UTGO vote required",
+  ncols = 5,
+  zero_width = TRUE
+)
+writeLines(
+  modified_output,
+  file.path(tbl_dir_other, "panel_c_other_debt_choice_utgo_only.tex")
+)
 
 #----------------------------
 # 2017 COO/COP breakout sensitivity
@@ -1033,6 +1263,21 @@ yield_2017_other_controlled <- feols(
   vcov = vcov_cluster(~state)
 )
 
+yield_2017_revenue_other_controlled <- feols(
+  mergent_wavg_yield_spread_revenue_other ~ city_go_vote +
+    ln_gdp + ln_census_population + ln_pers_inc +
+    ln_1p_county_nonmunicipal_total_debt +
+    mergent_wavg_rating_revenue_other_zero_unrated +
+    mergent_wavg_original_maturity_years_revenue_other +
+    mergent_any_insured_revenue_other +
+    mergent_any_callable_revenue_other +
+    mergent_any_sinkable_revenue_other + glm_proactive +
+    state_ltgo_allowed + state_go_vote + low_state_tax_privilege +
+    strict_municipal_debt_limit,
+  data = full_sample_other_2017,
+  vcov = vcov_cluster(~state)
+)
+
 table_call <- etable(
   yield_2017_utgo_controlled,
   yield_2017_ltgo_controlled,
@@ -1087,4 +1332,58 @@ writeLines(
     tbl_dir_other,
     "point_in_time_yield_spread_2017_full_sample_panel_b_utgo_ltgo_revenue_other.tex"
   )
+)
+
+# Robustness-table Panel E: Revenue and Other bonds are pooled before computing
+# the amount-weighted spread and every associated bond-level control.
+table_call <- etable(
+  yield_2017_utgo_controlled,
+  yield_2017_ltgo_controlled,
+  yield_2017_revenue_other_controlled,
+  headers = c("UTGO", "LTGO", "Revenue/Other"),
+  coefstat = "tstat",
+  drop = "Constant",
+  style.tex = style.tex(main = "aer", fixef.suffix = " FE", yesNo = c("Yes", "No")),
+  fitstat = c("n", "ar2"),
+  se.below = TRUE,
+  digits = 3,
+  digits.stats = 3,
+  signif.code = c("***" = 0.01, "**" = 0.05, "*" = 0.10),
+  tex = TRUE,
+  keep_raw = "^city_go_vote$",
+  order = c("%city_go_vote"),
+  dict = control_dict,
+  placement = "H"
+)
+
+modified_output <- modify_etable_rounding(
+  table_call,
+  coef_digits = 3,
+  tstat_digits = 2
+)
+outcome_header_idx <- grep(
+  "^[[:space:]]*& Wtd\\. Avg\\. Yield Spread",
+  modified_output
+)
+if (length(outcome_header_idx) > 0) {
+  modified_output[outcome_header_idx[1]] <-
+    " & \\multicolumn{3}{c}{Wtd. Avg. Yield Spread}\\\\"
+}
+modified_output <- format_table(modified_output, cluster_level = "State")
+r2_idx <- grep("R\\$\\^2\\$", modified_output)
+stopifnot(length(r2_idx) == 1L)
+modified_output <- append(
+  modified_output,
+  "   Controls                   & Yes & Yes & Yes\\\\",
+  after = r2_idx
+)
+modified_output <- add_panel(
+  modified_output,
+  "Panel E: Weighted average yield spread",
+  ncols = 4,
+  zero_width = TRUE
+)
+writeLines(
+  modified_output,
+  file.path(tbl_dir_other, "panel_e_other_yield_spread.tex")
 )
