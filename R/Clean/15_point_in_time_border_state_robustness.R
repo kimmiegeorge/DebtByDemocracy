@@ -43,23 +43,18 @@ border_2017 <- border_2017[
     !is.na(low_state_tax_privilege)
 ]
 
-# Match the full-sample eligibility rule, then keep only border groups with
-# within-pair variation in the city vote requirement.
+# Match the full-sample eligibility rule. Every configured debt/yield border
+# pair has within-pair variation in the city vote requirement after this screen.
 border_2017 <- border_2017[
   insample == 1 &
     !is.na(mergent_go_revenue_bonds_outstanding) &
     mergent_go_revenue_bonds_outstanding >= 2
 ]
 
-identifying_border_groups_2017 <- border_2017[
-  , .(vote_values = uniqueN(city_go_vote)),
-  by = border_group
-][vote_values == 2, border_group]
-border_2017 <- border_2017[border_group %in% identifying_border_groups_2017]
 
 border_utgo_2017 <- feols(
   frac_utgo_outstanding ~ city_go_vote + ln_gdp + ln_census_population + ln_pers_inc +
-    ln_1p_county_nonmunicipal_total_debt + state_go_vote + low_state_tax_privilege + strict_municipal_debt_limit | border_group,
+    ln_1p_county_nonmunicipal_total_debt + state_go_vote + state_ltgo_allowed + glm_proactive + low_state_tax_privilege | border_group,
   data = border_2017,
   vcov = vcov_cluster(~state_year)
 )
@@ -67,8 +62,8 @@ border_utgo_2017 <- feols(
 border_yield_2017 <- feols(
   mergent_wavg_yield_spread_go_revenue ~ city_go_vote + ln_gdp + ln_census_population + ln_pers_inc + ln_1p_county_nonmunicipal_total_debt +
     mergent_wavg_rating_go_revenue_zero_unrated + mergent_wavg_original_maturity_years_go_revenue +
-    mergent_wavg_insured_go_revenue + mergent_wavg_sinkable_go_revenue +
-    state_go_vote + low_state_tax_privilege + strict_municipal_debt_limit | border_group,
+    mergent_wavg_insured_go_revenue + mergent_wavg_sinkable_go_revenue + state_go_vote + low_state_tax_privilege |
+    border_group,
   data = border_2017,
   vcov = vcov_cluster(~state_year)
 )

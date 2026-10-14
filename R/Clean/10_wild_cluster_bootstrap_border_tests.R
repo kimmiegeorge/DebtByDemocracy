@@ -470,7 +470,7 @@ trade_results <- rbindlist(list(
 
 # Panel D: 2017 point-in-time debt choice and yield ----
 
-# Mirror step 05's border construction and identifying-pair screen.
+# Mirror step 15's point-in-time border construction and controls.
 point_data <- fread(file.path(root,
   "Data/Clean_Intermediate/Census COG Finance/processed/no_refundings/census_mergent_debt_cross_section_2017_border_sample.csv"
 ))
@@ -485,30 +485,27 @@ point_data <- point_data[
     !is.na(low_state_tax_privilege) & insample == 1 &
     !is.na(mergent_go_revenue_bonds_outstanding) & mergent_go_revenue_bonds_outstanding >= 2
 ]
-identifying_groups <- point_data[, .(vote_values = uniqueN(city_go_vote)),
-  by = border_group][vote_values == 2, border_group]
-point_data <- point_data[border_group %in% identifying_groups]
 # Numeric binary regressors preserve the treatment name used by score tests.
 point_data[, `:=`(city_go_vote = as.numeric(city_go_vote),
   state_go_vote = as.numeric(state_go_vote))]
 
 point_utgo <- feols(
   frac_utgo_outstanding ~ city_go_vote + ln_gdp + ln_census_population + ln_pers_inc +
-    ln_1p_county_nonmunicipal_total_debt + state_go_vote + low_state_tax_privilege +
-    strict_municipal_debt_limit | border_group,
+    ln_1p_county_nonmunicipal_total_debt + state_go_vote + state_ltgo_allowed +
+    glm_proactive + low_state_tax_privilege | border_group,
   data = point_data, vcov = ~state_year
 )
 point_utgo_sample <- copy(point_data[obs(point_utgo)])
 point_utgo_null <- feols(
   frac_utgo_outstanding ~ ln_gdp + ln_census_population + ln_pers_inc +
-    ln_1p_county_nonmunicipal_total_debt + state_go_vote + low_state_tax_privilege +
-    strict_municipal_debt_limit | border_group,
+    ln_1p_county_nonmunicipal_total_debt + state_go_vote + state_ltgo_allowed +
+    glm_proactive + low_state_tax_privilege | border_group,
   data = point_utgo_sample
 )
 point_utgo_aux <- feols(
   city_go_vote ~ ln_gdp + ln_census_population + ln_pers_inc +
-    ln_1p_county_nonmunicipal_total_debt + state_go_vote + low_state_tax_privilege +
-    strict_municipal_debt_limit | border_group,
+    ln_1p_county_nonmunicipal_total_debt + state_go_vote + state_ltgo_allowed +
+    glm_proactive + low_state_tax_privilege | border_group,
   data = point_utgo_sample
 )
 
@@ -517,7 +514,7 @@ point_yield <- feols(
     ln_pers_inc + ln_1p_county_nonmunicipal_total_debt +
     mergent_wavg_rating_go_revenue_zero_unrated + mergent_wavg_original_maturity_years_go_revenue +
     mergent_wavg_insured_go_revenue + mergent_wavg_sinkable_go_revenue +
-    state_go_vote + low_state_tax_privilege + strict_municipal_debt_limit | border_group,
+    state_go_vote + low_state_tax_privilege | border_group,
   data = point_data, vcov = ~state_year
 )
 point_yield_sample <- copy(point_data[obs(point_yield)])
@@ -525,16 +522,14 @@ point_yield_null <- feols(
   mergent_wavg_yield_spread_go_revenue ~ ln_gdp + ln_census_population + ln_pers_inc +
     ln_1p_county_nonmunicipal_total_debt + mergent_wavg_rating_go_revenue_zero_unrated +
     mergent_wavg_original_maturity_years_go_revenue + mergent_wavg_insured_go_revenue +
-    mergent_wavg_sinkable_go_revenue + state_go_vote + low_state_tax_privilege +
-    strict_municipal_debt_limit | border_group,
+    mergent_wavg_sinkable_go_revenue + state_go_vote + low_state_tax_privilege | border_group,
   data = point_yield_sample
 )
 point_yield_aux <- feols(
   city_go_vote ~ ln_gdp + ln_census_population + ln_pers_inc +
     ln_1p_county_nonmunicipal_total_debt + mergent_wavg_rating_go_revenue_zero_unrated +
     mergent_wavg_original_maturity_years_go_revenue + mergent_wavg_insured_go_revenue +
-    mergent_wavg_sinkable_go_revenue + state_go_vote + low_state_tax_privilege +
-    strict_municipal_debt_limit | border_group,
+    mergent_wavg_sinkable_go_revenue + state_go_vote + low_state_tax_privilege | border_group,
   data = point_yield_sample
 )
 
