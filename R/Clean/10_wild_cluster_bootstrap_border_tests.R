@@ -491,21 +491,21 @@ point_data[, `:=`(city_go_vote = as.numeric(city_go_vote),
 
 point_utgo <- feols(
   frac_utgo_outstanding ~ city_go_vote + ln_gdp + ln_census_population + ln_pers_inc +
-    ln_1p_county_nonmunicipal_total_debt + state_go_vote + state_ltgo_allowed +
-    glm_proactive + low_state_tax_privilege | border_group,
+    ln_1p_county_nonmunicipal_total_debt + state_go_vote +
+    low_state_tax_privilege | border_group,
   data = point_data, vcov = ~state_year
 )
 point_utgo_sample <- copy(point_data[obs(point_utgo)])
 point_utgo_null <- feols(
   frac_utgo_outstanding ~ ln_gdp + ln_census_population + ln_pers_inc +
-    ln_1p_county_nonmunicipal_total_debt + state_go_vote + state_ltgo_allowed +
-    glm_proactive + low_state_tax_privilege | border_group,
+    ln_1p_county_nonmunicipal_total_debt + state_go_vote +
+    low_state_tax_privilege | border_group,
   data = point_utgo_sample
 )
 point_utgo_aux <- feols(
   city_go_vote ~ ln_gdp + ln_census_population + ln_pers_inc +
-    ln_1p_county_nonmunicipal_total_debt + state_go_vote + state_ltgo_allowed +
-    glm_proactive + low_state_tax_privilege | border_group,
+    ln_1p_county_nonmunicipal_total_debt + state_go_vote +
+    low_state_tax_privilege | border_group,
   data = point_utgo_sample
 )
 
