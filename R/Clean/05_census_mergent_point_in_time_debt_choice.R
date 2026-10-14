@@ -604,3 +604,75 @@ modified_output <- sub(
 )
 modified_output <- format_table(modified_output, cluster_level = "State")
 writeLines(modified_output, file.path(tbl_dir, "point_in_time_census_debt_poisson_2017_full_sample.tex"))
+
+# 2017 PPML debt stock: retain states requiring both GO and revenue votes ----
+
+# Match the main outstanding-debt specification exactly, changing only the
+# sample restriction to add cities subject to both GO and revenue referendums.
+# Cities with an unknown revenue-vote rule remain outside the expanded sample.
+expanded_sample_2017 <- data_2017[
+  insample == 1 |
+    (city_go_vote %in% 1 & city_rev_vote %in% 1)
+]
+
+census_total_debt_ppml_2017_expanded <- fixest::fepois(
+  census_total_debt_mil ~ city_go_vote + ln_gdp + ln_census_population + ln_pers_inc +
+    ln_1p_county_nonmunicipal_total_debt + glm_proactive + state_ltgo_allowed + state_go_vote + low_state_tax_privilege +
+    strict_municipal_debt_limit,
+  data = expanded_sample_2017,
+  vcov = vcov_cluster(~state)
+)
+
+census_long_term_debt_ppml_2017_expanded <- fixest::fepois(
+  census_lt_debt_mil ~ city_go_vote + ln_gdp + ln_census_population + ln_pers_inc +
+    ln_1p_county_nonmunicipal_total_debt + glm_proactive + state_ltgo_allowed + state_go_vote + low_state_tax_privilege +
+    strict_municipal_debt_limit,
+  data = expanded_sample_2017,
+  vcov = vcov_cluster(~state)
+)
+
+mergent_debt_ppml_2017_expanded <- fixest::fepois(
+  mergent_go_revenue_outstanding_debt_mil ~ city_go_vote + ln_gdp + ln_census_population + ln_pers_inc +
+    ln_1p_county_nonmunicipal_total_debt + glm_proactive + state_ltgo_allowed + state_go_vote + low_state_tax_privilege +
+    strict_municipal_debt_limit,
+  data = expanded_sample_2017,
+  vcov = vcov_cluster(~state)
+)
+
+table_call <- etable(
+  census_total_debt_ppml_2017_expanded,
+  census_long_term_debt_ppml_2017_expanded,
+  mergent_debt_ppml_2017_expanded,
+  headers = c("Total", "Long-term", "GO + Revenue"),
+  coefstat = "tstat",
+  drop = "Constant",
+  style.tex = style.tex(main = "aer", fixef.suffix = " FE", yesNo = c("Yes", "No")),
+  fitstat = c("n", "pr2"),
+  se.below = TRUE,
+  digits = 3,
+  digits.stats = 3,
+  signif.code = c("***" = 0.01, "**" = 0.05, "*" = 0.10),
+  tex = TRUE,
+  order = c("%city_go_vote"),
+  dict = control_dict,
+  placement = "H"
+)
+
+modified_output <- modify_etable_rounding(table_call, coef_digits = 3, tstat_digits = 2)
+modified_output <- sub(
+  " & Census Total Debt & Census Long-Term Debt & Mergent GO + Revenue Debt\\\\",
+  paste0(" & ", "\\", "multicolumn{2}{c}{Census Debt} & ", "\\", "multicolumn{1}{c}{Mergent Debt}\\\\"),
+  modified_output,
+  fixed = TRUE
+)
+modified_output <- sub(
+  " & Total & Long-term & GO + Revenue \\\\",
+  " & Total & Long-term & GO + Revenue \\\\\n   \\\\cmidrule(lr){2-3}\\cmidrule(lr){4-4}",
+  modified_output,
+  fixed = TRUE
+)
+modified_output <- format_table(modified_output, cluster_level = "State")
+writeLines(
+  modified_output,
+  file.path(tbl_dir, "point_in_time_census_debt_poisson_2017_expanded_sample.tex")
+)
