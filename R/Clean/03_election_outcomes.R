@@ -18,6 +18,12 @@ tbl_dir <- Sys.getenv(
   unset = "/Users/kmunevar/Dropbox/Voting on Bonds/Code/R/Clean/output/revision_tables"
 )
 regression_data_dir <- path.expand('~/Dropbox/Voting on Bonds/Data/Clean_Intermediate/TX/Regression')
+rejection_risk_data_dir <- Sys.getenv(
+  "TX_REJECTION_RISK_DATA_DIR",
+  unset = path.expand(
+    "~/Dropbox/Voting on Bonds/Data/Clean_Intermediate/TX/Rejection_Risk"
+  )
+)
 dir.create(tbl_dir, recursive = TRUE, showWarnings = FALSE)
 
 # Use the same window for every Texas election, media, and website regression.
@@ -28,6 +34,9 @@ city_month <- fread(file.path(regression_data_dir, 'city_month_media_regression_
 election <- fread(file.path(regression_data_dir, 'election_media_regression_ready.csv'))
 website_city_year_input <- fread(file.path(regression_data_dir, 'website_city_year_regression_ready.csv'))
 website_election_input <- fread(file.path(regression_data_dir, 'website_election_regression_ready.csv'))
+annual_city_year_input <- fread(
+  file.path(rejection_risk_data_dir, "annual_election_analysis.csv")
+)
 
 # Enforce the common window here as well as in Python so stale input files
 # cannot silently change a regression sample.
@@ -39,6 +48,11 @@ website_city_year_input <- website_city_year_input[
 website_election_input <- website_election_input[
   year >= analysis_start_year & year <= analysis_end_year
 ]
+annual_main_sample <- tx_annual_main_sample(
+  annual_city_year_input,
+  analysis_start_year,
+  analysis_end_year
+)
 
 # Preserve the common-window election file for outcome descriptives.
 election_brb_all <- copy(election)
@@ -68,13 +82,34 @@ city_year_desc_vars <- c(
 )
 desc_city_year <- website_city_year_input[
   complete.cases(website_city_year_input[, ..city_year_desc_vars]),
-  .(positive_delta_bond_debt1, election, issuance_year)
+  .(positive_delta_bond_debt1)
 ]
 
 desc_city_year_col <- summarize_desc_cols(
   desc_city_year,
   'City-Year',
-  c('Increase in Bond Text', 'Election Year', 'Bond Issuance Year')
+  'Increase in Bond Text'
+)
+
+# Report the annual outcomes and rejection-risk measure on the wider balanced
+# city-year sample used in Table 11 Panel B.
+desc_annual_city_year <- annual_main_sample[, .(
+  city_bond_election_year,
+  any_debt_issuance_year,
+  go_bond_issuance_year,
+  revenue_bond_issuance_year,
+  failure_twothirds_10yr
+)]
+desc_annual_city_year_col <- summarize_desc_cols(
+  desc_annual_city_year,
+  'City-Year',
+  c(
+    'Election Year',
+    'Bond Issuance Year',
+    'GO Bond Issuance Year',
+    'Revenue Bond Issuance Year',
+    'Prior ISD Failure'
+  )
 )
 
 # City-Month Level descriptives: retain the regression's date/city restrictions.
@@ -109,15 +144,17 @@ election_desc_vars <- c(
 election_desc_sample <- election[
   complete.cases(election[, ..election_desc_vars]) & is.finite(ln_Amount)
 ]
-# Outcome descriptives use the same 2001--2020 analysis window.
+# Outcome descriptives use the same 2001--2020 analysis window and the common
+# sample with a positive amount, for which ln(Amount) is defined.
 desc_election <- election_brb_all[
-  year >= analysis_start_year & year <= analysis_end_year,
-  .(failed = as.integer(failed), abs_vote_margin)
+  year >= analysis_start_year & year <= analysis_end_year &
+    Amount > 0 & is.finite(ln_Amount),
+  .(failed = as.integer(failed), abs_vote_margin, ln_Amount)
 ]
 desc_election_col <- summarize_desc_cols(
   desc_election,
   'Election',
-  c('Failed', 'Margin')
+  c('Failed', 'Margin', 'ln(Amount)')
 )
 
 # Website-election descriptives: complete controlled-model inputs, with no
@@ -139,7 +176,6 @@ desc_bond_text_col <- summarize_desc_cols(
 
 desc_election_coverage <- election_desc_sample[, .(
   coverage_3,
-  ln_Amount,
   unique_sources_12m_prior
 )]
 desc_election_coverage_col <- summarize_desc_cols(
@@ -147,13 +183,13 @@ desc_election_coverage_col <- summarize_desc_cols(
   'Election',
   c(
     'Bond Coverage [-3, 0]',
-    'Amount',
     'Num Sources'
   )
 )
 
 # Combine tables in requested order.
 desc_col <- rbind(desc_city_year_col,
+                  desc_annual_city_year_col,
                   desc_city_month_col,
                   desc_election_col,
                   desc_bond_text_col,

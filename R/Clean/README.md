@@ -190,6 +190,12 @@ python3 Python/Clean/TX_Rejection_Risk/01_prepare_tx_rejection_risk.py
 Rscript R/Clean/13_tx_rejection_risk.R
 ```
 
+Table 1 Panel C also reads the prepared `annual_election_analysis.csv` so its
+annual city-year descriptives use the same sample as Table 11 Panel B. When
+rebuilding prepared inputs, run the rejection-risk Python preparation after
+the Texas election preparation and before the R generation sequence. The Step
+13 R script remains in its documented position later in that sequence.
+
 That preparation combines the current Texas regression-ready files, Census
 cross section, canonical `260716` issuance/issuer files, the shared
 `260716`-based annual outstanding-debt panel, and spatial exposure files.

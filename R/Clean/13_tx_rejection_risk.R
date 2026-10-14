@@ -10,6 +10,7 @@ library(pacman)
 p_load(data.table, fixest)
 
 source("/Users/kmunevar/Dropbox/Voting on Bonds/Code/R/Clean/00_modify_etable_rounding.R")
+source("/Users/kmunevar/Dropbox/Voting on Bonds/Code/R/Clean/00_helper_functions.R")
 
 root <- "/Users/kmunevar/Dropbox/Voting on Bonds"
 analysis_data_dir <- Sys.getenv(
@@ -50,35 +51,36 @@ annual_election <- annual_election[
 media_panel_indicator <- media_panel_indicator[
   year >= analysis_start_year & year <= analysis_end_year
 ]
+annual_main_sample <- tx_annual_main_sample(
+  annual_election,
+  analysis_start_year,
+  analysis_end_year
+)
 
 # ==============================================================================
 # 2. OUTPUT DESCRIPTIVE STATISTICS
 # ==============================================================================
 
 # Descriptives use the exact expanded annual-regression sample in Panel B.
-annual_descriptive_sample <- annual_election[
-  year > 2000 & !is.na(fips) & !is.na(ln_1p_outstanding_debt_lag1) &
-    !is.na(ln_county_gdp_prior) & !is.na(ln_county_pop_prior) &
-    !is.na(ln_county_pers_inc_prior)
-]
+annual_descriptive_sample <- annual_main_sample
 annual_descriptives <- data.table(
   Variable = c(
-    "Prior ISD Failure", "Any City Bond Election", "Any Bond Issuance",
-    "GO Bond Issuance", "Revenue Bond Issuance"
+    "Election Year", "Bond Issuance Year", "GO Bond Issuance Year",
+    "Revenue Bond Issuance Year", "Prior ISD Failure"
   ),
   Mean = c(
-    mean(annual_descriptive_sample$failure_twothirds_10yr),
     mean(annual_descriptive_sample$city_bond_election_year),
     mean(annual_descriptive_sample$any_debt_issuance_year),
     mean(annual_descriptive_sample$go_bond_issuance_year),
-    mean(annual_descriptive_sample$revenue_bond_issuance_year)
+    mean(annual_descriptive_sample$revenue_bond_issuance_year),
+    mean(annual_descriptive_sample$failure_twothirds_10yr)
   ),
   `Std. Dev.` = c(
-    sd(annual_descriptive_sample$failure_twothirds_10yr),
     sd(annual_descriptive_sample$city_bond_election_year),
     sd(annual_descriptive_sample$any_debt_issuance_year),
     sd(annual_descriptive_sample$go_bond_issuance_year),
-    sd(annual_descriptive_sample$revenue_bond_issuance_year)
+    sd(annual_descriptive_sample$revenue_bond_issuance_year),
+    sd(annual_descriptive_sample$failure_twothirds_10yr)
   ),
   N = nrow(annual_descriptive_sample)
 )
@@ -133,11 +135,7 @@ indicator_10yr_annual <- feols(
     ln_1p_outstanding_debt_lag1 + ln_county_gdp_prior +
     ln_county_pop_prior + ln_county_pers_inc_prior |
     seed_issuer + year,
-  data = annual_election[
-    year > 2000 & !is.na(city_bond_election_year) & !is.na(fips) &
-      !is.na(ln_1p_outstanding_debt_lag1) & !is.na(ln_county_gdp_prior) &
-      !is.na(ln_county_pop_prior) & !is.na(ln_county_pers_inc_prior)
-  ],
+  data = annual_main_sample,
   cluster = ~fips
 )
 indicator_10yr_go_issuance <- feols(
@@ -145,11 +143,7 @@ indicator_10yr_go_issuance <- feols(
     ln_1p_outstanding_debt_lag1 + ln_county_gdp_prior +
     ln_county_pop_prior + ln_county_pers_inc_prior |
     seed_issuer + year,
-  data = annual_election[
-    year > 2000 & !is.na(go_bond_issuance_year) & !is.na(fips) &
-      !is.na(ln_1p_outstanding_debt_lag1) & !is.na(ln_county_gdp_prior) &
-      !is.na(ln_county_pop_prior) & !is.na(ln_county_pers_inc_prior)
-  ],
+  data = annual_main_sample,
   cluster = ~fips
 )
 indicator_10yr_any_issuance <- feols(
@@ -157,11 +151,7 @@ indicator_10yr_any_issuance <- feols(
     ln_1p_outstanding_debt_lag1 + ln_county_gdp_prior +
     ln_county_pop_prior + ln_county_pers_inc_prior |
     seed_issuer + year,
-  data = annual_election[
-    year > 2000 & !is.na(any_debt_issuance_year) & !is.na(fips) &
-      !is.na(ln_1p_outstanding_debt_lag1) & !is.na(ln_county_gdp_prior) &
-      !is.na(ln_county_pop_prior) & !is.na(ln_county_pers_inc_prior)
-  ],
+  data = annual_main_sample,
   cluster = ~fips
 )
 indicator_10yr_revenue_issuance <- feols(
@@ -169,11 +159,7 @@ indicator_10yr_revenue_issuance <- feols(
     ln_1p_outstanding_debt_lag1 + ln_county_gdp_prior +
     ln_county_pop_prior + ln_county_pers_inc_prior |
     seed_issuer + year,
-  data = annual_election[
-    year > 2000 & !is.na(revenue_bond_issuance_year) & !is.na(fips) &
-      !is.na(ln_1p_outstanding_debt_lag1) & !is.na(ln_county_gdp_prior) &
-      !is.na(ln_county_pop_prior) & !is.na(ln_county_pers_inc_prior)
-  ],
+  data = annual_main_sample,
   cluster = ~fips
 )
 
@@ -360,11 +346,7 @@ website_robustness_sample <- website_city_year[
     !is.na(issuance_year) & !is.na(ln_county_gdp_prior) &
     !is.na(ln_county_pop_prior) & !is.na(ln_county_pers_inc_prior)
 ]
-annual_robustness_sample <- annual_election[
-  year > 2000 & !is.na(fips) & !is.na(ln_1p_outstanding_debt_lag1) &
-    !is.na(ln_county_gdp_prior) & !is.na(ln_county_pop_prior) &
-    !is.na(ln_county_pers_inc_prior)
-]
+annual_robustness_sample <- annual_main_sample
 
 robust_50pct_website <- feols(
   positive_delta_bond_debt1 ~ election * failure_50pct_10yr + issuance_year +
@@ -555,11 +537,7 @@ indicator_all_history_annual <- feols(
     ln_1p_outstanding_debt_lag1 + ln_county_gdp_prior +
     ln_county_pop_prior + ln_county_pers_inc_prior |
     seed_issuer + year,
-  data = annual_election[
-    year > 2000 & !is.na(city_bond_election_year) & !is.na(fips) &
-      !is.na(ln_1p_outstanding_debt_lag1) & !is.na(ln_county_gdp_prior) &
-      !is.na(ln_county_pop_prior) & !is.na(ln_county_pers_inc_prior)
-  ],
+  data = annual_main_sample,
   cluster = ~fips
 )
 indicator_all_history_go_issuance <- feols(
@@ -567,11 +545,7 @@ indicator_all_history_go_issuance <- feols(
     ln_1p_outstanding_debt_lag1 + ln_county_gdp_prior +
     ln_county_pop_prior + ln_county_pers_inc_prior |
     seed_issuer + year,
-  data = annual_election[
-    year > 2000 & !is.na(go_bond_issuance_year) & !is.na(fips) &
-      !is.na(ln_1p_outstanding_debt_lag1) & !is.na(ln_county_gdp_prior) &
-      !is.na(ln_county_pop_prior) & !is.na(ln_county_pers_inc_prior)
-  ],
+  data = annual_main_sample,
   cluster = ~fips
 )
 indicator_all_history_any_issuance <- feols(
@@ -579,11 +553,7 @@ indicator_all_history_any_issuance <- feols(
     ln_1p_outstanding_debt_lag1 + ln_county_gdp_prior +
     ln_county_pop_prior + ln_county_pers_inc_prior |
     seed_issuer + year,
-  data = annual_election[
-    year > 2000 & !is.na(any_debt_issuance_year) & !is.na(fips) &
-      !is.na(ln_1p_outstanding_debt_lag1) & !is.na(ln_county_gdp_prior) &
-      !is.na(ln_county_pop_prior) & !is.na(ln_county_pers_inc_prior)
-  ],
+  data = annual_main_sample,
   cluster = ~fips
 )
 indicator_all_history_revenue_issuance <- feols(
@@ -591,11 +561,7 @@ indicator_all_history_revenue_issuance <- feols(
     ln_1p_outstanding_debt_lag1 + ln_county_gdp_prior +
     ln_county_pop_prior + ln_county_pers_inc_prior |
     seed_issuer + year,
-  data = annual_election[
-    year > 2000 & !is.na(revenue_bond_issuance_year) & !is.na(fips) &
-      !is.na(ln_1p_outstanding_debt_lag1) & !is.na(ln_county_gdp_prior) &
-      !is.na(ln_county_pop_prior) & !is.na(ln_county_pers_inc_prior)
-  ],
+  data = annual_main_sample,
   cluster = ~fips
 )
 
@@ -773,11 +739,7 @@ website_robustness_sample <- website_city_year[
     !is.na(issuance_year) & !is.na(ln_county_gdp_prior) &
     !is.na(ln_county_pop_prior) & !is.na(ln_county_pers_inc_prior)
 ]
-annual_robustness_sample <- annual_election[
-  year > 2000 & !is.na(fips) & !is.na(ln_1p_outstanding_debt_lag1) &
-    !is.na(ln_county_gdp_prior) & !is.na(ln_county_pop_prior) &
-    !is.na(ln_county_pers_inc_prior)
-]
+annual_robustness_sample <- annual_main_sample
 robust_all_history_50pct_website <- feols(
   positive_delta_bond_debt1 ~ election * failure_50pct_all_history + issuance_year +
     ln_county_gdp_prior + ln_county_pop_prior + ln_county_pers_inc_prior |

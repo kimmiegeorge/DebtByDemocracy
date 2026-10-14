@@ -21,6 +21,39 @@ summarize_desc_cols <- function(dt, unit, labels) {
   return(desc_col)
 }
 
+# Keep the annual Texas descriptive and rejection-risk regression samples
+# synchronized across Steps 03 and 13.
+tx_annual_main_sample <- function(
+  dt,
+  start_year = 2001L,
+  end_year = 2020L
+) {
+  required <- c(
+    "city_bond_election_year",
+    "any_debt_issuance_year",
+    "go_bond_issuance_year",
+    "revenue_bond_issuance_year",
+    "failure_twothirds_10yr",
+    "ln_1p_outstanding_debt_lag1",
+    "ln_county_gdp_prior",
+    "ln_county_pop_prior",
+    "ln_county_pers_inc_prior",
+    "fips"
+  )
+  missing_columns <- setdiff(required, names(dt))
+  if (length(missing_columns) > 0L) {
+    stop(
+      "Annual Texas input is missing required columns: ",
+      paste(missing_columns, collapse = ", ")
+    )
+  }
+
+  dt[
+    year >= start_year & year <= end_year &
+      complete.cases(dt[, ..required])
+  ]
+}
+
 diff_table <- function(dt, group_var, vars) {
   out <- lapply(vars, function(v) {
     # t-test for difference
