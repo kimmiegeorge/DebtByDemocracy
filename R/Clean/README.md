@@ -1,101 +1,379 @@
-# Clean R scripts
+# Clean analysis pipeline
 
-The numbered scripts follow the order of the paper's tables after Table 1,
-Summary Statistics. A script keeps the number of the first main-paper table it
-supports. The Texas event-time figure shares `03_` with the related election
-analysis, and the purpose-substitution figure shares `06_` with Table 9.
+This folder contains the R estimation and table-generation layer for the paper,
+appendices, online appendix, and response documents. Python scripts prepare the
+analysis datasets; these R scripts estimate the models and write raw TeX table
+fragments to `R/Clean/output/revision_tables` unless an override is supplied.
 
-## Shared setup
+> [!IMPORTANT]
+> A routine full-table rerun starts from existing raw/acquired data and approved
+> clean intermediates. Do **not** include website scraping, external downloads,
+> API/OpenAI classification jobs, the raw Mergent rebuild, refunding sensitivity
+> step 05d, or table promotion with `--apply` in an unattended full run. Those
+> stages are refresh, sensitivity, or publication operations and require
+> separate review.
 
-- `00_helper_functions.R` - shared mean-difference tables and media headers
-- `00_border_pair_definitions.R`
-- `00_modify_etable_rounding.R`
-- `00_state_policy_definitions.R`
-- `00_tax_privilege_definitions.R`
+The current cross-script consistency issues and the active paper dependency
+inventory are documented in [`../../pre_conference_audit.md`](../../pre_conference_audit.md).
 
-## Paper order
+## Pipeline at a glance
 
-Before running `01_websites.R`, run steps `01_` and `02_` in
-[`Python/Clean/City_Websites/Border_States`](../../Python/Clean/City_Websites/Border_States/README.md).
+```text
+fixed raw/acquired sources
+        |
+        v
+Python/Clean preparation and validation
+        |
+        v
+Data/Clean_Intermediate regression-ready files
+        |
+        v
+R/Clean/01--15 estimation and table generation
+        |
+        v
+R/Clean/output/revision_tables (staging)
+        |
+        v
+manual review + 99 promotion dry-run
+        |
+        v
+paper tables/clean/raw + maintained processed wrappers/figures
+```
+
+There is not currently one driver script that safely performs every arrow. Run
+the preparation families below only when their inputs have changed, then run the
+R generation steps into an empty staging directory. Do not use the existing
+output folder as evidence of provenance: more than one sensitivity script can
+currently write some of the same filenames.
+
+## Shared configuration and helpers
+
+- `00_helper_functions.R`: mean-difference tables and shared media formatting
+- `00_border_pair_definitions.R`: approved paper border pairs, backed by
+  `Config/border_state_pairs.csv`
+- `00_modify_etable_rounding.R`: common `fixest::etable` formatting
+- `00_state_policy_definitions.R`: shared state-policy group definitions
+- `00_tax_privilege_definitions.R`: low-tax-privilege construction, backed by
+  `Config/low_state_tax_privilege_states.csv`
+
+These files are sourced by analysis scripts and are not run directly.
+
+## Routine preparation stages
+
+The commands below describe dependencies; they are not a command to refresh all
+raw sources. Use existing approved intermediates unless a source refresh is
+intentional.
+
+### 1. State-policy snapshot
+
+The website, media, MSRB, and point-in-time pipelines merge fields from
+`Data/State Policies/20260929_state_policy_comparison.csv`.
+
+If the fixed policy source files have changed, run:
+
+```sh
+python3 Python/Clean/State_Policy_Comparison/aggregate_state_policies.py
+```
+
+`prepare_addnl_state_policy_sources.py` refreshes/manualizes source inputs and is
+not part of a routine table rerun.
+
+### 2. Shared Mergent-derived inputs
+
+The active paper does not yet consume a single Mergent vintage. Most website,
+RavenPack, MSRB, election, and outstanding-debt preparation uses the `260716`
+city bond/issuer files. Purpose, yield, refunding, and supporting pipelines also
+use `260610`, `260709`, `260917`, or `260923` inputs. See the audit before
+refreshing any Mergent-dependent output.
+
+The following builders supply widely reused intermediates:
+
+```sh
+python3 'Python/Clean/Debt_Outstanding/1. Build Issuer Year Outstanding Debt Panel.py'
+python3 'Python/Clean/Debt_Outstanding/2. Build Full Mergent Annual Outstanding Debt Panel.py'
+python3 'Python/Clean/Yield_Spreads/Compute Yield Spreads.py'
+```
+
+Run them only when deliberately rebuilding those shared inputs. The new
+`Python/Clean/Mergent/261013_clean_mergent_raw.py` is a raw Mergent build, is not
+wired into the paper pipeline, writes a multi-gigabyte file, and contains
+machine-specific cache paths. It is not a routine prerequisite.
+
+### 3. Website disclosure
+
+Read
+[`../../Python/Clean/City_Websites/Border_States/README.md`](../../Python/Clean/City_Websites/Border_States/README.md).
+For an ordinary rerun, reuse the approved step-01 website intermediate and run
+only the regression-data preparation if necessary:
+
+```sh
+python3 Python/Clean/City_Websites/Border_States/02_prepare_border_state_website_regression_data.py
+Rscript R/Clean/01_websites.R
+```
+
 Step 02 writes
-`border_state_website_regression_data_261013_with_recovered_al_ar.csv` with the sample
-restrictions, merged controls, capped counts, and regression indicators.
-If the step-01 website intermediate is already current, only step 02 is needed.
+`border_state_website_regression_data_261013_with_recovered_al_ar.csv` with
+sample screens, prior-year county controls, lagged Mergent debt, policy fields,
+caps, and regression indicators. `WEBSITE_ANALYSIS_DATA`,
+`WEBSITE_REGRESSION_DATA`, and `WEBSITE_DATA_DATE` select nondefault inputs.
 
-Before running `02_media_coverage.R`, run
-[`Python/Clean/News/6. Prepare Media Coverage Regression Data.py`](../../Python/Clean/News/6.%20Prepare%20Media%20Coverage%20Regression%20Data.py).
-Step 6 writes the full and border-state media analysis CSVs with issuer metadata,
-sample restrictions, issuance lags, logged sources, shared article caps, and
-robustness-sample indicators. See the [News pipeline notes](../../Python/Clean/News/README.md)
-for input files and environment-variable overrides.
+Do not run the Wayback collection/parsing tree or the AL/AR collection workers
+as part of a routine table rerun. Run website step 01 only when the approved
+collected website corpus itself has changed.
 
-Before rebuilding the Texas regression inputs, the 80%-overlap ISD exposure
-files must exist in `Data/Clean_Intermediate/TX/Election_Exposure`. See
-[`Python/Clean/TX_Election_Exposure`](../../Python/Clean/TX_Election_Exposure/README.md)
-for their preparation. `05_prepare_tx_regression_inputs.py` merges the full-history
-`prior_isd_failure` measure into the city-month and website city-year CSVs.
-`03_election_outcomes.R` then writes `tx_prior_overlap_failure_panel_c.tex`
-after the time-series regressions, using those prepared fields.
+### 4. RavenPack media coverage
 
-Before running `04_trade_before_maturity.R`, run steps `01_` and `02_` in
-[`Python/Clean/MSRB`](../../Python/Clean/MSRB/README.md). They build the raw
-customer-trade/disclosure outcomes and write the full and border regression-ready
-CSVs. The R script loads those files directly, then produces descriptives and
-regression tables. Tax privilege and border-pair inclusion come from shared
-configuration files. Set `EXCLUDE_STATE` when running Python step 02 if needed.
+Read [`../../Python/Clean/News/README.md`](../../Python/Clean/News/README.md).
+Once the step-5 and border-match intermediates are frozen:
 
-Before rebuilding the purpose panels used by `06_point_in_time_purpose_substitution.R`,
-run steps 01 and 02 in
-[`Python/Clean/Purposes_Substitution`](../../Python/Clean/Purposes_Substitution/README.md).
-The active pipeline retains the full issuer cross section, including revenue-vote
-and unknown-revenue-vote states, and merges expanded state policies. Step 03
-validates every original field against the preserved pre-expansion files.
-The R script's own `insample == 1` restriction remains explicit.
+```sh
+python3 'Python/Clean/News/6. Prepare Media Coverage Regression Data.py'
+Rscript R/Clean/02_media_coverage.R
+```
 
-1. `01_websites.R` - Tables 2 and 4; Table 1 website panel
-2. `02_media_coverage.R` - Table 3; Table 1 media panel
-3. `03_election_outcomes.R` - Tables 4 and 5; Table 1 election panel
-4. `03_texas_media_event_time.R` - media event-time figure associated with Table 4
-5. `04_trade_before_maturity.R` - Table 6; Table 1 trading panel
-6. `05_census_mergent_point_in_time_debt_choice.R` - Tables 7, 8, 10, and 11; Table 1 issuer panel
-7. `06_point_in_time_purpose_substitution.R` - Table 9 and its associated figure
-8. `07_alternative_sample_robustness.R` - paper appendix
-9. `08_media_coverage_dpc.R` - online appendix
-10. `09_census_county_debt_issuance_share_2017.R` - online appendix
-11. `10_wild_cluster_bootstrap_border_tests.R` - online appendix
-12. `11_media_coverage_exclude_month_zero.R` - online appendix
-13. `12_leave_one_out_control_states.R` - leave-one-out sensitivity (Response 2)
-14. `14_supermajority.R` - full-sample supermajority specifications
-15. `15_point_in_time_border_state_robustness.R` - border-city robustness specifications
+Python step 6 creates the full and border regression-ready files, prior-issuance
+indicators, logged source counts, shared article caps, policy fields, and
+robustness indicators. `MEDIA_REGRESSION_DIR`, `MEDIA_FULL_REGRESSION_DATA`, and
+`MEDIA_BORDER_REGRESSION_DATA` override defaults. `EXCLUDE_STATE` is reserved
+for an explicit border sensitivity run.
 
-Table 1 is assembled from descriptive panels generated by scripts `01_` through
-`05_`; it therefore does not have a separate analysis script.
+News steps 2--5 rebuild entity mapping and article histories. They are upstream
+refresh operations, not required when the current clean intermediates are
+approved.
 
-## Response-only scripts
+### 5. Texas election and information panels
+
+The main Texas regressions use a common 2001--2020 analysis window. If the
+election/media/website inputs change, prepare them with:
+
+```sh
+python3 Python/Clean/Election_Outcomes/05_prepare_tx_regression_inputs.py
+Rscript R/Clean/03_election_outcomes.R
+Rscript R/Clean/03_texas_media_event_time.R
+```
+
+The event-time script currently reads `Data/TX/241120_tx_issue_level.dta` for
+issuance events, whereas the table preparation uses a `260716` Mergent input.
+Treat the figure as a separate construction until those are reconciled.
+
+The prior-ISD-failure data used by election step 05 come from
+[`../../Python/Clean/TX_Election_Exposure/README.md`](../../Python/Clean/TX_Election_Exposure/README.md).
+Reuse the checked exposure outputs in a routine run. Do not redownload Census
+geographies unless the boundary source is intentionally being refreshed.
+
+The later rejection-risk mechanism has its own preparation:
+
+```sh
+python3 Python/Clean/TX_Rejection_Risk/01_prepare_tx_rejection_risk.py
+Rscript R/Clean/13_tx_rejection_risk.R
+```
+
+That preparation combines the current Texas regression-ready files, Census
+cross section, `260709` outstanding-debt panel, `260716` issuance file, and
+spatial exposure files. Keep that mixed input lineage in mind when refreshing.
+
+### 6. MSRB trade-before-maturity outcomes
+
+Read [`../../Python/Clean/MSRB/README.md`](../../Python/Clean/MSRB/README.md).
+When the raw MSRB/disclosure inputs or policy snapshot have changed:
+
+```sh
+python3 Python/Clean/MSRB/01_build_trade_before_maturity.py
+python3 Python/Clean/MSRB/02_prepare_trade_regression_data.py
+Rscript R/Clean/04_trade_before_maturity.R
+```
+
+Otherwise the R script may reuse the approved regression-ready CSVs.
+`MSRB_PROCESSED_DIR`, `MSRB_REGRESSION_DIR`, and `RESULTS_DIR` override defaults.
+
+### 7. Census/Mergent point-in-time cross sections
+
+The intended main-paper path excludes refundings:
+
+```sh
+python3 'Python/Clean/Census_COG_Finance/1. Clean Census COG City Debt.py'
+python3 'Python/Clean/Census_COG_Finance/2b. Build Census Mergent Debt Cross Sections No Refundings.py'
+python3 'Python/Clean/Census_COG_Finance/3. Build 2017 County Debt Issuance Share.py'
+python3 'Python/Clean/Census_COG_Finance/9. Build Texas 2017 Rejection Risk Cross Section.py'
+Rscript R/Clean/05_census_mergent_point_in_time_debt_choice.R
+Rscript R/Clean/05b_census_mergent_point_in_time_debt_choice_with_dark_green.R
+Rscript R/Clean/09_census_county_debt_issuance_share_2017.R
+```
+
+Steps 3 and 9 are needed only for their corresponding online-appendix and
+mechanism outputs. The principal cross sections are in
+`Data/Clean_Intermediate/Census COG Finance/processed/no_refundings`.
+
+`05c_census_mergent_point_in_time_debt_choice_with_other.R` is response-only and
+currently depends on objects created by step 05. Source or run it immediately
+after step 05 in the same R session; it is not a standalone `Rscript` entry
+point. Its canonical outputs should be under `revision_tables/with_other`.
+
+Do **not** run Census step 2a or R step 05d in the routine production path. They
+are refunding-inclusive sensitivity stages. Step 05d currently writes several
+main production filenames and can overwrite no-refundings results.
+
+### 8. Purpose substitution
+
+Read
+[`../../Python/Clean/Purposes_Substitution/README.md`](../../Python/Clean/Purposes_Substitution/README.md).
+If the purpose inputs or point-in-time issuer universe changed:
+
+```sh
+python3 Python/Clean/Purposes_Substitution/01_merge_dpc_purposes_all_issuers.py
+python3 Python/Clean/Purposes_Substitution/02_build_point_in_time_purpose_panels.py
+python3 Python/Clean/Purposes_Substitution/03_validate_expanded_purpose_panels.py
+Rscript R/Clean/06_point_in_time_purpose_substitution.R
+Rscript R/Clean/06b_point_in_time_purpose_substitution_with_dark_green.R
+```
+
+Step 03 must pass before the R scripts are treated as production results.
+`PURPOSE_REGRESSION_DIR`, `PURPOSE_BASELINE_DIR`, and
+`PURPOSE_VALIDATION_DIR` override defaults. This Python pipeline currently
+mixes `260610`, `260709`, and point-in-time Mergent lineages; do not refresh it
+without resolving or explicitly approving that lineage.
+
+### 9. DPC media robustness
+
+If the approved DPC issuance/classification file is current, run only its final
+preparation and R table step:
+
+```sh
+python3 'Python/Clean/DPC_News/Prepare DPC Media Regression Data.py'
+Rscript R/Clean/08_media_coverage_dpc.R
+```
+
+The DPC article pull and OpenAI batch classification scripts are source-refresh
+operations and are excluded from a routine full-table run.
+
+## R generation order
+
+After all required prepared inputs are frozen, use a new staging output folder:
+
+```sh
+export RESULTS_DIR='/absolute/path/to/empty/staging/revision_tables'
+export LEAVE_ONE_OUT_RESULTS_DIR='/absolute/path/to/empty/staging/leave_one_out'
+```
+
+Then run the applicable scripts in this order:
+
+1. `01_websites.R` — website descriptives, mean differences, main estimates,
+   and restricted/dark-green response result
+2. `01b_gfoa_awards.R` — GFOA mechanism/supplement if it is included in the
+   target document; it is not active in the current main dependency graph
+3. `02_media_coverage.R` — media descriptives, main estimates, restricted
+   sample, and supermajority media fragment
+4. `03_election_outcomes.R` — Texas descriptives, time series, outcome tests,
+   and response PPML result
+5. `03_texas_media_event_time.R` — Texas event-time figure
+6. `04_trade_before_maturity.R` — full and border trading results
+7. `05_census_mergent_point_in_time_debt_choice.R` — main point-in-time
+   descriptives, outstanding debt, debt choice, and yield tables
+8. `05b_census_mergent_point_in_time_debt_choice_with_dark_green.R` —
+   dark-green Appendix panels A, B, and D
+9. `05c_census_mergent_point_in_time_debt_choice_with_other.R` — response-only;
+   run in the same R session as step 05 until it is made standalone
+10. `06_point_in_time_purpose_substitution.R` — purpose tables and 2017 pie
+    figure
+11. `06b_point_in_time_purpose_substitution_with_dark_green.R` — dark-green
+    Appendix purpose panel C
+12. `07_alternative_sample_robustness.R` — alternative point-in-time/full-period
+    appendix table
+13. `08_media_coverage_dpc.R` — DPC online-appendix table
+14. `09_census_county_debt_issuance_share_2017.R` — county-debt online appendix
+15. `10_wild_cluster_bootstrap_border_tests.R` — border wild-cluster inference
+16. `11_media_coverage_exclude_month_zero.R` — media timing robustness
+17. `12_leave_one_out_control_states.R` — response leave-one-out outputs
+18. `13_tx_rejection_risk.R` — Texas rejection-risk mechanism panels
+19. `14_supermajority.R` — point-in-time supermajority mechanism panel
+20. `15_point_in_time_border_state_robustness.R` — Appendix border-city table
+
+The border specifications in steps 10, 12, and 15 currently differ. Resolve the
+sample/control differences recorded in the audit before calling them variants
+of one common baseline.
+
+Table 1 is assembled from descriptive fragments produced by steps 01--05; it
+has no separate estimation script.
+
+## Response-only and legacy response scripts
 
 - `r1_01_supermajority_response_table.R`
 - `r1_02a_point_in_time_debt_choice_allgo_alt_controls.R`
 - `r1_02b_point_in_time_debt_choice_utgo_alt_controls.R`
 - `r1_03_media_coverage_panel_b_ols.R`
 
-Run `99_promote_tables_to_overleaf.R` last. Its default allowlist copies only
-table fragments used by the paper or response documents; `--files=` can select
-an explicit subset.
+These support earlier response specifications. They are not all active in the
+current `response_2.tex`. In particular, the active online-appendix
+supermajority wrapper reads `media_coverage_super_majority.tex`, written by R
+step 02, rather than the older `r3b_media_supermajority.tex` promotion entry.
 
-## Leave-one-out sensitivity (step 12)
+## Steps excluded from a routine full run
 
-`12_leave_one_out_control_states.R` reads the same prepared website, media, and
-MSRB inputs as steps 01, 02, and 04, with the same environment overrides. Run
-their Python prerequisites first. Step 05 supplies the 2017 data screens and
-controlled specifications, including separate all-GO and UTGO-only debt-choice
-samples. The media border analysis restores the submitted `bond_prior_12` lookup
-exactly as step 02 does. All controls, fixed effects, and clustering follow the
-referenced production model; each estimate records its source script and model.
+| Stage | Why it is excluded |
+|---|---|
+| Wayback website collection, updated JSON parsing, and AL/AR workers | Network/scraping and manually reviewed source collection; reuse the approved corpus |
+| DPC control-state pull and OpenAI batch classification | External acquisition/API work with cost and nondeterministic service state |
+| Texas Census boundary downloader | Network acquisition; use cached, reviewed geography files |
+| TX property-tax pull | Network/archive acquisition and not an active paper-table prerequisite |
+| CAFR OpenAI/EMMA retry scripts | External API/download work and not in the active paper dependency graph |
+| `State_Policy_Comparison/prepare_addnl_state_policy_sources.py` | Source refresh/manual review, not table generation |
+| `Mergent/261013_clean_mergent_raw.py` | Multi-gigabyte raw rebuild, machine-specific cache paths, and no active downstream consumers |
+| Census step 2a and R step 05d | Refunding-inclusive sensitivity; step 05d collides with production filenames |
+| Archived map/statute code | Archive code is not an approved routine production stage |
+| `99_promote_tables_to_overleaf.R --apply` | Mutates the paper repository and must follow numerical/visual review |
 
-Every baseline and omission is estimated explicitly. Prepared controls, caps,
-and lag indicators remain fixed as a state or pair is omitted. Outputs remain
-in `output/leave_one_out` (override with `LEAVE_ONE_OUT_RESULTS_DIR`), including
-the summary fragments, estimate CSVs, and an `etable` baseline table.
+## Output review and promotion
 
-The exploratory Texas failure-screen scripts formerly numbered 12 and 13 are
-now in `R/Archive`; they do not generate paper tables.
+`99_promote_tables_to_overleaf.R` is dry-run by default:
+
+```sh
+Rscript R/Clean/99_promote_tables_to_overleaf.R \
+  --source='/absolute/path/to/staging/revision_tables' \
+  --dest='/Users/kmunevar/Repos/overleaf-voting-on-bonds/tables/clean/raw'
+```
+
+The script's built-in destination is the Dropbox Apps Overleaf folder, not the
+Git clone shown above. Always pass `--dest` explicitly when promoting to the
+clone. Review the dry-run list and diffs before adding `--apply`; use
+`--overwrite` only for specifically approved replacements.
+
+The current default allowlist is incomplete for the active paper and response:
+it omits some main, dark-green, mechanism, leave-one-out, restricted-sample, and
+nested `with_other` fragments, and one supermajority name is stale. Until that
+manifest is repaired, pass an explicit `--files=` list and `--recursive` where
+needed, then verify every active TeX dependency manually. Processed wrappers
+and figures are not promoted by this script.
+
+## Validation checklist
+
+Before updating the paper:
+
+1. Confirm the exact source versions and record a hash/manifest for every
+   prepared analysis file.
+2. Run R scripts into empty staging directories.
+3. Confirm that no filename is written by more than one production script.
+4. Diff every active raw table fragment against the paper repository.
+5. Verify that wrappers include every panel described in their notes.
+6. Check that table notes state the actual sample, dates, controls, fixed
+   effects, clustering, and debt/refunding treatment.
+7. Promote only approved files with an explicit destination.
+8. Compile `main.tex` and the response document and visually inspect every
+   table and figure.
+
+## Environment overrides
+
+Common overrides include:
+
+- `RESULTS_DIR`: normal raw-table staging directory
+- `LEAVE_ONE_OUT_RESULTS_DIR`: step-12 output directory
+- `WEBSITE_ANALYSIS_DATA`, `WEBSITE_REGRESSION_DATA`, `WEBSITE_DATA_DATE`
+- `MEDIA_REGRESSION_DIR`, `MEDIA_FULL_REGRESSION_DATA`,
+  `MEDIA_BORDER_REGRESSION_DATA`
+- `DPC_MEDIA_REGRESSION_DIR`, `DPC_MEDIA_REGRESSION_DATA`
+- `MSRB_PROCESSED_DIR`, `MSRB_REGRESSION_DIR`
+- `PURPOSE_REGRESSION_DIR`, `PURPOSE_BASELINE_DIR`,
+  `PURPOSE_VALIDATION_DIR`
+- `EXCLUDE_STATE`: explicit border-state sensitivity only
+
+Prefer absolute paths for staging overrides. Never point a test run directly at
+the paper's `tables/clean/raw` directory.
