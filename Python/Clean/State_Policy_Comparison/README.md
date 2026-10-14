@@ -63,7 +63,10 @@ The script writes:
   state-year expansion of the fiscal-monitor indicator for specifications with
   year variation.
 * `Data/State Policies/20260929_state_policy_comparison_table.tex` -- the
-  descriptive comparison table used in the reviewer response.
+  generated tabular fragment used in the reviewer-response figure. The
+  editable figure caption and explanatory text live in the manuscript's
+  `figures/20260929_state_policy_comparison.tex` wrapper and are not generated
+  by this script.
 * `Data/GFOA Awards/analysis/city_year_pafr/state_year_gfoa_award_rates.csv`
   -- state-by-fiscal-year award rates and numerator/denominator counts.
 * `Data/GFOA Awards/analysis/city_year_pafr/state_gfoa_award_rate_averages.csv`
@@ -89,8 +92,9 @@ rules vary by city, project, or financing category.
 
 ## Definitions for the reviewer comparison table
 
-`20260929_state_policy_comparison_table.tex` compares the 33 states with a
-uniform city GO-bond rule: 26 states where voter approval is required and 7
+`20260929_state_policy_comparison_table.tex` contains the tabular comparison of
+the 33 states with a uniform city GO-bond rule: 26 states where voter approval
+is required and 7
 where it is not.  It excludes states whose rule varies by city, project, or
 financing type, as well as states without a classifiable rule.  "GO" means a
 municipal general-obligation bond; it does not refer to revenue bonds.  The

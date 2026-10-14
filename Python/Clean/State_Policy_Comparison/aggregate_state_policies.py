@@ -334,16 +334,6 @@ def render_table(state: pd.DataFrame) -> str:
     referendum = eligible.filter(pl.col("go_vote_required") == 1)
     control = eligible.filter(pl.col("go_vote_required") == 0)
     lines = [
-        r"\begin{figure}[H]",
-        r"\centering",
-        r"\caption{\textbf{State policies by city GO-bond referendum requirement}}",
-        r"\label{fig:state-policy-comparison}",
-        r"\begin{minipage}{\textwidth}",
-        r"\normalsize",
-        r"This figure compares the state-policy environments of the 26 states with uniform city GO-bond referendum requirements and the seven states with uniform rules that do not require referendums. States whose requirements vary by city, project, or financing category are excluded. The States row reports group sizes. Policy cells report $N$ [percentage], where $N$ is the number of states meeting the policy and the percentage uses all 26 or seven states in the respective group. Unknown policy values are not counted as meeting the policy. State GO vote uses the existing state bond-law coding; the comparison groups use the municipal GO-vote requirement. The final column identifies the source for each policy.",
-        r"\end{minipage}",
-        "",
-        r"\vspace{1em}",
         r"\begingroup",
         r"\scriptsize",
         r"\setlength{\tabcolsep}{4pt}",
@@ -375,7 +365,6 @@ def render_table(state: pd.DataFrame) -> str:
         r"\bottomrule",
         r"\end{tabularx}",
         r"\endgroup",
-        r"\end{figure}",
         "",
     ])
     return "\n".join(lines)
