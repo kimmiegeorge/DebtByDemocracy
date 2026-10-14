@@ -124,6 +124,10 @@ Step 02 writes
 sample screens, prior-year county controls, lagged Mergent debt, policy fields,
 caps, and regression indicators. `WEBSITE_ANALYSIS_DATA`,
 `WEBSITE_REGRESSION_DATA`, and `WEBSITE_DATA_DATE` select nondefault inputs.
+R step 01 now includes the state GAAP-requirement and state-audit indicators in
+the descriptive fragment. Its mean-difference fragment contains only the five
+website-disclosure outcomes; debt and county covariates remain regression
+controls rather than mean-difference rows.
 
 Do not run the Wayback collection/parsing tree or the AL/AR collection workers
 as part of a routine table rerun. Run website step 01 only when the approved
@@ -145,6 +149,10 @@ robustness indicators. `MEDIA_REGRESSION_DIR`, `MEDIA_FULL_REGRESSION_DATA`, and
 `MEDIA_BORDER_REGRESSION_DATA` override defaults. `EXCLUDE_STATE` is reserved
 for an explicit border sensitivity run.
 
+R step 02's mean-difference fragment now reports only the winsorized 12-month
+article count. Prior issuance, source count, amount, and county demographics
+remain controls in the regression specifications.
+
 News steps 2--5 rebuild entity mapping and article histories. They are upstream
 refresh operations, not required when the current clean intermediates are
 approved.
@@ -165,6 +173,10 @@ events, matching the related Texas table preparation. It writes a binned-summary
 CSV to `PROCESSED_RESULTS_DIR` for numerical comparison. The retired Texas
 issue-level source can be supplied with `TEXAS_EVENT_ISSUANCE_DATA` only for a
 controlled migration comparison.
+
+R step 03 constructs the election-outcome descriptives on the common 2001--2020
+positive-amount sample and reports `ln(Amount)` there once, rather than in the
+coverage-control block.
 
 The prior-ISD-failure data used by election step 05 come from
 [`../../Python/Clean/TX_Election_Exposure/README.md`](../../Python/Clean/TX_Election_Exposure/README.md).
@@ -298,6 +310,32 @@ Rscript R/Clean/08_media_coverage_dpc.R
 The DPC article pull and OpenAI batch classification scripts are source-refresh
 operations and are excluded from a routine full-table run.
 
+### 10. Leave-one-out sensitivities
+
+Step 12 reuses the prepared website, media, MSRB, and 2017 no-refundings
+point-in-time files used by the production scripts. It does not rebuild lags,
+winsorization, disclosure outcomes, or border matches:
+
+```sh
+Rscript R/Clean/12_leave_one_out_control_states.R
+```
+
+For full-sample media, retail-trading, debt-choice, and yield specifications,
+the script omits each of the seven canonical no-referendum control states in
+turn. For border specifications, it separately omits each approved state-border
+pair and all pairs linked to each represented control state. Debt choice is run
+for separate all-GO and UTGO-only samples, matching step 05; website coverage
+includes all five disclosure outcomes from step 01. The media border runs
+restore the submitted prior-issuance values from
+`input/media_submission_border_prior_12.csv` before estimation.
+
+Outputs default to `output/leave_one_out`: the full estimate and summary CSVs,
+the raw and processed summary fragments, and a baseline-regression fragment.
+Set `LEAVE_ONE_OUT_RESULTS_DIR` to keep a rerun in an empty staging directory.
+The script honors `WEBSITE_REGRESSION_DATA`, `WEBSITE_DATA_DATE`,
+`MEDIA_FULL_REGRESSION_DATA`, `MEDIA_BORDER_REGRESSION_DATA`, and
+`MSRB_REGRESSION_DIR`.
+
 ## R generation order
 
 After all required prepared inputs are frozen, use a new staging output folder:
@@ -335,14 +373,19 @@ Then run the applicable scripts in this order:
 14. `09_census_county_debt_issuance_share_2017.R` — county-debt online appendix
 15. `10_wild_cluster_bootstrap_border_tests.R` — border wild-cluster inference
 16. `11_media_coverage_exclude_month_zero.R` — media timing robustness
-17. `12_leave_one_out_control_states.R` — response leave-one-out outputs
+17. `12_leave_one_out_control_states.R` — response leave-one-out estimates,
+    summary fragments, and baseline table
 18. `13_tx_rejection_risk.R` — Texas rejection-risk mechanism panels
 19. `14_supermajority.R` — point-in-time supermajority mechanism panel
-20. `15_point_in_time_border_state_robustness.R` — Appendix border-city table
+20. `15_point_in_time_border_state_robustness.R` — raw Appendix border-city
+    fragment; the maintained processed wrapper is not rewritten here
 
-The border specifications in steps 10, 12, and 15 currently differ. Resolve the
-sample/control differences recorded in the audit before calling them variants
-of one common baseline.
+The point-in-time debt-choice and yield specifications in steps 10, 12, and 15
+now use the same approved debt/yield border pairs, full-sample eligibility and
+two-CUSIP screens, outcome-specific controls, border-pair fixed effects, and
+state-year clustering. Step 12 also asserts that every requested omission is
+present before estimation. Its website, media, and trading baselines mirror the
+corresponding controlled production specifications.
 
 Table 1 is assembled from descriptive fragments produced by steps 01--05; it
 has no separate estimation script.
@@ -371,6 +414,7 @@ step 02, rather than the older `r3b_media_supermajority.tex` promotion entry.
 | `State_Policy_Comparison/prepare_addnl_state_policy_sources.py` | Source refresh/manual review, not table generation |
 | `Mergent/261013_clean_mergent_raw.py` | Separate coauthor expanded-sample build; not an approved paper-pipeline input |
 | Census step 2a and R step 05d | Refunding-inclusive sensitivity; step 05d is safely quarantined but is not part of the main-paper run |
+| `R/Archive/12_tx_county_failure_screen.R` and `R/Archive/13_tx_isd_overlap_failure_validation.R` | Retired Texas feasibility/validation diagnostics; they are not numbered production steps |
 | Archived map/statute code | Archive code is not an approved routine production stage |
 | `99_promote_tables_to_overleaf.R --apply` | Mutates the paper repository and must follow numerical/visual review |
 
@@ -390,11 +434,13 @@ clone. Review the dry-run list and diffs before adding `--apply`; use
 `--overwrite` only for specifically approved replacements.
 
 The current default allowlist is incomplete for the active paper and response:
-it omits some main, dark-green, mechanism, leave-one-out, restricted-sample, and
-nested `with_other` fragments, and one supermajority name is stale. Until that
-manifest is repaired, pass an explicit `--files=` list and `--recursive` where
-needed, then verify every active TeX dependency manually. Processed wrappers
-and figures are not promoted by this script.
+it omits some main, dark-green, mechanism, leave-one-out, and restricted-sample
+fragments, and one supermajority name is stale. The nested `with_other`
+diagnostic and five-panel robustness fragments are now allowlisted and trigger
+recursive scanning automatically. Until the rest of the manifest is repaired,
+pass an explicit `--files=` list for omitted files and verify every active TeX
+dependency manually. Processed wrappers and figures are not promoted by this
+script.
 
 ## Validation checklist
 
