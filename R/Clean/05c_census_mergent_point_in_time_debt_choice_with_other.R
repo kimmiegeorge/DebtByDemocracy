@@ -585,7 +585,8 @@ summary(allgo_utgo_uncontrolled_2017)
 
 allgo_utgo_controlled_2017 <- feols(
   frac_utgo_outstanding_all ~ city_go_vote + ln_gdp + ln_census_population + ln_pers_inc +
-    ln_1p_county_nonmunicipal_total_debt + glm_proactive + state_ltgo_allowed + state_go_vote + low_state_tax_privilege,
+    ln_1p_county_nonmunicipal_total_debt + glm_proactive + state_ltgo_allowed + state_go_vote + low_state_tax_privilege +
+    strict_municipal_debt_limit,
   data = full_sample_other_2017[insample_allgo == 1],
   vcov = vcov_cluster(~state)
 )
@@ -593,14 +594,16 @@ summary(allgo_utgo_controlled_2017)
 
 allgo_ltgo_controlled_2017 <- feols(
   frac_ltgo_outstanding_all ~ city_go_vote + ln_gdp + ln_census_population + ln_pers_inc +
-    ln_1p_county_nonmunicipal_total_debt + glm_proactive + state_ltgo_allowed + state_go_vote + low_state_tax_privilege,
+    ln_1p_county_nonmunicipal_total_debt + glm_proactive + state_ltgo_allowed + state_go_vote + low_state_tax_privilege +
+    strict_municipal_debt_limit,
   data = full_sample_other_2017[insample_allgo == 1],
   vcov = vcov_cluster(~state)
 )
 summary(allgo_ltgo_controlled_2017)
 allgo_revenue_controlled_2017 <- feols(
   frac_rev_outstanding_all ~ city_go_vote + ln_gdp + ln_census_population + ln_pers_inc +
-    ln_1p_county_nonmunicipal_total_debt + glm_proactive + state_ltgo_allowed + state_go_vote + low_state_tax_privilege,
+    ln_1p_county_nonmunicipal_total_debt + glm_proactive + state_ltgo_allowed + state_go_vote + low_state_tax_privilege +
+    strict_municipal_debt_limit,
   data = full_sample_other_2017[insample_allgo == 1],
   vcov = vcov_cluster(~state)
 )
@@ -608,7 +611,8 @@ summary(allgo_revenue_controlled_2017)
 
 allgo_other_controlled_2017 <- feols(
   frac_other_outstanding_all ~ city_go_vote + ln_gdp + ln_census_population + ln_pers_inc +
-    ln_1p_county_nonmunicipal_total_debt + glm_proactive + state_ltgo_allowed + state_go_vote + low_state_tax_privilege,
+    ln_1p_county_nonmunicipal_total_debt + glm_proactive + state_ltgo_allowed + state_go_vote + low_state_tax_privilege +
+    strict_municipal_debt_limit,
   data = full_sample_other_2017[insample_allgo == 1],
   vcov = vcov_cluster(~state)
 )
@@ -651,7 +655,8 @@ summary(utgo_only_utgo_uncontrolled_2017)
 
 utgo_only_utgo_controlled_2017 <- feols(
   frac_utgo_outstanding_all ~ city_go_vote + ln_gdp + ln_census_population + ln_pers_inc +
-    ln_1p_county_nonmunicipal_total_debt + glm_proactive + state_ltgo_allowed + state_go_vote + low_state_tax_privilege,
+    ln_1p_county_nonmunicipal_total_debt + glm_proactive + state_ltgo_allowed + state_go_vote + low_state_tax_privilege +
+    strict_municipal_debt_limit,
   data = full_sample_other_2017[insample_utgo_only == 1],
   vcov = vcov_cluster(~state)
 )
@@ -659,7 +664,8 @@ summary(utgo_only_utgo_controlled_2017)
 
 utgo_only_ltgo_controlled_2017 <- feols(
   frac_ltgo_outstanding_all ~ city_go_vote + ln_gdp + ln_census_population + ln_pers_inc +
-    ln_1p_county_nonmunicipal_total_debt + glm_proactive + state_ltgo_allowed + state_go_vote + low_state_tax_privilege,
+    ln_1p_county_nonmunicipal_total_debt + glm_proactive + state_ltgo_allowed + state_go_vote + low_state_tax_privilege +
+    strict_municipal_debt_limit,
   data = full_sample_other_2017[insample_utgo_only == 1],
   vcov = vcov_cluster(~state)
 )
@@ -667,7 +673,8 @@ summary(utgo_only_ltgo_controlled_2017)
 
 utgo_only_revenue_controlled_2017 <- feols(
   frac_rev_outstanding_all ~ city_go_vote + ln_gdp + ln_census_population + ln_pers_inc +
-    ln_1p_county_nonmunicipal_total_debt + glm_proactive + state_ltgo_allowed + state_go_vote + low_state_tax_privilege,
+    ln_1p_county_nonmunicipal_total_debt + glm_proactive + state_ltgo_allowed + state_go_vote + low_state_tax_privilege +
+    strict_municipal_debt_limit,
   data = full_sample_other_2017[insample_utgo_only == 1],
   vcov = vcov_cluster(~state)
 )
@@ -675,7 +682,8 @@ summary(utgo_only_revenue_controlled_2017)
 
 utgo_only_other_controlled_2017 <- feols(
   frac_other_outstanding_all ~ city_go_vote + ln_gdp + ln_census_population + ln_pers_inc +
-    ln_1p_county_nonmunicipal_total_debt + glm_proactive + state_ltgo_allowed + state_go_vote + low_state_tax_privilege,
+    ln_1p_county_nonmunicipal_total_debt + glm_proactive + state_ltgo_allowed + state_go_vote + low_state_tax_privilege +
+    strict_municipal_debt_limit,
   data = full_sample_other_2017[insample_utgo_only == 1],
   vcov = vcov_cluster(~state)
 )
@@ -714,21 +722,24 @@ writeLines(modified_output, file.path(tbl_dir_other, "point_in_time_debt_choice_
 # definition so their four debt-choice outcomes continue to sum to one.
 allgo_coo_controlled_2017 <- feols(
   frac_coo_outstanding_all ~ city_go_vote + ln_gdp + ln_census_population + ln_pers_inc +
-    ln_1p_county_nonmunicipal_total_debt + glm_proactive + state_ltgo_allowed + state_go_vote + low_state_tax_privilege,
+    ln_1p_county_nonmunicipal_total_debt + glm_proactive + state_ltgo_allowed + state_go_vote + low_state_tax_privilege +
+    strict_municipal_debt_limit,
   data = full_sample_other_2017[insample_allgo == 1],
   vcov = vcov_cluster(~state)
 )
 
 allgo_cop_controlled_2017 <- feols(
   frac_cop_outstanding_all ~ city_go_vote + ln_gdp + ln_census_population + ln_pers_inc +
-    ln_1p_county_nonmunicipal_total_debt + glm_proactive + state_ltgo_allowed + state_go_vote + low_state_tax_privilege,
+    ln_1p_county_nonmunicipal_total_debt + glm_proactive + state_ltgo_allowed + state_go_vote + low_state_tax_privilege +
+    strict_municipal_debt_limit,
   data = full_sample_other_2017[insample_allgo == 1],
   vcov = vcov_cluster(~state)
 )
 
 allgo_other_ex_certificate_controlled_2017 <- feols(
   frac_other_ex_certificate_outstanding_all ~ city_go_vote + ln_gdp + ln_census_population + ln_pers_inc +
-    ln_1p_county_nonmunicipal_total_debt + glm_proactive + state_ltgo_allowed + state_go_vote + low_state_tax_privilege,
+    ln_1p_county_nonmunicipal_total_debt + glm_proactive + state_ltgo_allowed + state_go_vote + low_state_tax_privilege +
+    strict_municipal_debt_limit,
   data = full_sample_other_2017[insample_allgo == 1],
   vcov = vcov_cluster(~state)
 )
@@ -737,14 +748,16 @@ allgo_other_ex_certificate_controlled_2017 <- feols(
 # Other are estimable for that comparison.
 utgo_only_cop_controlled_2017 <- feols(
   frac_cop_outstanding_all ~ city_go_vote + ln_gdp + ln_census_population + ln_pers_inc +
-    ln_1p_county_nonmunicipal_total_debt + glm_proactive + state_ltgo_allowed + state_go_vote + low_state_tax_privilege,
+    ln_1p_county_nonmunicipal_total_debt + glm_proactive + state_ltgo_allowed + state_go_vote + low_state_tax_privilege +
+    strict_municipal_debt_limit,
   data = full_sample_other_2017[insample_utgo_only == 1],
   vcov = vcov_cluster(~state)
 )
 
 utgo_only_other_ex_certificate_controlled_2017 <- feols(
   frac_other_ex_certificate_outstanding_all ~ city_go_vote + ln_gdp + ln_census_population + ln_pers_inc +
-    ln_1p_county_nonmunicipal_total_debt + glm_proactive + state_ltgo_allowed + state_go_vote + low_state_tax_privilege,
+    ln_1p_county_nonmunicipal_total_debt + glm_proactive + state_ltgo_allowed + state_go_vote + low_state_tax_privilege +
+    strict_municipal_debt_limit,
   data = full_sample_other_2017[insample_utgo_only == 1],
   vcov = vcov_cluster(~state)
 )
@@ -806,7 +819,8 @@ yield_2017_all_controlled <- feols(
     mergent_wavg_original_maturity_years_all +
     mergent_any_insured_all + mergent_any_callable_all +
     mergent_any_sinkable_all + glm_proactive + state_ltgo_allowed +
-    state_go_vote + low_state_tax_privilege,
+    state_go_vote + low_state_tax_privilege +
+    strict_municipal_debt_limit,
   data = full_sample_other_2017,
   vcov = vcov_cluster(~state)
 )
@@ -850,7 +864,8 @@ yield_2017_utgo_controlled <- feols(
     mergent_wavg_original_maturity_years_utgo +
     mergent_any_insured_utgo + mergent_any_callable_utgo +
     mergent_any_sinkable_utgo + glm_proactive + state_ltgo_allowed +
-    state_go_vote + low_state_tax_privilege,
+    state_go_vote + low_state_tax_privilege +
+    strict_municipal_debt_limit,
   data = full_sample_other_2017,
   vcov = vcov_cluster(~state)
 )
@@ -863,7 +878,8 @@ yield_2017_ltgo_controlled <- feols(
     mergent_wavg_original_maturity_years_ltgo +
     mergent_any_insured_ltgo + mergent_any_callable_ltgo +
     mergent_any_sinkable_ltgo + glm_proactive + state_ltgo_allowed +
-    state_go_vote + low_state_tax_privilege,
+    state_go_vote + low_state_tax_privilege +
+    strict_municipal_debt_limit,
   data = full_sample_other_2017,
   vcov = vcov_cluster(~state)
 )
@@ -876,7 +892,8 @@ yield_2017_revenue_controlled <- feols(
     mergent_wavg_original_maturity_years_revenue +
     mergent_any_insured_revenue + mergent_any_callable_revenue +
     mergent_any_sinkable_revenue + glm_proactive + state_ltgo_allowed +
-    state_go_vote + low_state_tax_privilege,
+    state_go_vote + low_state_tax_privilege +
+    strict_municipal_debt_limit,
   data = full_sample_other_2017,
   vcov = vcov_cluster(~state)
 )
@@ -889,7 +906,8 @@ yield_2017_other_controlled <- feols(
     mergent_wavg_original_maturity_years_other +
     mergent_any_insured_other + mergent_any_callable_other +
     mergent_any_sinkable_other + glm_proactive + state_ltgo_allowed +
-    state_go_vote + low_state_tax_privilege,
+    state_go_vote + low_state_tax_privilege +
+    strict_municipal_debt_limit,
   data = full_sample_other_2017,
   vcov = vcov_cluster(~state)
 )
