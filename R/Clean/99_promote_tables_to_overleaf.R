@@ -54,10 +54,6 @@ if (!dir.exists(source_dir)) {
   stop('Source directory does not exist: ', source_dir)
 }
 
-table_files <- list.files(source_dir, pattern = '\\.tex$', recursive = recursive, full.names = TRUE)
-table_files <- table_files[!grepl('/robustness/', table_files, fixed = TRUE)]
-table_files <- sort(table_files)
-
 # Default to outputs used by the manuscript or either response document. This
 # prevents stale exploratory tables left in output/ from being promoted.
 document_table_files <- c(
@@ -95,6 +91,13 @@ document_table_files <- c(
   'point_in_time_yield_spread_2017_full_sample_panel_b_utgo_ltgo_revenue.tex',
   'point_in_time_robustness_border_state.tex',
   'point_in_time_robustness_super_majority.tex',
+  'with_other/issuer_level_desc_other.tex',
+  'with_other/point_in_time_census_debt_poisson_2017_expanded_sample_with_other.tex',
+  'with_other/point_in_time_debt_choice_2017_allgo_all.tex',
+  'with_other/point_in_time_debt_choice_2017_coo_cop_breakout.tex',
+  'with_other/point_in_time_debt_choice_2017_utgo_only_all.tex',
+  'with_other/point_in_time_yield_spread_2017_full_sample_all_with_other.tex',
+  'with_other/point_in_time_yield_spread_2017_full_sample_panel_b_utgo_ltgo_revenue_other.tex',
   'alternative_sample_robustness_panel_a_debt_choice_allgo.tex',
   'alternative_sample_robustness_panel_b_debt_choice_utgo_only.tex',
   'alternative_sample_robustness_panel_c_yield_spread.tex',
@@ -109,6 +112,21 @@ document_table_files <- c(
   'point_in_time_debt_choice_2017_utgo_vs_az_co_mo_sd_vt.tex',
   'media_coverage_panel_b_ols.tex'
 )
+
+# Search nested output paths whenever the allowlist or an explicit request
+# contains them. This keeps response-only with_other fragments in the normal
+# promotion contract without exposing unrelated nested exploratory outputs.
+scan_recursively <- recursive ||
+  any(grepl('/', document_table_files, fixed = TRUE)) ||
+  grepl('/', files_arg, fixed = TRUE)
+table_files <- list.files(
+  source_dir,
+  pattern = '\\.tex$',
+  recursive = scan_recursively,
+  full.names = TRUE
+)
+table_files <- table_files[!grepl('/robustness/', table_files, fixed = TRUE)]
+table_files <- sort(table_files)
 
 if (nzchar(files_arg)) {
   requested_files <- trimws(strsplit(files_arg, ',', fixed = TRUE)[[1]])
