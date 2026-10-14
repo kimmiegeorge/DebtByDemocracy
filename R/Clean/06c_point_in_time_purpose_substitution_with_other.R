@@ -473,7 +473,7 @@ writeLines(
 writeLines(c(
   "\\newpage",
   "\\begin{table}[H]\\centering",
-  "\\caption{\\textbf{Robustness to Including Other Public Debt}}",
+  "\\caption{\\textbf{Robustness to including other public debt}}",
   "\\label{tab:with_other_robustness}",
   paste0(
     "\\parbox{\\textwidth}{This table reports the 2017 point-in-time ",

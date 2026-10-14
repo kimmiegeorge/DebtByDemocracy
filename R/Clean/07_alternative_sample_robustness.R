@@ -701,7 +701,7 @@ writeLines(
 writeLines(c(
   "\\newpage",
   "\\begin{table}[H]\\centering",
-  "\\caption{\\textbf{Robustness to Alternative Measurement Periods}}",
+  "\\caption{\\textbf{Robustness to alternative measurement periods}}",
   "\\label{tab:alternative_sample_robustness}",
   paste0(
     "\\parbox{\\textwidth}{This table repeats the debt-choice, weighted-average yield-spread, ",
