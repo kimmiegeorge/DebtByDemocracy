@@ -469,7 +469,7 @@ writeLines(
   file.path(tbl_dir_other, "panel_d_other_pct_revenue_other_purpose.tex")
 )
 
-# Assemble the five response-only fragments in the same format as Table A2.
+# Assemble the five appendix fragments in the same outcome order as Table A2.
 writeLines(c(
   "\\newpage",
   "\\begin{table}[H]\\centering",
@@ -482,8 +482,8 @@ writeLines(c(
     "all Mergent public debt. Panels B and C report the shares of UTGO, LTGO, ",
     "and combined Revenue/Other debt under the two city referendum regimes. ",
     "Panel D reports the combined Revenue/Other share within each project ",
-    "purpose. Panel E reports weighted-average yield spreads by bond type, ",
-    "pooling Revenue and Other bonds. Controls are suppressed. Standard ",
+    "purpose. Panel E reports the aggregate weighted-average yield spread ",
+    "without and with controls. Controls are suppressed. Standard ",
     "errors are clustered by state. z- or t-statistics are reported in ",
     "parentheses. *, **, and *** indicate statistical significance at the ",
     "10\\%, 5\\%, and 1\\% levels.}"

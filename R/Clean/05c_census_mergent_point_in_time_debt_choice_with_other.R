@@ -1334,13 +1334,11 @@ writeLines(
   )
 )
 
-# Robustness-table Panel E: Revenue and Other bonds are pooled before computing
-# the amount-weighted spread and every associated bond-level control.
+# Robustness-table Panel E: aggregate yield spread across the expanded public-
+# debt portfolio, reported without and with the full set of controls.
 table_call <- etable(
-  yield_2017_utgo_controlled,
-  yield_2017_ltgo_controlled,
-  yield_2017_revenue_other_controlled,
-  headers = c("UTGO", "LTGO", "Revenue/Other"),
+  yield_2017_all_uncontrolled,
+  yield_2017_all_controlled,
   coefstat = "tstat",
   drop = "Constant",
   style.tex = style.tex(main = "aer", fixef.suffix = " FE", yesNo = c("Yes", "No")),
@@ -1367,22 +1365,22 @@ outcome_header_idx <- grep(
 )
 if (length(outcome_header_idx) > 0) {
   modified_output[outcome_header_idx[1]] <-
-    " & \\multicolumn{3}{c}{Wtd. Avg. Yield Spread}\\\\"
+    " & \\multicolumn{2}{c}{Wtd. Avg. Yield Spread}\\\\"
 }
 modified_output <- format_table(modified_output, cluster_level = "State")
 r2_idx <- grep("R\\$\\^2\\$", modified_output)
 stopifnot(length(r2_idx) == 1L)
 modified_output <- append(
   modified_output,
-  "   Controls                   & Yes & Yes & Yes\\\\",
+  "   Controls                   & No & Yes\\\\",
   after = r2_idx
 )
 modified_output <- add_panel(
   modified_output,
   "Panel E: Weighted average yield spread",
-  ncols = 4,
-  zero_width = TRUE
+  ncols = 3
 )
+modified_output <- trimws(modified_output, which = "right")
 writeLines(
   modified_output,
   file.path(tbl_dir_other, "panel_e_other_yield_spread.tex")

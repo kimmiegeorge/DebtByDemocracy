@@ -20,7 +20,11 @@ dir.create(tbl_dir, recursive = TRUE, showWarnings = FALSE)
 # Save tables that include other bonds in their own subfolder.
 tbl_dir_other <- file.path(tbl_dir, "with_other")
 dir.create(tbl_dir_other, recursive = TRUE, showWarnings = FALSE)
-processed_dir <- "/Users/kmunevar/Dropbox/Voting on Bonds/Code/R/Clean/output/processed"
+processed_dir <- Sys.getenv(
+  "PROCESSED_RESULTS_DIR",
+  unset = "/Users/kmunevar/Dropbox/Voting on Bonds/Code/R/Clean/output/processed"
+)
+dir.create(processed_dir, recursive = TRUE, showWarnings = FALSE)
 
 # Shared table labels ----
 

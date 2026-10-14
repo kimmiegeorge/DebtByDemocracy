@@ -16,7 +16,10 @@ tbl_dir <- Sys.getenv(
   unset = "/Users/kmunevar/Dropbox/Voting on Bonds/Code/R/Clean/output/revision_tables"
 )
 
-processed_dir <- "/Users/kmunevar/Dropbox/Voting on Bonds/Code/R/Clean/output/processed"
+processed_dir <- Sys.getenv(
+  "PROCESSED_RESULTS_DIR",
+  unset = "/Users/kmunevar/Dropbox/Voting on Bonds/Code/R/Clean/output/processed"
+)
 dir.create(tbl_dir, recursive = TRUE, showWarnings = FALSE)
 dir.create(processed_dir, recursive = TRUE, showWarnings = FALSE)
 
@@ -337,7 +340,7 @@ writeLines(
   file.path(tbl_dir, "alternative_sample_robustness_panel_b_debt_choice_utgo_only.tex")
 )
 
-# Panel C: weighted-average yield spread ----
+# Weighted-average yield spread (reported last as Panel E) ----
 
 panel_c_point_yield <- feols(
   mergent_wavg_yield_spread_go_revenue ~ city_go_vote + ln_gdp +
@@ -388,7 +391,7 @@ table_output <- format_table(table_output, cluster_level = "State", drop_covaria
 table_output <- table_output[!trimws(table_output) %in% c("& \\\\", "\\\\")]
 hline_idx <- grep("^[[:space:]]*\\\\hline[[:space:]]*$", table_output)
 if (length(hline_idx) == 0) {
-  stop("Could not find the pre-statistics horizontal rule in Panel C.")
+  stop("Could not find the pre-statistics horizontal rule in the yield panel.")
 }
 table_output <- append(
   table_output,
@@ -396,13 +399,13 @@ table_output <- append(
   after = hline_idx[1]
 )
 
-table_output <- add_panel(table_output, "Panel C: Weighted average yield spread", ncols = 3)
+table_output <- add_panel(table_output, "Panel E: Weighted average yield spread", ncols = 3)
 writeLines(
   table_output,
   file.path(tbl_dir, "alternative_sample_robustness_panel_c_yield_spread.tex")
 )
 
-# Panel D: 2012 point-in-time purpose substitution ----
+# 2012 point-in-time purpose substitution (reported as Panel C) ----
 
 purpose_2012 <- fread(file.path(
   root,
@@ -508,7 +511,7 @@ table_output <- format_table(table_output, cluster_level = "State", drop_covaria
 table_output <- table_output[!trimws(table_output) %in% c("& \\\\", "\\\\")]
 hline_idx <- grep("^[[:space:]]*\\\\hline[[:space:]]*$", table_output)
 if (length(hline_idx) == 0) {
-  stop("Could not find the pre-statistics horizontal rule in Panel D.")
+  stop("Could not find the pre-statistics horizontal rule in the 2012 purpose panel.")
 }
 table_output <- append(
   table_output,
@@ -518,7 +521,7 @@ table_output <- append(
 
 table_output <- add_panel(
   table_output,
-  "Panel D: Purpose substitution, 2012 point in time",
+  "Panel C: Purpose substitution, 2012 point in time",
   ncols = 6
 )
 
@@ -528,7 +531,7 @@ writeLines(
   file.path(tbl_dir, "alternative_sample_robustness_panel_d_purpose_2012.tex")
 )
 
-# Panel E: full-period aggregate purpose substitution ----
+# Full-period aggregate purpose substitution (reported as Panel D) ----
 
 purpose_bonds <- fread(file.path(
   root,
@@ -673,7 +676,7 @@ table_output <- format_table(table_output, cluster_level = "State", drop_covaria
 table_output <- table_output[!trimws(table_output) %in% c("& \\\\", "\\\\")]
 hline_idx <- grep("^[[:space:]]*\\\\hline[[:space:]]*$", table_output)
 if (length(hline_idx) == 0) {
-  stop("Could not find the pre-statistics horizontal rule in Panel E.")
+  stop("Could not find the pre-statistics horizontal rule in the aggregate purpose panel.")
 }
 table_output <- append(
   table_output,
@@ -683,7 +686,7 @@ table_output <- append(
 
 table_output <- add_panel(
   table_output,
-  "Panel E: Purpose substitution, full sample aggregate",
+  "Panel D: Purpose substitution, full sample aggregate",
   ncols = 6
 )
 
@@ -703,8 +706,8 @@ writeLines(c(
   paste0(
     "\\parbox{\\textwidth}{This table repeats the debt-choice, weighted-average yield-spread, ",
     "and purpose-substitution analyses using the 2012 point-in-time measures and full-period ",
-    "issuer aggregates. Panels A and B report debt composition. Panel C reports the weighted-average ",
-    "yield spread. Panels D and E report the revenue share within each purpose category. ",
+    "issuer aggregates. Panels A and B report debt composition. Panels C and D report the revenue ",
+    "share within each purpose category. Panel E reports the weighted-average yield spread. ",
     "The 2012 specifications use the point-in-time controls. The full-sample aggregate specifications ",
     "use county population and debt issued by other entities in the county. The aggregate yield ",
     "regression also controls for available weighted-average rating and maturity, but the issuer-level ",
@@ -716,9 +719,9 @@ writeLines(c(
   "\\vspace{10pt}",
   "\\input{tables/clean/raw/alternative_sample_robustness_panel_b_debt_choice_utgo_only}",
   "\\vspace{10pt}",
-  "\\input{tables/clean/raw/alternative_sample_robustness_panel_c_yield_spread}",
-  "\\vspace{10pt}",
   "\\input{tables/clean/raw/alternative_sample_robustness_panel_d_purpose_2012}",
   "\\vspace{10pt}",
-  "\\input{tables/clean/raw/alternative_sample_robustness_panel_e_purpose_aggregate}"
+  "\\input{tables/clean/raw/alternative_sample_robustness_panel_e_purpose_aggregate}",
+  "\\vspace{10pt}",
+  "\\input{tables/clean/raw/alternative_sample_robustness_panel_c_yield_spread}"
 ), file.path(processed_dir, "alternative_sample_robustness.tex"))
