@@ -347,6 +347,6 @@ modified_output <- append(
 modified_output <- add_panel(
   modified_output,
   "Panel A: Outstanding debt",
-  ncols = 3
+  ncols = 4
 )
 writeLines(modified_output, file.path(tbl_dir, "panel_a_dg_outstanding_debt.tex"))

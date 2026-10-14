@@ -380,23 +380,24 @@ add_panel <- function(
   
   tabular_idx <- tabular_idx[1]  # Use first match
   
-  # If ncols not specified, detect from the tabular line
+  # If ncols is not specified, infer it from the widest table row. Parsing the
+  # tabular declaration is brittle because tabular* column specifications use
+  # nested braces (for example @{\extracolsep{\fill}}lccc).
   if (is.null(ncols)) {
-    tabular_line <- lines[tabular_idx]
-    # Extract column spec - now handles both tabular and tabular* with multiple brace groups
-    col_match <- regexpr("\\\\begin\\{tabular\\*?\\}(\\{[^}]+\\})+", tabular_line, perl = TRUE)
-    if (col_match[1] > 0) {
-      full_match <- regmatches(tabular_line, col_match)[[1]]
-      # Extract the last brace group which contains the column spec
-      col_spec <- gsub(".*\\{([^}]+)\\}$", "\\1", full_match)
-      # Remove @{\extracolsep{\fill}} prefix if present (match actual backslashes in string)
-      col_spec <- gsub("^@\\{\\\\extracolsep\\{\\\\fill\\}\\}", "", col_spec)
-      # Also try without doubled backslashes
-      col_spec <- gsub("^@\\{\\extracolsep\\{\\fill\\}\\}", "", col_spec)
-      ncols <- nchar(col_spec)  # Count columns
-    } else {
-      ncols <- 6  # Default fallback
+    tabular_end_idx <- grep("\\\\end\\{tabular\\*?\\}", lines)
+    tabular_end_idx <- tabular_end_idx[tabular_end_idx > tabular_idx][1]
+    if (is.na(tabular_end_idx)) {
+      return(tex)
     }
+    table_lines <- lines[(tabular_idx + 1):(tabular_end_idx - 1)]
+    table_lines <- gsub("\\\\&", "", table_lines)
+    ampersand_matches <- gregexpr("&", table_lines, fixed = TRUE)
+    ampersand_counts <- vapply(
+      ampersand_matches,
+      function(matches) if (matches[[1]] == -1L) 0L else length(matches),
+      integer(1)
+    )
+    ncols <- max(ampersand_counts) + 1L
   }
   
   # Escape characters that would break LaTeX (minimal set)

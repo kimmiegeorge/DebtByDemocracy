@@ -802,7 +802,7 @@ modified_output <- append(
 modified_output <- add_panel(
   modified_output,
   "Panel A: Outstanding debt",
-  ncols = 3
+  ncols = 4
 )
 writeLines(
   modified_output,

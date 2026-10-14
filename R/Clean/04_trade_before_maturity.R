@@ -300,7 +300,7 @@ modified_output <- modify_etable_rounding(
 )
 
 modified_output <- format_table(modified_output, cluster_level = "State")
-modified_output <- add_panel(modified_output, 'Panel A: Full sample')
+modified_output <- add_panel(modified_output, 'Panel A: Full sample', ncols = 4)
 
 writeLines(modified_output, paste0(tables_wd, '/trade_before_maturity_full_sample_tax.tex'))
 
@@ -358,7 +358,7 @@ modified_output <- modify_etable_rounding(
 )
 
 modified_output <- format_table(modified_output, cluster_level = "State-Year")
-modified_output <- add_panel(modified_output, 'Panel B: Border-city sample')
+modified_output <- add_panel(modified_output, 'Panel B: Border-city sample', ncols = 4)
 
 writeLines(modified_output, paste0(tables_wd, '/trade_before_maturity_border_sample_tax.tex'))
 

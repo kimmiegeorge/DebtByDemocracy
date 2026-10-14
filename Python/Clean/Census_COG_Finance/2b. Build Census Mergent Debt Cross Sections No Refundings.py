@@ -482,11 +482,13 @@ issuer_control_cols = [
     'city_go_vote',
     'city_rev_vote',
     'nh_city',
-    'state_go_vote',
     'state_utgo_allowed',
-    'state_ltgo_allowed',
-    'glm_proactive',
 ]
+
+# The bond file also carries legacy copies of state_go_vote,
+# state_ltgo_allowed, and glm_proactive. Add those fields only from the current
+# state-policy snapshot below so a clean rebuild has one authoritative source
+# and does not collide when the policy table is joined.
 
 issuers = (
     raw_bonds
@@ -963,6 +965,9 @@ full_panel = (
 state_policy = (
     pl.read_csv(state_policy_file, infer_schema_length=10000)
     .with_columns(pl.col('state_abbr').cast(pl.Utf8).str.to_uppercase())
+    .with_columns(
+        pl.col(pl.String).str.replace_all(r'[\r\n]+', ' ')
+    )
     .drop('state_name')
     .rename({'state_abbr': 'state'})
 )
@@ -1304,6 +1309,11 @@ ordered_cols_base = [
     'border_category',
     *state_policy_cols,
 ]
+
+# Several core analysis fields are intentionally positioned near the front of
+# the file and also belong to state_policy_cols. Preserve that preferred order
+# while including each selected column only once.
+ordered_cols_base = list(dict.fromkeys(ordered_cols_base))
 
 ordered_cols = [col for col in ordered_cols_base if col in full_panel.columns]
 border_ordered_cols = [col for col in ordered_cols_base if col in border_panel.columns]
