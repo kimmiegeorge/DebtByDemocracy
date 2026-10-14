@@ -6,7 +6,11 @@ Read these instructions before beginning work in this repository.
 
 - All project code lives in this `Code` repository.
 - Active development is in the `Python/` and `R/` directories. Keep new code in the appropriate one of those two directories unless the task explicitly requires another location.
-- The paper and revision materials live outside this repository at `/Users/kmunevar/Dropbox/Apps/Overleaf/Voting on Bonds`.
+- The authoritative paper and revision worktree lives outside this repository
+  at `/Users/kmunevar/Repos/overleaf-voting-on-bonds`. Promote reviewed outputs
+  through that Git repository so each promotion has a diff and commit history.
+  `/Users/kmunevar/Dropbox/Apps/Overleaf/Voting on Bonds` is a synchronized
+  mirror, not a promotion target.
   - `main.tex` is the most recent paper draft.
   - `response_1.tex` is the first-round review response.
   - `response_2.tex` is the second-round review response currently in progress.

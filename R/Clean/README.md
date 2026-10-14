@@ -424,14 +424,14 @@ step 02, rather than the older `r3b_media_supermajority.tex` promotion entry.
 
 ```sh
 Rscript R/Clean/99_promote_tables_to_overleaf.R \
-  --source='/absolute/path/to/staging/revision_tables' \
-  --dest='/Users/kmunevar/Repos/overleaf-voting-on-bonds/tables/clean/raw'
+  --source='/absolute/path/to/staging/revision_tables'
 ```
 
-The script's built-in destination is the Dropbox Apps Overleaf folder, not the
-Git clone shown above. Always pass `--dest` explicitly when promoting to the
-clone. Review the dry-run list and diffs before adding `--apply`; use
-`--overwrite` only for specifically approved replacements.
+The built-in destination is the local Overleaf Git clone at
+`~/Repos/overleaf-voting-on-bonds`, not the Dropbox Apps mirror. The script
+requires the destination to be inside a Git worktree and refuses `--apply` when
+that worktree is already dirty. Review the dry-run list and diffs before adding
+`--apply`; use `--overwrite` only for specifically approved replacements.
 
 The current default allowlist is incomplete for the active paper and response:
 it omits some main, dark-green, mechanism, leave-one-out, and restricted-sample
@@ -454,9 +454,15 @@ Before updating the paper:
 5. Verify that wrappers include every panel described in their notes.
 6. Check that table notes state the actual sample, dates, controls, fixed
    effects, clustering, and debt/refunding treatment.
-7. Promote only approved files with an explicit destination.
-8. Compile `main.tex` and the response document and visually inspect every
-   table and figure.
+7. Pull the Overleaf Git clone with `git pull --ff-only` and confirm that its
+   worktree is clean.
+8. Promote only approved files into the Git clone. Do not copy manuscript prose
+   or unrelated Dropbox-only edits as part of a table promotion.
+9. Review `git diff`, compile `main.tex` (which includes the active response
+   document), and visually inspect every changed table and figure.
+10. Commit the approved table/figure promotion as one coherent commit, then
+    push that commit to the Overleaf remote. Preserve the pre-promotion commit
+    hash in the run notes for an immediate rollback point.
 
 ## Environment overrides
 

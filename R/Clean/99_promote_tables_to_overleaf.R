@@ -1,8 +1,8 @@
 #!/usr/bin/env Rscript
 
-# 99: Copy clean table outputs into the Overleaf clean/raw table folder when ready.
+# 99: Copy clean table outputs into the local Overleaf Git clone when ready.
 # Dry-run is the default. Use --apply to copy, and --overwrite to replace files
-# that already exist in Overleaf.
+# that already exist in the clone. Commit and push only after review/compilation.
 
 args <- commandArgs(trailingOnly = TRUE)
 
@@ -23,7 +23,8 @@ script_path <- if (length(file_arg) > 0) {
 }
 repo_root <- normalizePath(file.path(dirname(script_path), '..', '..'), mustWork = FALSE)
 default_source <- file.path(repo_root, 'R/Clean/output/revision_tables')
-default_dest <- path.expand('~/Dropbox/Apps/Overleaf/Voting on bonds/tables/clean/raw')
+default_paper_repo <- path.expand('~/Repos/overleaf-voting-on-bonds')
+default_dest <- file.path(default_paper_repo, 'tables/clean/raw')
 
 source_dir <- normalizePath(get_arg('--source=', default_source), mustWork = TRUE)
 dest_dir <- normalizePath(get_arg('--dest=', default_dest), mustWork = FALSE)
@@ -52,6 +53,49 @@ if (has_flag('--help') || has_flag('-h')) {
 
 if (!dir.exists(source_dir)) {
   stop('Source directory does not exist: ', source_dir)
+}
+
+# Refuse to apply into a non-Git or already-dirty paper tree. A clean starting
+# point keeps each promotion isolated in one reviewable Overleaf commit and
+# prevents unrelated manuscript edits from being swept into the table update.
+git_probe_dir <- dest_dir
+while (!dir.exists(git_probe_dir)) {
+  parent_dir <- dirname(git_probe_dir)
+  if (identical(parent_dir, git_probe_dir)) {
+    break
+  }
+  git_probe_dir <- parent_dir
+}
+
+git_root_output <- suppressWarnings(system2(
+  'git',
+  c('-C', shQuote(git_probe_dir), 'rev-parse', '--show-toplevel'),
+  stdout = TRUE,
+  stderr = TRUE
+))
+git_root_status <- attr(git_root_output, 'status')
+if (is.null(git_root_status)) {
+  git_root_status <- 0L
+}
+if (git_root_status != 0L) {
+  stop('Destination is not inside a Git worktree: ', dest_dir)
+}
+git_root <- normalizePath(git_root_output[[1]], mustWork = TRUE)
+
+if (apply_changes) {
+  git_status <- system2(
+    'git',
+    c('-C', shQuote(git_root), 'status', '--porcelain', '--untracked-files=all'),
+    stdout = TRUE,
+    stderr = TRUE
+  )
+  if (length(git_status) > 0) {
+    stop(
+      'Paper Git worktree is not clean. Commit, stash, or remove unrelated ',
+      'changes before promotion:\n',
+      paste(git_status, collapse = '\n')
+    )
+  }
 }
 
 # Default to outputs used by the manuscript or either response document. This
@@ -176,6 +220,7 @@ file_status$action <- ifelse(
 
 cat('Source: ', source_dir, '\n', sep = '')
 cat('Destination: ', dest_dir, '\n', sep = '')
+cat('Paper Git repository: ', git_root, '\n', sep = '')
 cat('Mode: ', if (apply_changes) 'apply' else 'dry-run', '\n', sep = '')
 cat('Overwrite existing: ', overwrite, '\n\n', sep = '')
 
@@ -205,3 +250,5 @@ if (!all(copied)) {
 }
 
 cat('\nCopied ', sum(copied), ' table file(s).\n', sep = '')
+cat('Review with: git -C ', shQuote(git_root), ' diff -- tables/clean/raw\n', sep = '')
+cat('Commit and push only after the paper compiles and the tables pass review.\n')
