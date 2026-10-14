@@ -7,9 +7,12 @@
 # definition remains exhaustive: Other includes COO, COP, and residual other
 # debt. The source's bond_type == "cop" combines debt_type COO and COP, so the
 # sensitivity results below report those two debt types separately.
-expanded_bond_file <- file.path(
-  root,
-  "Data/Mergent/Clean/261013_city_cusiplevel_finsample_allpubdebt.dta"
+expanded_bond_file <- Sys.getenv(
+  "MERGENT_ALLPUBDEBT_FILE",
+  unset = file.path(
+    root,
+    "Data/Mergent/Clean/261013_city_cusiplevel_finsample_allpubdebt.dta"
+  )
 )
 expanded_bond_cols <- c(
   "issue_id",

@@ -70,7 +70,8 @@ GO + Revenue + Other par as the denominator. It also refreshes state-policy
 controls from the current comparison file and writes
 `261013_dpc_point_in_time_purpose_substitution_2017_issuer_category_panel_with_other.csv`
 under the `with_other` subdirectory. `PURPOSE_WITH_OTHER_DIR` overrides that
-location. Run
+location, and `MERGENT_ALLPUBDEBT_FILE` can select another expanded Mergent
+input for a staged sensitivity run without replacing the default source. Run
 `R/Clean/06c_point_in_time_purpose_substitution_with_other.R` afterward to
 produce Panels A--C in `revision_tables/with_other`; Panel C is the Other
 fraction regression.

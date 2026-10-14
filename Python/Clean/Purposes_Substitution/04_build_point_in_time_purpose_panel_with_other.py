@@ -25,10 +25,13 @@ output_dir = Path(os.getenv(
 )).expanduser()
 output_dir.mkdir(parents=True, exist_ok=True)
 
-mergent_file = (
-    data_dir / 'Mergent' / 'Clean'
-    / '261013_city_cusiplevel_finsample_allpubdebt.dta'
-)
+mergent_file = Path(os.getenv(
+    'MERGENT_ALLPUBDEBT_FILE',
+    str(
+        data_dir / 'Mergent' / 'Clean'
+        / '261013_city_cusiplevel_finsample_allpubdebt.dta'
+    ),
+)).expanduser()
 dpc_file = dpc_uop_dir / '260223_dpcdata_cusip_purpose.csv'
 cross_section_file = (
     data_dir / 'Clean_Intermediate' / 'Census COG Finance' / 'processed'
