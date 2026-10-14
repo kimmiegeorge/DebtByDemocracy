@@ -1,5 +1,5 @@
 #----------------------------
-# Refresh the 2017 all-public-debt composition from the October 2026 file
+# Refresh the 2017 all-public-debt composition from the v2020 source file
 #----------------------------
 # Step 05 builds the Census/control sample and the submitted GO/revenue
 # outcomes. For this response-only extension, replace only the all-debt count,
@@ -11,7 +11,7 @@ expanded_bond_file <- Sys.getenv(
   "MERGENT_ALLPUBDEBT_FILE",
   unset = file.path(
     root,
-    "Data/Mergent/Clean/261013_city_cusiplevel_finsample_allpubdebt.dta"
+    "Data/Mergent/Clean/261013_city_cusiplevel_finsample_allpubdebt_v2020.dta"
   )
 )
 expanded_bond_cols <- c(
@@ -44,12 +44,12 @@ expanded_bonds_2017 <- as.data.table(haven::read_dta(
 expanded_bonds_2017[, issue_id := as.numeric(issue_id)]
 expanded_bonds_2017[, seed_issuer_id_join := round(as.numeric(seed_issuer_id), 1)]
 
-# The October file contains both new-money and refunding bonds. Apply the
+# The v2020 file contains both new-money and refunding bonds. Apply the
 # submitted-analysis new-money screen before constructing any debt, yield, or
 # bond-control measure so refunding CUSIPs cannot affect the 05c results.
 expanded_bonds_2017 <- expanded_bonds_2017[new_money == 1]
 
-# Attach the NC/Garrett et al. spread rebuilt from the same October bond file.
+# Attach the NC/Garrett et al. spread rebuilt from the same v2020 bond file.
 expanded_spread_file <- file.path(
   root,
   "Data/Clean_Intermediate/Mergent/Clean/bond_level_off_yield_spread_allbonds.csv"
@@ -70,7 +70,7 @@ expanded_bonds_2017[
 ]
 
 # Reconstruct the issuance-level rating used by the existing point-in-time
-# controls. In the October all-public-debt files, rating_m is Moody's and
+# controls. In the v2020 all-public-debt file, rating_m is Moody's and
 # rating_s is S&P, so map each raw field directly to its agency's scale.
 moody_rating_num <- c(
   Aaa = 16, Aa1 = 15, Aa2 = 14, Aa3 = 13, A1 = 12, A2 = 11,

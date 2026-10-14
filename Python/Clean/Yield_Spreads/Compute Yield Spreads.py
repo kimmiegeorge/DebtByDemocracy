@@ -24,10 +24,13 @@ import polars as pl
 
 ROOT = Path(os.path.expanduser("~/Dropbox/Voting on Bonds"))
 DATA = ROOT / "Data"
-# This expanded file includes all public debt associated with the matched city
-# issuers, including the October 2026 other-debt issuer matches and the
-# separately classified COO/COP bonds used by R step 05c.
-BOND_FILE = DATA / "Mergent/Clean/261013_city_cusiplevel_finsample_allpubdebt.dta"
+# This v2020 file includes all public debt associated with the matched city
+# issuers, including the other-debt issuer matches and the separately
+# classified COO/COP bonds used by R step 05c.
+BOND_FILE = Path(os.getenv(
+    "MERGENT_ALLPUBDEBT_FILE",
+    str(DATA / "Mergent/Clean/261013_city_cusiplevel_finsample_allpubdebt_v2020.dta"),
+)).expanduser()
 TAX_FILE = DATA / "MSRB/taxsim_nber_max_state_income_rates_1977_2021.csv"
 TREASURY_FILE = DATA / "Nominal Yield Curve/nominal_yield_curve.csv"
 OUTPUT_DIR = DATA / "Clean_Intermediate/Mergent/Clean"

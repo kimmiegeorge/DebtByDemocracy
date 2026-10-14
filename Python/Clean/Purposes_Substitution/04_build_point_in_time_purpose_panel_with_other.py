@@ -1,7 +1,7 @@
 """Build the 2017 point-in-time purpose panel including Other public debt.
 
-The panel mirrors the main purpose-substitution input, but uses the October
-2026 all-public-debt Mergent file and keeps only new-money bonds. Within every
+The panel mirrors the main purpose-substitution input, but uses the v2020
+all-public-debt Mergent file and keeps only new-money bonds. Within every
 issuer-purpose cell, GO, Revenue, and Other (COO/COP plus residual Other) form
 an exhaustive denominator. The output supports R step 06c.
 """
@@ -29,7 +29,7 @@ mergent_file = Path(os.getenv(
     'MERGENT_ALLPUBDEBT_FILE',
     str(
         data_dir / 'Mergent' / 'Clean'
-        / '261013_city_cusiplevel_finsample_allpubdebt.dta'
+        / '261013_city_cusiplevel_finsample_allpubdebt_v2020.dta'
     ),
 )).expanduser()
 dpc_file = dpc_uop_dir / '260223_dpcdata_cusip_purpose.csv'

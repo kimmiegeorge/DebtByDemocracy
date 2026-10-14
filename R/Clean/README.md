@@ -228,11 +228,12 @@ after step 05 in the same R session; it is not a standalone `Rscript` entry
 point. Before running 05c, rebuild
 `Data/Clean_Intermediate/Mergent/Clean/bond_level_off_yield_spread_allbonds.csv`
 with `Python/Clean/Yield_Spreads/Compute Yield Spreads.py`. The spread build and
-05c both use `261013_city_cusiplevel_finsample_allpubdebt.dta`, so the all-bond
-and Other yield outcomes include the expanded COO/COP and residual-other debt
-universe. Step 05c restricts that source to `new_money == 1` before constructing
-any debt, yield, or bond-control measure, excluding refunding bonds from the
-analysis. Its canonical outputs should be under `revision_tables/with_other`.
+05c both use `261013_city_cusiplevel_finsample_allpubdebt_v2020.dta`, so the
+all-bond and Other yield outcomes include the expanded COO/COP and
+residual-other debt universe. Step 05c restricts that source to
+`new_money == 1` before constructing any debt, yield, or bond-control measure,
+excluding refunding bonds from the analysis. Its canonical outputs should be
+under `revision_tables/with_other`.
 
 Do **not** run Census step 2a or R step 05d in the routine production path. They
 are refunding-inclusive sensitivity stages. Step 05d is quarantined by default:

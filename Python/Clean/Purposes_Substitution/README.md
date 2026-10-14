@@ -61,8 +61,8 @@ another baseline. Validation reports go to `diagnostics` under the panel
 directory (`PURPOSE_VALIDATION_DIR` overrides it).
 
 Step 04 is the 2017 all-public-debt extension used by R step 06c. It reads
-`261013_city_cusiplevel_finsample_allpubdebt.dta`, keeps only new-money bonds
-outstanding on December 31, 2017, and attaches the DPC purpose indicators.
+`261013_city_cusiplevel_finsample_allpubdebt_v2020.dta`, keeps only new-money
+bonds outstanding on December 31, 2017, and attaches the DPC purpose indicators.
 Within each issuer-purpose cell, GO, Revenue, and Other are mutually exclusive
 and exhaustive; Other follows step 05c and includes COO/COP plus residual
 Other debt. The output reports the Revenue and Other fractions using

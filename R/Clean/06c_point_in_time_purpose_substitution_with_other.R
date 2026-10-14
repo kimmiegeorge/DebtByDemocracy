@@ -1,6 +1,8 @@
 # Set up ----
 
 # 06c: Point-in-time purpose substitution including Other public debt
+# The canonical input is built from the v2020 all-public-debt Mergent file by
+# Python/Clean/Purposes_Substitution/04_build_point_in_time_purpose_panel_with_other.py.
 rm(list = ls())
 
 library(pacman)
