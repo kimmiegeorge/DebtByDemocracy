@@ -444,7 +444,7 @@ full_sample_2017_unrestricted[
 ]
 full_sample_2017_unrestricted[, seed_issuer_id_join := NULL]
 
-control_dict["frac_other_outstanding_all"] <- "Pct Other (incl. COO/COP)"
+control_dict["frac_other_outstanding_all"] <- "Pct Other"
 control_dict <- c(
   control_dict,
   mergent_total_outstanding_debt_mil = "Mergent Total Public Debt",
@@ -508,7 +508,7 @@ summary_labels_2017 <- c(
   "Pct UTGO",
   "Pct LTGO",
   "Pct Revenue",
-  "Pct Other (incl. COO/COP)"
+  "Pct Other"
 )
 
 summary_desc_2017 <- summary_2017[, ..summary_vars_2017]
