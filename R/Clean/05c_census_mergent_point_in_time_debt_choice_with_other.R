@@ -24,6 +24,7 @@ expanded_bond_cols <- c(
   "rev",
   "debt_type",
   "bond_type",
+  "new_money",
   "insured",
   "callable",
   "sinkable",
@@ -39,6 +40,11 @@ expanded_bonds_2017 <- as.data.table(haven::read_dta(
 ))
 expanded_bonds_2017[, issue_id := as.numeric(issue_id)]
 expanded_bonds_2017[, seed_issuer_id_join := round(as.numeric(seed_issuer_id), 1)]
+
+# The October file contains both new-money and refunding bonds. Apply the
+# submitted-analysis new-money screen before constructing any debt, yield, or
+# bond-control measure so refunding CUSIPs cannot affect the 05c results.
+expanded_bonds_2017 <- expanded_bonds_2017[new_money == 1]
 
 # Attach the NC/Garrett et al. spread rebuilt from the same October bond file.
 expanded_spread_file <- file.path(
