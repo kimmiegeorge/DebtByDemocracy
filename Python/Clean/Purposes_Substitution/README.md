@@ -6,6 +6,7 @@ Run these scripts in order from the Code repository (or use absolute paths):
 python3 Python/Clean/Purposes_Substitution/01_merge_dpc_purposes_all_issuers.py
 python3 Python/Clean/Purposes_Substitution/02_build_point_in_time_purpose_panels.py
 python3 Python/Clean/Purposes_Substitution/03_validate_expanded_purpose_panels.py
+python3 Python/Clean/Purposes_Substitution/04_build_point_in_time_purpose_panel_with_other.py
 ```
 
 Step 01 replaces the restricted input produced by the archived R DPC merge.
@@ -58,6 +59,21 @@ The pre-expansion four files
 are preserved in `legacy_before_expansion`; `PURPOSE_BASELINE_DIR` can select
 another baseline. Validation reports go to `diagnostics` under the panel
 directory (`PURPOSE_VALIDATION_DIR` overrides it).
+
+Step 04 is the 2017 all-public-debt extension used by R step 06c. It reads
+`261013_city_cusiplevel_finsample_allpubdebt.dta`, keeps only new-money bonds
+outstanding on December 31, 2017, and attaches the DPC purpose indicators.
+Within each issuer-purpose cell, GO, Revenue, and Other are mutually exclusive
+and exhaustive; Other follows step 05c and includes COO/COP plus residual
+Other debt. The output reports the Revenue and Other fractions using
+GO + Revenue + Other par as the denominator. It also refreshes state-policy
+controls from the current comparison file and writes
+`261013_dpc_point_in_time_purpose_substitution_2017_issuer_category_panel_with_other.csv`
+under the `with_other` subdirectory. `PURPOSE_WITH_OTHER_DIR` overrides that
+location. Run
+`R/Clean/06c_point_in_time_purpose_substitution_with_other.R` afterward to
+produce Panels A--C in `revision_tables/with_other`; Panel C is the Other
+fraction regression.
 
 The Mergent roles used across the project are recorded in
 [`../../../Config/mergent_inputs.csv`](../../../Config/mergent_inputs.csv).
