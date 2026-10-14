@@ -193,7 +193,7 @@ summary_vars_2017 <- c(
 
 summary_labels_2017 <- c(
   "GO Vote",
-  "Only UTGO Vote",
+  "UTGO Only Vote",
   "Supermajority State",
   "Census Debt (mil.)",
   "Census LT Debt (mil.)",

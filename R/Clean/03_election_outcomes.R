@@ -154,7 +154,7 @@ desc_election <- election_brb_all[
 desc_election_col <- summarize_desc_cols(
   desc_election,
   'Election',
-  c('Failed', 'Margin', 'ln(Amount)')
+  c('Failed', 'Margin', 'Amount')
 )
 
 # Website-election descriptives: complete controlled-model inputs, with no
