@@ -9,16 +9,19 @@ python3 Python/Clean/Purposes_Substitution/03_validate_expanded_purpose_panels.p
 ```
 
 Step 01 replaces the restricted input produced by the archived R DPC merge.
-It merges the same `260223_dpcdata_cusip_purpose.csv` indicators onto the full
-`260610_city_cusiplevel_statereq_purpose_yieldspread.dta` bond file. CUSIPs are
+It merges the same `260223_dpcdata_cusip_purpose.csv` indicators onto the
+canonical paper-sample
+`260716_city_cusiplevel_statereq_purpose_yieldspread.dta` bond file. CUSIPs are
 normalized and repeated DPC documents are combined with the maximum of each
 binary purpose indicator. No insample or revenue-vote restriction is applied.
 It writes `dpc_use_proceeds_all_issuers_bonds.csv`.
 
 Step 02 is the former archived point-in-time purpose builder, now maintained
-here. It uses the same `260709` Mergent bond classifications and contractual
-maturities to construct DPC-matched GO/revenue amounts at December 31 in 2012
-and 2017. Issuer coverage comes from the full `processed/no_refundings`
+here. It uses the same canonical `260716` Mergent source as step 01 for bond
+classifications and contractual maturities, eliminating the former
+`260610`/`260709` mixed-vintage construction. It constructs DPC-matched
+GO/revenue amounts at December 31 in 2012 and 2017. Issuer coverage comes from
+the full `processed/no_refundings`
 Census/Mergent cross sections, the source used by the dark-green-inclusive
 analysis. County `ln_gdp` and `ln_pers_inc` use the prior-year BEA controls
 already attached to those cross sections: 2011 for 2012 and 2016 for 2017.
@@ -55,6 +58,11 @@ The pre-expansion four files
 are preserved in `legacy_before_expansion`; `PURPOSE_BASELINE_DIR` can select
 another baseline. Validation reports go to `diagnostics` under the panel
 directory (`PURPOSE_VALIDATION_DIR` overrides it).
+
+The Mergent roles used across the project are recorded in
+[`../../../Config/mergent_inputs.csv`](../../../Config/mergent_inputs.csv).
+The `261013` expanded raw build is coauthor development and is explicitly
+excluded from this paper pipeline.
 
 The earlier restricted R merge remains archived at
 `R/Archive/dpc_use_proceeds_debt_choice_sample.R`; it is no longer a prerequisite.

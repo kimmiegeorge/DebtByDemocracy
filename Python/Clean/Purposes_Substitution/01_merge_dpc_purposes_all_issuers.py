@@ -24,11 +24,15 @@ bond_vars = [
     'offering_date', 'city_go_vote', 'city_rev_vote', 'go_unlim', 'go_lim',
     'rev', 'security_code', 'source_of_repayment', 'amount', 'purp_broad'
 ]
-# Use the same bond and DPC sources as the archived R merge. Pandas only decodes
-# Stata; all transformations and joins use Polars. Do not screen on insample,
-# revenue-vote rules, or legacy issuer-level demographic availability.
+# Use the paper's final July 2026 city-bond file. Earlier versions of this
+# pipeline used the 260610 file and then refreshed classifications from a
+# different 260709 file in step 02. Starting from 260716 keeps the issuer
+# universe, vote rules, and bond classifications on the same source used by
+# the main point-in-time, website, media, election, and trading pipelines.
+# Pandas only decodes Stata; all transformations and joins use Polars. Do not
+# screen on insample, revenue-vote rules, or issuer-level demographics here.
 bond = pl.from_pandas(pd.read_stata(
-    data_dir / 'Mergent/Clean/260610_city_cusiplevel_statereq_purpose_yieldspread.dta',
+    data_dir / 'Mergent/Clean/260716_city_cusiplevel_statereq_purpose_yieldspread.dta',
     columns=bond_vars, convert_categoricals=False
 )).with_columns(
     pl.col('cusip').str.to_uppercase().str.replace_all(r'[^A-Z0-9]', '').alias('cusip_norm'),

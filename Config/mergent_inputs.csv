@@ -1,0 +1,7 @@
+role,filename,scope,status,notes
+paper_city_bonds,260716_city_cusiplevel_statereq_purpose_yieldspread.dta,Main paper and routine appendices,canonical,Final July paper sample with corrected vote rules and strict revenue-bond classification
+paper_city_issuers,260716_city_issuerlevel_yieldspread.dta,Main paper and routine appendices,canonical,Issuer-level companion to the canonical city-bond file
+paper_city_issuers_without_yields,260716_city_issuerlevel.dta,Seed matching and issuer metadata,canonical,Issuer-level companion used when yield fields are unnecessary
+all_bonds_for_paper_issuers,260917_city_cusiplevel_finsample_allbonds.dta,Other-debt and all-bond extensions,extension,Adds non-GO/non-revenue debt for the established paper issuer sample; do not substitute for the canonical GO/revenue file
+refunding_inclusive_all_bonds,260923_cusiplevel_allbonds_inclrefund.dta,Refunding-inclusive sensitivity only,sensitivity,Not part of the routine main-paper pipeline
+coauthor_expanded_raw,261013_mergent_raw.dta,Coauthor expanded-sample development,excluded,Must not be used by the paper pipeline unless the expanded sample is separately approved

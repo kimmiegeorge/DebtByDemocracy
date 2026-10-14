@@ -2,6 +2,7 @@
 
 #%% Paths and shared helpers
 from datetime import date
+import os
 from pathlib import Path
 
 import pandas as pd
@@ -13,7 +14,10 @@ DATA = ROOT / "Data"
 CLEAN = DATA / "Clean_Intermediate"
 REGRESSION = CLEAN / "TX" / "Regression"
 EXPOSURE = CLEAN / "TX" / "Election_Exposure"
-OUTPUT = CLEAN / "TX" / "Rejection_Risk"
+OUTPUT = Path(os.getenv(
+    "TX_REJECTION_RISK_OUTPUT_DIR",
+    str(CLEAN / "TX" / "Rejection_Risk"),
+)).expanduser()
 
 # Use one common window for the Texas website, media, election-incidence, and
 # issuance-incidence analyses. Cross-sectional 2017 outcomes are unaffected.
@@ -255,10 +259,10 @@ annual_election = (
 
 #%% Step 5: Attach beginning-of-year debt and lagged county controls
 outstanding_debt = read_csv(
-    DATA
+    CLEAN
     / "Mergent"
     / "Outstanding Debt"
-    / "260709_issuer_year_outstanding_debt.csv"
+    / "full_mergent_issuer_year_outstanding_debt.csv"
 )
 outstanding_debt = (
     outstanding_debt.filter(pl.col("state") == "TX")

@@ -12,9 +12,9 @@ p_load(data.table, fixest)
 source("/Users/kmunevar/Dropbox/Voting on Bonds/Code/R/Clean/00_modify_etable_rounding.R")
 
 root <- "/Users/kmunevar/Dropbox/Voting on Bonds"
-analysis_data_dir <- file.path(
-  root,
-  "Data/Clean_Intermediate/TX/Rejection_Risk"
+analysis_data_dir <- Sys.getenv(
+  "TX_REJECTION_RISK_DATA_DIR",
+  unset = file.path(root, "Data/Clean_Intermediate/TX/Rejection_Risk")
 )
 tbl_dir <- Sys.getenv(
   "RESULTS_DIR",

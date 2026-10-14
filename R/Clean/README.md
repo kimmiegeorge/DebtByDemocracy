@@ -80,11 +80,19 @@ not part of a routine table rerun.
 
 ### 2. Shared Mergent-derived inputs
 
-The active paper does not yet consume a single Mergent vintage. Most website,
-RavenPack, MSRB, election, and outstanding-debt preparation uses the `260716`
-city bond/issuer files. Purpose, yield, refunding, and supporting pipelines also
-use `260610`, `260709`, `260917`, or `260923` inputs. See the audit before
-refreshing any Mergent-dependent output.
+The routine paper pipeline uses the `260716` city bond and issuer files as its
+canonical paper-sample Mergent source. The roles and permitted extensions are
+recorded in [`../../Config/mergent_inputs.csv`](../../Config/mergent_inputs.csv).
+Run the contract check after changing a Mergent-dependent path:
+
+```sh
+python3 Python/Clean/validate_mergent_inputs.py
+```
+
+`260917_city_cusiplevel_finsample_allbonds.dta` is retained only for analyses
+that require non-GO/non-revenue bonds for the established paper issuer sample.
+`260923_cusiplevel_allbonds_inclrefund.dta` is a refunding-inclusive sensitivity
+input. Neither is a substitute for the canonical GO/revenue paper file.
 
 The following builders supply widely reused intermediates:
 
@@ -94,10 +102,10 @@ python3 'Python/Clean/Debt_Outstanding/2. Build Full Mergent Annual Outstanding 
 python3 'Python/Clean/Yield_Spreads/Compute Yield Spreads.py'
 ```
 
-Run them only when deliberately rebuilding those shared inputs. The new
-`Python/Clean/Mergent/261013_clean_mergent_raw.py` is a raw Mergent build, is not
-wired into the paper pipeline, writes a multi-gigabyte file, and contains
-machine-specific cache paths. It is not a routine prerequisite.
+Run them only when deliberately rebuilding those shared inputs. The
+`261013_mergent_raw.dta` build belongs to a separate coauthor expanded-sample
+project and is explicitly excluded from this paper pipeline. It is not a
+routine prerequisite or an approved paper input.
 
 ### 3. Website disclosure
 
@@ -152,9 +160,11 @@ Rscript R/Clean/03_election_outcomes.R
 Rscript R/Clean/03_texas_media_event_time.R
 ```
 
-The event-time script currently reads `Data/TX/241120_tx_issue_level.dta` for
-issuance events, whereas the table preparation uses a `260716` Mergent input.
-Treat the figure as a separate construction until those are reconciled.
+The event-time script uses the canonical `260716` city-bond file for issuance
+events, matching the related Texas table preparation. It writes a binned-summary
+CSV to `PROCESSED_RESULTS_DIR` for numerical comparison. The retired Texas
+issue-level source can be supplied with `TEXAS_EVENT_ISSUANCE_DATA` only for a
+controlled migration comparison.
 
 The prior-ISD-failure data used by election step 05 come from
 [`../../Python/Clean/TX_Election_Exposure/README.md`](../../Python/Clean/TX_Election_Exposure/README.md).
@@ -169,8 +179,10 @@ Rscript R/Clean/13_tx_rejection_risk.R
 ```
 
 That preparation combines the current Texas regression-ready files, Census
-cross section, `260709` outstanding-debt panel, `260716` issuance file, and
-spatial exposure files. Keep that mixed input lineage in mind when refreshing.
+cross section, canonical `260716` issuance/issuer files, the shared
+`260716`-based annual outstanding-debt panel, and spatial exposure files.
+`TX_REJECTION_RISK_OUTPUT_DIR` and `TX_REJECTION_RISK_DATA_DIR` keep audit runs
+outside production directories.
 
 ### 6. MSRB trade-before-maturity outcomes
 
@@ -229,9 +241,9 @@ Rscript R/Clean/06b_point_in_time_purpose_substitution_with_dark_green.R
 
 Step 03 must pass before the R scripts are treated as production results.
 `PURPOSE_REGRESSION_DIR`, `PURPOSE_BASELINE_DIR`, and
-`PURPOSE_VALIDATION_DIR` override defaults. This Python pipeline currently
-mixes `260610`, `260709`, and point-in-time Mergent lineages; do not refresh it
-without resolving or explicitly approving that lineage.
+`PURPOSE_VALIDATION_DIR` override defaults. Purpose steps 01 and 02 both use the
+canonical `260716` bond file and the issuer universe comes from the matching
+no-refundings point-in-time cross section.
 
 ### 9. DPC media robustness
 
@@ -317,7 +329,7 @@ step 02, rather than the older `r3b_media_supermajority.tex` promotion entry.
 | TX property-tax pull | Network/archive acquisition and not an active paper-table prerequisite |
 | CAFR OpenAI/EMMA retry scripts | External API/download work and not in the active paper dependency graph |
 | `State_Policy_Comparison/prepare_addnl_state_policy_sources.py` | Source refresh/manual review, not table generation |
-| `Mergent/261013_clean_mergent_raw.py` | Multi-gigabyte raw rebuild, machine-specific cache paths, and no active downstream consumers |
+| `Mergent/261013_clean_mergent_raw.py` | Separate coauthor expanded-sample build; not an approved paper-pipeline input |
 | Census step 2a and R step 05d | Refunding-inclusive sensitivity; step 05d collides with production filenames |
 | Archived map/statute code | Archive code is not an approved routine production stage |
 | `99_promote_tables_to_overleaf.R --apply` | Mutates the paper repository and must follow numerical/visual review |
@@ -373,6 +385,8 @@ Common overrides include:
 - `MSRB_PROCESSED_DIR`, `MSRB_REGRESSION_DIR`
 - `PURPOSE_REGRESSION_DIR`, `PURPOSE_BASELINE_DIR`,
   `PURPOSE_VALIDATION_DIR`
+- `TX_REJECTION_RISK_OUTPUT_DIR`, `TX_REJECTION_RISK_DATA_DIR`
+- `TEXAS_EVENT_ISSUANCE_DATA`, `FIGURES_DIR`, `PROCESSED_RESULTS_DIR`
 - `EXCLUDE_STATE`: explicit border-state sensitivity only
 
 Prefer absolute paths for staging overrides. Never point a test run directly at

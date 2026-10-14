@@ -13,11 +13,16 @@ python3 Python/Clean/TX_Rejection_Risk/01_prepare_tx_rejection_risk.py
 
 The preparation step combines those existing regression and exposure panels
 with the local election, issuance, outstanding-debt, county-demographic, and
-issuer-spread inputs. It exports the website city-year, city-month, annual
+issuer-spread inputs. Issuance and issuer metadata use the canonical `260716`
+paper-sample files. Beginning-of-year debt comes from the shared
+`Data/Clean_Intermediate/Mergent/Outstanding Debt/full_mergent_issuer_year_outstanding_debt.csv`,
+which is also built from `260716`; the former
+`260709_issuer_year_outstanding_debt.csv` input is no longer used. It exports
+the website city-year, city-month, annual
 election, RavenPack-linked annual, proposition-level validation, 2017
 debt-choice, full-period issuance, and media-election panels to
 `Data/Clean_Intermediate/TX/Rejection_Risk/`.
 
-The annual city-election panel remains 1996--2023, matching the existing R
-analysis. The R script now loads these files and retains the regression,
-sample-selection, and table-generation code.
+The Python and R stages support `TX_REJECTION_RISK_OUTPUT_DIR` and
+`TX_REJECTION_RISK_DATA_DIR`, respectively, so a migration or audit run can be
+kept outside production outputs. The analysis window is 2001--2020.

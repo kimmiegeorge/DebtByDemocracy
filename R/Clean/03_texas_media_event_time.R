@@ -69,9 +69,21 @@ election_level_path <- file.path(
   root,
   'Data/Clean_Intermediate/TX/News/Election_Level_With_News_WithFailed.csv'
 )
-issuance_path <- file.path(root, 'Data/TX/241120_tx_issue_level.dta')
-fig_dir <- file.path(root, 'Code/R/Clean/output/revision_figures')
-processed_dir <- file.path(root, 'Code/R/Clean/output/processed')
+issuance_path <- Sys.getenv(
+  'TEXAS_EVENT_ISSUANCE_DATA',
+  unset = file.path(
+    root,
+    'Data/Mergent/Clean/260716_city_cusiplevel_statereq_purpose_yieldspread.dta'
+  )
+)
+fig_dir <- Sys.getenv(
+  'FIGURES_DIR',
+  unset = file.path(root, 'Code/R/Clean/output/revision_figures')
+)
+processed_dir <- Sys.getenv(
+  'PROCESSED_RESULTS_DIR',
+  unset = file.path(root, 'Code/R/Clean/output/processed')
+)
 
 dir.create(fig_dir, recursive = TRUE, showWarnings = FALSE)
 dir.create(processed_dir, recursive = TRUE, showWarnings = FALSE)
@@ -192,11 +204,18 @@ issuance <- as.data.table(read_dta(issuance_path))
 assert_columns(
   issuance,
   c(
-    'seed_issuer', 'offering_date', 'issue_id', 'city',
-    'go_unlim', 'go_lim'
+    'seed_issuer', 'offering_date', 'issue_id', 'go_unlim', 'go_lim'
   ),
-  'Texas issue-level data'
+  'Canonical 260716 Mergent city-bond data'
 )
+if ('state' %in% names(issuance)) {
+  issuance <- issuance[state == 'TX']
+} else if ('city' %in% names(issuance)) {
+  # Compatibility path for auditing the retired 241120 Texas issue file.
+  issuance <- issuance[city == 1L]
+} else {
+  stop('Issuance data must contain either state or city sample information.')
+}
 
 issuance[, seed_issuer := normalize_issuer(seed_issuer)]
 issuance[, offering_date_clean := as.IDate(offering_date)]
@@ -205,8 +224,7 @@ issuance[, is_go :=
     fcoalesce(as.integer(go_lim), 0L) == 1L]
 
 go_issuance_sample <- issuance[
-  city == 1L &
-    is_go &
+  is_go &
     !is.na(offering_date_clean) &
     seed_issuer %in% city_month$seed_issuer
 ]
@@ -464,6 +482,10 @@ binned_summary <- summarize_clustered(
   event_bin_panel,
   'bin_coverage',
   c('event_type', 'event_bin')
+)
+fwrite(
+  binned_summary,
+  file.path(processed_dir, 'texas_media_event_time_binned_summary.csv')
 )
 # -----------------------------------------------------------------------------
 # Figures

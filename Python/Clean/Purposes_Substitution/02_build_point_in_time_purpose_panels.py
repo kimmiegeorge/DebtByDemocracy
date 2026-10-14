@@ -37,7 +37,10 @@ census_processed_dir = (
 purpose_dir.mkdir(parents=True, exist_ok=True)
 
 merged_bond_input = purpose_dir / 'dpc_use_proceeds_all_issuers_bonds.csv'
-mergent_bond_file = mergent_dir / '260709_city_cusiplevel_statereq_purpose_yieldspread.dta'
+# Match the bond source used by step 01 and the no-refundings point-in-time
+# cross section. The prior 260709 reference caused purpose classifications and
+# vote rules to come from a different vintage than the rest of the paper.
+mergent_bond_file = mergent_dir / '260716_city_cusiplevel_statereq_purpose_yieldspread.dta'
 
 target_years = [2012, 2017]
 
@@ -439,7 +442,10 @@ for year in target_years:
         .join(cross_section, on='issuer_match_key', how='left', suffix='_cs')
     )
 
-    column_order = [
+    # State-policy fields include several columns already named explicitly
+    # above. Remove duplicates while preserving presentation order so a policy
+    # refresh cannot make Polars reject the final selection.
+    column_order = list(dict.fromkeys([
         'year',
         'issuer_key',
         'issuer_match_key',
@@ -484,7 +490,7 @@ for year in target_years:
         'total_go_or_revenue_bonds',
         'dpc_purpose_observed',
         *state_policy_cols,
-    ]
+    ]))
 
     issuer_category = issuer_category.select([
         col for col in column_order if col in issuer_category.columns
@@ -493,39 +499,41 @@ for year in target_years:
     category_output = Path(str(category_output_template).format(year=year))
     issuer_category.write_csv(category_output)
 
+    wide_base_columns = list(dict.fromkeys([
+        'year',
+        'issuer_key',
+        'issuer_match_key',
+        'seed_issuer_id',
+        'seed_issuer',
+        'state',
+        'fips',
+        'city_go_vote',
+        'city_rev_vote',
+        'nh_city',
+        'control',
+        'utgo_only',
+        'allgo_only',
+        'insample',
+        'insample_allgo',
+        'insample_utgo_only',
+        'state_go_vote',
+        'state_ltgo_allowed',
+        'demographic_year',
+        'ln_gdp',
+        'ln_census_population',
+        'ln_pers_inc',
+        'ln_1p_census_total_debt',
+        'ln_1p_county_nonmunicipal_total_debt',
+        'glm_proactive',
+        'high_state_tax_privilege',
+        'mergent_go_revenue_bonds_outstanding',
+        'dpc_purpose_observed',
+        *state_policy_cols,
+    ]))
+
     wide_base = (
         issuer_category
-        .select([
-            'year',
-            'issuer_key',
-            'issuer_match_key',
-            'seed_issuer_id',
-            'seed_issuer',
-            'state',
-            'fips',
-            'city_go_vote',
-            'city_rev_vote',
-            'nh_city',
-            'control',
-            'utgo_only',
-            'allgo_only',
-            'insample',
-            'insample_allgo',
-            'insample_utgo_only',
-            'state_go_vote',
-            'state_ltgo_allowed',
-            'demographic_year',
-            'ln_gdp',
-            'ln_census_population',
-            'ln_pers_inc',
-            'ln_1p_census_total_debt',
-            'ln_1p_county_nonmunicipal_total_debt',
-            'glm_proactive',
-            'high_state_tax_privilege',
-            'mergent_go_revenue_bonds_outstanding',
-            'dpc_purpose_observed',
-            *state_policy_cols,
-        ])
+        .select(wide_base_columns)
         .unique(subset=['issuer_match_key'])
     )
 

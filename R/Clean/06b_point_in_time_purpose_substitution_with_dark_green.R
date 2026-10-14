@@ -10,9 +10,19 @@ source("/Users/kmunevar/Dropbox/Voting on Bonds/Code/R/Clean/00_modify_etable_ro
 source("/Users/kmunevar/Dropbox/Voting on Bonds/Code/R/Clean/00_tax_privilege_definitions.R")
 
 root <- "/Users/kmunevar/Dropbox/Voting on Bonds"
-panel_dir <- file.path(root, "Data/DPC Data/Use Of Proceeds/Purposes Substitution")
-tbl_dir <- file.path(root, "Code/R/Clean/output/revision_tables")
-fig_dir <- file.path(root, "Code/R/Clean/output/revision_figures")
+panel_dir <- Sys.getenv(
+    "PURPOSE_REGRESSION_DIR",
+    unset = file.path(root, "Data/DPC Data/Use Of Proceeds/Purposes Substitution")
+)
+tbl_dir <- Sys.getenv(
+    "RESULTS_DIR",
+    unset = file.path(root, "Code/R/Clean/output/revision_tables")
+)
+fig_dir <- Sys.getenv(
+    "FIGURES_DIR",
+    unset = file.path(root, "Code/R/Clean/output/revision_figures")
+)
+dir.create(tbl_dir, showWarnings = FALSE, recursive = TRUE)
 dir.create(fig_dir, showWarnings = FALSE, recursive = TRUE)
 
 # Purpose categories and table labels ----
