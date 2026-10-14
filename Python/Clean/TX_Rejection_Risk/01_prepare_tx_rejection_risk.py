@@ -54,7 +54,7 @@ def add_risk_flags(
         & (pl.col("failure_date") >= pl.col("risk_date_10yr"))
     )
     ten_year = ten_year.group_by(keys).agg(
-        pl.lit(1, dtype=pl.Int64).alias("failure_50pct_10yr")
+        pl.lit(1, dtype=pl.Int64).alias("failure_twothirds_10yr")
     )
 
     flags = dates.select(keys).unique(maintain_order=True).join(
@@ -64,13 +64,13 @@ def add_risk_flags(
         history = (
             matches.filter(pl.col("failure_date") < pl.col("risk_date"))
             .group_by(keys)
-            .agg(pl.lit(1, dtype=pl.Int64).alias("failure_50pct_all_history"))
+            .agg(pl.lit(1, dtype=pl.Int64).alias("failure_twothirds_all_history"))
         )
         flags = flags.join(history, on=keys, how="left")
 
-    fill = ["failure_50pct_10yr"]
+    fill = ["failure_twothirds_10yr"]
     if all_history:
-        fill.append("failure_50pct_all_history")
+        fill.append("failure_twothirds_all_history")
     return flags.with_columns(pl.col(fill).fill_null(0).cast(pl.Int64))
 
 
@@ -91,9 +91,7 @@ def add_threshold_flags(
         pl.lit(1, dtype=pl.Int64).alias("prior_failure")
     )
     names = {
-        "any": "failure_any",
-        "20pct": "failure_20pct",
-        "25pct": "failure_25pct",
+        "50pct": "failure_50pct",
         "80pct": "failure_80pct",
     }
     suffix = "_all_history" if all_history else "_10yr"
@@ -378,10 +376,12 @@ annual_election = annual_election.with_columns(
     pl.col(issuance_columns).fill_null(0).cast(pl.Int64)
 )
 
-#%% Step 7: Build the primary 50-percent-overlap rejection-risk indicators
+#%% Step 7: Build the primary two-thirds-overlap rejection-risk indicators
 failure_events = (
     isd_failures.join(
-        city_isd_overlaps.filter(pl.col("city_area_share") >= 0.50).select(
+        city_isd_overlaps.filter(
+            pl.col("city_area_share") >= (2.0 / 3.0)
+        ).select(
             "seed_key", "isd_geoid", "boundary_vintage"
         ),
         on=["isd_geoid", "boundary_vintage"],
@@ -507,8 +507,8 @@ website_flags = add_risk_flags(
     all_history=True,
 )
 website_flags = website_flags.group_by("seed_issuer", "year").agg(
-    pl.col("failure_50pct_10yr").max(),
-    pl.col("failure_50pct_all_history").max(),
+    pl.col("failure_twothirds_10yr").max(),
+    pl.col("failure_twothirds_all_history").max(),
 )
 website_city_year = website_city_year.join(
     website_flags, on=["seed_issuer", "year"], how="left"
@@ -517,8 +517,8 @@ website_city_year = website_city_year.join(
 #%% Step 11: Build indicators for alternative city-area overlap cutoffs
 thresholds = pl.DataFrame(
     {
-        "threshold_key": ["any", "20pct", "25pct", "80pct"],
-        "minimum_area_share": [0.0, 0.20, 0.25, 0.80],
+        "threshold_key": ["50pct", "80pct"],
+        "minimum_area_share": [0.50, 0.80],
     }
 )
 threshold_events = (
@@ -610,37 +610,25 @@ website_city_year = website_city_year.join(
 threshold_columns = [
     f"failure_{threshold}_{window}"
     for window in ("10yr", "all_history")
-    for threshold in ("any", "20pct", "25pct", "80pct")
+    for threshold in ("50pct", "80pct")
 ]
 annual_threshold_order = [
-    "failure_25pct_10yr",
-    "failure_20pct_10yr",
+    "failure_50pct_10yr",
     "failure_80pct_10yr",
-    "failure_any_10yr",
+    "failure_50pct_all_history",
     "failure_80pct_all_history",
-    "failure_20pct_all_history",
-    "failure_25pct_all_history",
-    "failure_any_all_history",
 ]
 month_threshold_order = [
-    "failure_25pct_10yr",
-    "failure_any_10yr",
+    "failure_50pct_10yr",
     "failure_80pct_10yr",
-    "failure_20pct_10yr",
-    "failure_any_all_history",
-    "failure_25pct_all_history",
+    "failure_50pct_all_history",
     "failure_80pct_all_history",
-    "failure_20pct_all_history",
 ]
 website_threshold_order = [
-    "failure_20pct_10yr",
+    "failure_50pct_10yr",
     "failure_80pct_10yr",
-    "failure_25pct_10yr",
-    "failure_any_10yr",
+    "failure_50pct_all_history",
     "failure_80pct_all_history",
-    "failure_any_all_history",
-    "failure_25pct_all_history",
-    "failure_20pct_all_history",
 ]
 annual_election = annual_election.select(
     pl.exclude(threshold_columns), *annual_threshold_order
@@ -690,15 +678,15 @@ issuer_aggregate = (
     .join(
         debt_choice_flags.select(
             "seed_issuer",
-            "failure_50pct_10yr",
-            "failure_50pct_all_history",
+            "failure_twothirds_10yr",
+            "failure_twothirds_all_history",
         ),
         on="seed_issuer",
         how="left",
     )
     .with_columns(
-        pl.col("failure_50pct_10yr").fill_null(0),
-        pl.col("failure_50pct_all_history").fill_null(0),
+        pl.col("failure_twothirds_10yr").fill_null(0),
+        pl.col("failure_twothirds_all_history").fill_null(0),
     )
 )
 

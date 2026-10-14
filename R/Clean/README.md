@@ -181,6 +181,12 @@ Rscript R/Clean/13_tx_rejection_risk.R
 That preparation combines the current Texas regression-ready files, Census
 cross section, canonical `260716` issuance/issuer files, the shared
 `260716`-based annual outstanding-debt panel, and spatial exposure files.
+The main `Prior ISD Failure` measure requires an overlapping school district
+to cover at least two-thirds of the city's land area and to have failed a bond
+proposition during the preceding ten years. The reported overlap-threshold
+robustness checks hold the same samples and specifications fixed and substitute
+50-percent and 80-percent minimum coverage thresholds. An all-prior-election
+version is generated separately as a lookback-window sensitivity.
 `TX_REJECTION_RISK_OUTPUT_DIR` and `TX_REJECTION_RISK_DATA_DIR` keep audit runs
 outside production directories.
 

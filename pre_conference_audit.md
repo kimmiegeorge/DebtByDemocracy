@@ -135,6 +135,13 @@ sample/results and slightly change the Texas event-time figure. Full details are
 in `mergent_vintage_update.md`; those changed artifacts have not yet been
 promoted to production or the paper repository.
 
+The Texas rejection-risk definition has since been standardized at an exact
+two-thirds minimum city-area overlap for the main ten-year specification. Its
+reported overlap-threshold robustness table now shows only the 50-percent and
+80-percent alternatives, estimated on the same outcome-specific samples and
+with the same controls and fixed effects as the main models. The corresponding
+all-prior-election sensitivity uses the same main and alternative thresholds.
+
 ### 2. The refunding sensitivity output collision — resolved
 
 At the time of the initial audit,
