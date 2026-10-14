@@ -441,6 +441,7 @@ full_sample_2017_unrestricted[, seed_issuer_id_join := NULL]
 control_dict["frac_other_outstanding_all"] <- "Pct Other (incl. COO/COP)"
 control_dict <- c(
   control_dict,
+  mergent_total_outstanding_debt_mil = "Mergent Total Public Debt",
   frac_certificate_outstanding_all = "Pct COO/COP",
   frac_coo_outstanding_all = "Pct COO",
   frac_cop_outstanding_all = "Pct COP",
@@ -576,6 +577,117 @@ full_sample_other_2017 <- full_sample_2017_unrestricted[
   !is.na(mergent_total_bonds_outstanding) &
     mergent_total_bonds_outstanding >= 2
 ]
+
+#----------------------------
+# 2017 PPML debt stock: expanded referendum sample with all public debt
+#----------------------------
+# Match the expanded-sample table in step 05, then add total Mergent public
+# debt rebuilt from the October 2026 all-bond file. Retain the GO + Revenue
+# column so the expanded-debt estimate can be compared with the main measure.
+expanded_total_debt_sample_2017 <- copy(data_2017[
+  insample == 1 |
+    (city_go_vote %in% 1 & city_rev_vote %in% 1)
+])
+expanded_total_debt_sample_2017[, seed_issuer_id_join :=
+  round(as.numeric(seed_issuer_id), 1)]
+# As in the step 05 cross section, a city with no matched outstanding bonds has
+# zero Mergent debt rather than a missing debt outcome.
+expanded_total_debt_sample_2017[, `:=`(
+  mergent_go_revenue_outstanding_debt_mil = 0,
+  mergent_total_outstanding_debt_mil = 0
+)]
+expanded_total_debt_sample_2017[
+  expanded_debt_2017,
+  on = .(seed_issuer_id_join, state),
+  `:=`(
+    mergent_go_revenue_outstanding_debt_mil =
+      (i.expanded_utgo_debt + i.expanded_ltgo_debt +
+        i.expanded_revenue_debt) / 1e6,
+    mergent_total_outstanding_debt_mil = i.expanded_total_debt / 1e6
+  )
+]
+expanded_total_debt_sample_2017[, seed_issuer_id_join := NULL]
+
+census_total_debt_ppml_2017_expanded_other <- fixest::fepois(
+  census_total_debt_mil ~ city_go_vote + ln_gdp + ln_census_population + ln_pers_inc +
+    ln_1p_county_nonmunicipal_total_debt + glm_proactive + state_ltgo_allowed + state_go_vote + low_state_tax_privilege +
+    strict_municipal_debt_limit,
+  data = expanded_total_debt_sample_2017,
+  vcov = vcov_cluster(~state)
+)
+
+census_long_term_debt_ppml_2017_expanded_other <- fixest::fepois(
+  census_lt_debt_mil ~ city_go_vote + ln_gdp + ln_census_population + ln_pers_inc +
+    ln_1p_county_nonmunicipal_total_debt + glm_proactive + state_ltgo_allowed + state_go_vote + low_state_tax_privilege +
+    strict_municipal_debt_limit,
+  data = expanded_total_debt_sample_2017,
+  vcov = vcov_cluster(~state)
+)
+
+mergent_go_revenue_debt_ppml_2017_expanded_other <- fixest::fepois(
+  mergent_go_revenue_outstanding_debt_mil ~ city_go_vote + ln_gdp + ln_census_population + ln_pers_inc +
+    ln_1p_county_nonmunicipal_total_debt + glm_proactive + state_ltgo_allowed + state_go_vote + low_state_tax_privilege +
+    strict_municipal_debt_limit,
+  data = expanded_total_debt_sample_2017,
+  vcov = vcov_cluster(~state)
+)
+
+mergent_total_debt_ppml_2017_expanded_other <- fixest::fepois(
+  mergent_total_outstanding_debt_mil ~ city_go_vote + ln_gdp + ln_census_population + ln_pers_inc +
+    ln_1p_county_nonmunicipal_total_debt + glm_proactive + state_ltgo_allowed + state_go_vote + low_state_tax_privilege +
+    strict_municipal_debt_limit,
+  data = expanded_total_debt_sample_2017,
+  vcov = vcov_cluster(~state)
+)
+
+table_call <- etable(
+  census_total_debt_ppml_2017_expanded_other,
+  census_long_term_debt_ppml_2017_expanded_other,
+  mergent_go_revenue_debt_ppml_2017_expanded_other,
+  mergent_total_debt_ppml_2017_expanded_other,
+  headers = c("Total", "Long-term", "GO + Revenue", "All public"),
+  coefstat = "tstat",
+  drop = "Constant",
+  style.tex = style.tex(main = "aer", fixef.suffix = " FE", yesNo = c("Yes", "No")),
+  fitstat = c("n", "pr2"),
+  se.below = TRUE,
+  digits = 3,
+  digits.stats = 3,
+  signif.code = c("***" = 0.01, "**" = 0.05, "*" = 0.10),
+  tex = TRUE,
+  order = c("%city_go_vote"),
+  dict = control_dict,
+  placement = "H"
+)
+
+modified_output <- modify_etable_rounding(table_call, coef_digits = 3, tstat_digits = 2)
+modified_output <- sub(
+  " & Census Total Debt & Census Long-Term Debt & Mergent GO + Revenue Debt & Mergent Total Public Debt\\\\",
+  paste0(
+    " & ", "\\", "multicolumn{2}{c}{Census Debt} & ",
+    "\\", "multicolumn{2}{c}{Mergent Debt}\\\\"
+  ),
+  modified_output,
+  fixed = TRUE
+)
+modified_output <- sub(
+  " & Total & Long-term & GO + Revenue & All public \\\\",
+  paste0(
+    " & Total & Long-term & GO + Revenue & All public \\\\\n   ",
+    "\\cmidrule(lr){2-3}\\cmidrule(lr){4-5}"
+  ),
+  modified_output,
+  fixed = TRUE
+)
+modified_output <- format_table(modified_output, cluster_level = "State")
+writeLines(
+  modified_output,
+  file.path(
+    tbl_dir_other,
+    "point_in_time_census_debt_poisson_2017_expanded_sample_with_other.tex"
+  )
+)
+
 allgo_utgo_uncontrolled_2017 <- feols(
   frac_utgo_outstanding_all ~ city_go_vote,
   data = full_sample_other_2017[insample_allgo == 1],
