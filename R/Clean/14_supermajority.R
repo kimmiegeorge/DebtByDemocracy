@@ -160,8 +160,8 @@ table_call <- etable(
   keep_raw = c("^city_go_vote$", "^super_majority$"),
   order = c("%city_go_vote", "%super_majority"),
   dict = c(
-    total_articles_12_0_win = "Media Coverage",
-    frac_utgo_outstanding = "UTGO",
+    total_articles_12_0_win = "Total Articles - 12mo",
+    frac_utgo_outstanding = "Pct UTGO",
     mergent_wavg_yield_spread_go_revenue = "Wtd. Avg. Yield Spread",
     city_go_vote = "Vote",
     super_majority = "Supermajority State",
