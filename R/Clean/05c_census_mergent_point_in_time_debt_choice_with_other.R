@@ -70,8 +70,8 @@ expanded_bonds_2017[
 ]
 
 # Reconstruct the issuance-level rating used by the existing point-in-time
-# controls. The historical source stores Moody's and S&P in the opposite raw
-# fields, so preserve the same correction used in Census/Mergent step 2a.
+# controls. In the October all-public-debt files, rating_m is Moody's and
+# rating_s is S&P, so map each raw field directly to its agency's scale.
 moody_rating_num <- c(
   Aaa = 16, Aa1 = 15, Aa2 = 14, Aa3 = 13, A1 = 12, A2 = 11,
   A3 = 10, Baa1 = 9, Baa2 = 8, Baa3 = 7, Ba1 = 6, Ba2 = 5,
@@ -84,9 +84,9 @@ sp_rating_num <- c(
 )
 fitch_rating_num <- c(sp_rating_num, W = 1)
 
-expanded_bonds_2017[, rating_m_clean := trimws(as.character(rating_s))]
+expanded_bonds_2017[, rating_m_clean := trimws(as.character(rating_m))]
 expanded_bonds_2017[rating_m_clean == "#Aaa", rating_m_clean := "Aaa"]
-expanded_bonds_2017[, rating_s_clean := trimws(as.character(rating_m))]
+expanded_bonds_2017[, rating_s_clean := trimws(as.character(rating_s))]
 expanded_bonds_2017[, rating_f_clean := trimws(as.character(rating_f))]
 expanded_bonds_2017[, rating_num := fcoalesce(
   unname(moody_rating_num[rating_m_clean]),
