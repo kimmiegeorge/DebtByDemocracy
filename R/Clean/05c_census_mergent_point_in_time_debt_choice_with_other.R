@@ -12,6 +12,7 @@ expanded_bond_file <- file.path(
   "Data/Mergent/Clean/261013_city_cusiplevel_finsample_allpubdebt.dta"
 )
 expanded_bond_cols <- c(
+  "issue_id",
   "cusip",
   "seed_issuer_id",
   "state",
@@ -22,20 +23,96 @@ expanded_bond_cols <- c(
   "go_lim",
   "rev",
   "debt_type",
-  "bond_type"
+  "bond_type",
+  "insured",
+  "callable",
+  "sinkable",
+  "rated",
+  "rating_f",
+  "rating_s",
+  "rating_m"
 )
 
 expanded_bonds_2017 <- as.data.table(haven::read_dta(
   expanded_bond_file,
   col_select = tidyselect::all_of(expanded_bond_cols)
 ))
+expanded_bonds_2017[, issue_id := as.numeric(issue_id)]
 expanded_bonds_2017[, seed_issuer_id_join := round(as.numeric(seed_issuer_id), 1)]
+
+# Attach the NC/Garrett et al. spread rebuilt from the same October bond file.
+expanded_spread_file <- file.path(
+  root,
+  "Data/Clean_Intermediate/Mergent/Clean/bond_level_off_yield_spread_allbonds.csv"
+)
+expanded_spreads <- fread(
+  expanded_spread_file,
+  select = c("issue_id", "cusip", "offering_yield_spread_nc")
+)
+expanded_spreads[, `:=`(
+  issue_id = as.numeric(issue_id),
+  cusip = as.character(cusip)
+)]
+expanded_bonds_2017[, cusip := as.character(cusip)]
+expanded_bonds_2017[
+  expanded_spreads,
+  on = .(issue_id, cusip),
+  offering_yield_spread_nc := i.offering_yield_spread_nc
+]
+
+# Reconstruct the issuance-level rating used by the existing point-in-time
+# controls. The historical source stores Moody's and S&P in the opposite raw
+# fields, so preserve the same correction used in Census/Mergent step 2a.
+moody_rating_num <- c(
+  Aaa = 16, Aa1 = 15, Aa2 = 14, Aa3 = 13, A1 = 12, A2 = 11,
+  A3 = 10, Baa1 = 9, Baa2 = 8, Baa3 = 7, Ba1 = 6, Ba2 = 5,
+  Ba3 = 4, WR = 1
+)
+sp_rating_num <- c(
+  AAA = 16, `AA+` = 15, AA = 14, `AA-` = 13, `A+` = 12, A = 11,
+  `A-` = 10, `BBB+` = 9, BBB = 8, `BBB-` = 7, `BB+` = 6,
+  BB = 5, `BB-` = 4, `B+` = 3, B = 2
+)
+fitch_rating_num <- c(sp_rating_num, W = 1)
+
+expanded_bonds_2017[, rating_m_clean := trimws(as.character(rating_s))]
+expanded_bonds_2017[rating_m_clean == "#Aaa", rating_m_clean := "Aaa"]
+expanded_bonds_2017[, rating_s_clean := trimws(as.character(rating_m))]
+expanded_bonds_2017[, rating_f_clean := trimws(as.character(rating_f))]
+expanded_bonds_2017[, rating_num := fcoalesce(
+  unname(moody_rating_num[rating_m_clean]),
+  unname(sp_rating_num[rating_s_clean]),
+  unname(fitch_rating_num[rating_f_clean])
+)]
+expanded_bonds_2017[rated == 0, rating_num := 0]
+
+expanded_issue_ratings <- expanded_bonds_2017[, .(
+  rating_issue_max_raw = if (all(is.na(rating_num))) {
+    NA_real_
+  } else {
+    max(rating_num, na.rm = TRUE)
+  },
+  insured_issue = max(insured, na.rm = TRUE)
+), by = issue_id]
+expanded_issue_ratings[, rating_issue_max := fcase(
+  rating_issue_max_raw == 0 & insured_issue == 1, 16,
+  rating_issue_max_raw == 0, NA_real_,
+  default = rating_issue_max_raw
+)]
+expanded_bonds_2017[
+  expanded_issue_ratings,
+  on = "issue_id",
+  rating_issue_max := i.rating_issue_max
+]
+
 expanded_bonds_2017 <- expanded_bonds_2017[
   !is.na(seed_issuer_id_join) &
     !is.na(amount) & amount > 0 &
     offering_date <= as.Date("2017-12-31") &
     maturity_date > as.Date("2017-12-31")
 ]
+expanded_bonds_2017[, original_maturity_years :=
+  as.numeric(maturity_date - offering_date) / 365.25]
 
 expanded_debt_2017 <- expanded_bonds_2017[, .(
   expanded_total_bonds = uniqueN(cusip),
@@ -54,6 +131,131 @@ expanded_debt_2017 <- expanded_bonds_2017[, .(
   expanded_other_ex_certificate_debt =
     sum(amount[bond_type == "other"], na.rm = TRUE)
 ), by = .(seed_issuer_id_join, state)]
+
+expanded_weighted_mean <- function(value, weight, mask) {
+  valid <- !is.na(mask) & mask & !is.na(value) & !is.na(weight) & weight > 0
+  if (!any(valid)) {
+    return(NA_real_)
+  }
+  sum(value[valid] * weight[valid]) / sum(weight[valid])
+}
+
+expanded_weighted_mean_zero_missing <- function(value, weight, mask) {
+  valid <- !is.na(mask) & mask & !is.na(weight) & weight > 0
+  if (!any(valid)) {
+    return(NA_real_)
+  }
+  value[is.na(value)] <- 0
+  sum(value[valid] * weight[valid]) / sum(weight[valid])
+}
+
+expanded_any_indicator <- function(value, weight, mask) {
+  weighted_share <- expanded_weighted_mean_zero_missing(value, weight, mask)
+  if (is.na(weighted_share)) {
+    return(NA_integer_)
+  }
+  as.integer(weighted_share > 0)
+}
+
+expanded_yield_2017 <- expanded_bonds_2017[, .(
+  expanded_wavg_yield_spread_all = expanded_weighted_mean(
+    offering_yield_spread_nc, amount, rep(TRUE, .N)
+  ),
+  expanded_wavg_yield_spread_utgo = expanded_weighted_mean(
+    offering_yield_spread_nc, amount, go_unlim == 1
+  ),
+  expanded_wavg_yield_spread_ltgo = expanded_weighted_mean(
+    offering_yield_spread_nc, amount, go_lim == 1
+  ),
+  expanded_wavg_yield_spread_revenue = expanded_weighted_mean(
+    offering_yield_spread_nc, amount, rev == 1
+  ),
+  expanded_wavg_yield_spread_other = expanded_weighted_mean(
+    offering_yield_spread_nc, amount, bond_type %chin% c("cop", "other")
+  ),
+  expanded_wavg_maturity_all = expanded_weighted_mean(
+    original_maturity_years, amount, rep(TRUE, .N)
+  ),
+  expanded_wavg_maturity_utgo = expanded_weighted_mean(
+    original_maturity_years, amount, go_unlim == 1
+  ),
+  expanded_wavg_maturity_ltgo = expanded_weighted_mean(
+    original_maturity_years, amount, go_lim == 1
+  ),
+  expanded_wavg_maturity_revenue = expanded_weighted_mean(
+    original_maturity_years, amount, rev == 1
+  ),
+  expanded_wavg_maturity_other = expanded_weighted_mean(
+    original_maturity_years, amount, bond_type %chin% c("cop", "other")
+  ),
+  expanded_wavg_rating_all = expanded_weighted_mean_zero_missing(
+    rating_issue_max, amount, rep(TRUE, .N)
+  ),
+  expanded_wavg_rating_utgo = expanded_weighted_mean_zero_missing(
+    rating_issue_max, amount, go_unlim == 1
+  ),
+  expanded_wavg_rating_ltgo = expanded_weighted_mean_zero_missing(
+    rating_issue_max, amount, go_lim == 1
+  ),
+  expanded_wavg_rating_revenue = expanded_weighted_mean_zero_missing(
+    rating_issue_max, amount, rev == 1
+  ),
+  expanded_wavg_rating_other = expanded_weighted_mean_zero_missing(
+    rating_issue_max, amount, bond_type %chin% c("cop", "other")
+  ),
+  expanded_any_insured_all = expanded_any_indicator(
+    insured, amount, rep(TRUE, .N)
+  ),
+  expanded_any_insured_utgo = expanded_any_indicator(
+    insured, amount, go_unlim == 1
+  ),
+  expanded_any_insured_ltgo = expanded_any_indicator(
+    insured, amount, go_lim == 1
+  ),
+  expanded_any_insured_revenue = expanded_any_indicator(
+    insured, amount, rev == 1
+  ),
+  expanded_any_insured_other = expanded_any_indicator(
+    insured, amount, bond_type %chin% c("cop", "other")
+  ),
+  expanded_any_callable_all = expanded_any_indicator(
+    callable, amount, rep(TRUE, .N)
+  ),
+  expanded_any_callable_utgo = expanded_any_indicator(
+    callable, amount, go_unlim == 1
+  ),
+  expanded_any_callable_ltgo = expanded_any_indicator(
+    callable, amount, go_lim == 1
+  ),
+  expanded_any_callable_revenue = expanded_any_indicator(
+    callable, amount, rev == 1
+  ),
+  expanded_any_callable_other = expanded_any_indicator(
+    callable, amount, bond_type %chin% c("cop", "other")
+  ),
+  expanded_any_sinkable_all = expanded_any_indicator(
+    sinkable, amount, rep(TRUE, .N)
+  ),
+  expanded_any_sinkable_utgo = expanded_any_indicator(
+    sinkable, amount, go_unlim == 1
+  ),
+  expanded_any_sinkable_ltgo = expanded_any_indicator(
+    sinkable, amount, go_lim == 1
+  ),
+  expanded_any_sinkable_revenue = expanded_any_indicator(
+    sinkable, amount, rev == 1
+  ),
+  expanded_any_sinkable_other = expanded_any_indicator(
+    sinkable, amount, bond_type %chin% c("cop", "other")
+  )
+), by = .(seed_issuer_id_join, state)]
+
+expanded_debt_2017 <- merge(
+  expanded_debt_2017,
+  expanded_yield_2017,
+  by = c("seed_issuer_id_join", "state"),
+  all.x = TRUE
+)
 
 expanded_debt_2017[, expanded_classified_debt :=
   expanded_utgo_debt + expanded_ltgo_debt + expanded_revenue_debt +
@@ -122,7 +324,37 @@ full_sample_2017_unrestricted[, `:=`(
   frac_certificate_outstanding_all = NA_real_,
   frac_coo_outstanding_all = NA_real_,
   frac_cop_outstanding_all = NA_real_,
-  frac_other_ex_certificate_outstanding_all = NA_real_
+  frac_other_ex_certificate_outstanding_all = NA_real_,
+  mergent_wavg_yield_spread_all = NA_real_,
+  mergent_wavg_yield_spread_utgo = NA_real_,
+  mergent_wavg_yield_spread_ltgo = NA_real_,
+  mergent_wavg_yield_spread_revenue = NA_real_,
+  mergent_wavg_yield_spread_other = NA_real_,
+  mergent_wavg_original_maturity_years_all = NA_real_,
+  mergent_wavg_original_maturity_years_utgo = NA_real_,
+  mergent_wavg_original_maturity_years_ltgo = NA_real_,
+  mergent_wavg_original_maturity_years_revenue = NA_real_,
+  mergent_wavg_original_maturity_years_other = NA_real_,
+  mergent_wavg_rating_all_zero_unrated = NA_real_,
+  mergent_wavg_rating_utgo_zero_unrated = NA_real_,
+  mergent_wavg_rating_ltgo_zero_unrated = NA_real_,
+  mergent_wavg_rating_revenue_zero_unrated = NA_real_,
+  mergent_wavg_rating_other_zero_unrated = NA_real_,
+  mergent_any_insured_all = NA_integer_,
+  mergent_any_insured_utgo = NA_integer_,
+  mergent_any_insured_ltgo = NA_integer_,
+  mergent_any_insured_revenue = NA_integer_,
+  mergent_any_insured_other = NA_integer_,
+  mergent_any_callable_all = NA_integer_,
+  mergent_any_callable_utgo = NA_integer_,
+  mergent_any_callable_ltgo = NA_integer_,
+  mergent_any_callable_revenue = NA_integer_,
+  mergent_any_callable_other = NA_integer_,
+  mergent_any_sinkable_all = NA_integer_,
+  mergent_any_sinkable_utgo = NA_integer_,
+  mergent_any_sinkable_ltgo = NA_integer_,
+  mergent_any_sinkable_revenue = NA_integer_,
+  mergent_any_sinkable_other = NA_integer_
 )]
 full_sample_2017_unrestricted[
   expanded_debt_2017,
@@ -171,7 +403,37 @@ full_sample_2017_unrestricted[
     frac_coo_outstanding_all = i.frac_coo_outstanding_expanded,
     frac_cop_outstanding_all = i.frac_cop_outstanding_expanded,
     frac_other_ex_certificate_outstanding_all =
-      i.frac_other_ex_certificate_outstanding_expanded
+      i.frac_other_ex_certificate_outstanding_expanded,
+    mergent_wavg_yield_spread_all = i.expanded_wavg_yield_spread_all,
+    mergent_wavg_yield_spread_utgo = i.expanded_wavg_yield_spread_utgo,
+    mergent_wavg_yield_spread_ltgo = i.expanded_wavg_yield_spread_ltgo,
+    mergent_wavg_yield_spread_revenue = i.expanded_wavg_yield_spread_revenue,
+    mergent_wavg_yield_spread_other = i.expanded_wavg_yield_spread_other,
+    mergent_wavg_original_maturity_years_all = i.expanded_wavg_maturity_all,
+    mergent_wavg_original_maturity_years_utgo = i.expanded_wavg_maturity_utgo,
+    mergent_wavg_original_maturity_years_ltgo = i.expanded_wavg_maturity_ltgo,
+    mergent_wavg_original_maturity_years_revenue = i.expanded_wavg_maturity_revenue,
+    mergent_wavg_original_maturity_years_other = i.expanded_wavg_maturity_other,
+    mergent_wavg_rating_all_zero_unrated = i.expanded_wavg_rating_all,
+    mergent_wavg_rating_utgo_zero_unrated = i.expanded_wavg_rating_utgo,
+    mergent_wavg_rating_ltgo_zero_unrated = i.expanded_wavg_rating_ltgo,
+    mergent_wavg_rating_revenue_zero_unrated = i.expanded_wavg_rating_revenue,
+    mergent_wavg_rating_other_zero_unrated = i.expanded_wavg_rating_other,
+    mergent_any_insured_all = i.expanded_any_insured_all,
+    mergent_any_insured_utgo = i.expanded_any_insured_utgo,
+    mergent_any_insured_ltgo = i.expanded_any_insured_ltgo,
+    mergent_any_insured_revenue = i.expanded_any_insured_revenue,
+    mergent_any_insured_other = i.expanded_any_insured_other,
+    mergent_any_callable_all = i.expanded_any_callable_all,
+    mergent_any_callable_utgo = i.expanded_any_callable_utgo,
+    mergent_any_callable_ltgo = i.expanded_any_callable_ltgo,
+    mergent_any_callable_revenue = i.expanded_any_callable_revenue,
+    mergent_any_callable_other = i.expanded_any_callable_other,
+    mergent_any_sinkable_all = i.expanded_any_sinkable_all,
+    mergent_any_sinkable_utgo = i.expanded_any_sinkable_utgo,
+    mergent_any_sinkable_ltgo = i.expanded_any_sinkable_ltgo,
+    mergent_any_sinkable_revenue = i.expanded_any_sinkable_revenue,
+    mergent_any_sinkable_other = i.expanded_any_sinkable_other
   )
 ]
 full_sample_2017_unrestricted[, seed_issuer_id_join := NULL]
@@ -182,7 +444,20 @@ control_dict <- c(
   frac_certificate_outstanding_all = "Pct COO/COP",
   frac_coo_outstanding_all = "Pct COO",
   frac_cop_outstanding_all = "Pct COP",
-  frac_other_ex_certificate_outstanding_all = "Pct Other (excl. COO/COP)"
+  frac_other_ex_certificate_outstanding_all = "Pct Other (excl. COO/COP)",
+  mergent_wavg_yield_spread_all = "Wtd. Avg. Yield Spread",
+  mergent_wavg_yield_spread_other = "Wtd. Avg. Yield Spread (Other)",
+  mergent_wavg_rating_all_zero_unrated = "Wtd. Avg. Rating",
+  mergent_wavg_rating_other_zero_unrated = "Wtd. Avg. Rating (Other)",
+  mergent_wavg_original_maturity_years_all = "Wtd. Avg. Original Maturity",
+  mergent_wavg_original_maturity_years_other =
+    "Wtd. Avg. Original Maturity (Other)",
+  mergent_any_insured_all = "Any Insured",
+  mergent_any_callable_all = "Any Callable",
+  mergent_any_sinkable_all = "Any Sinkable",
+  mergent_any_insured_other = "Any Insured",
+  mergent_any_callable_other = "Any Callable",
+  mergent_any_sinkable_other = "Any Sinkable"
 )
 
 #----------------------------
@@ -515,9 +790,8 @@ writeLines(
 #----------------------------
 # 2017 full sample yield spreads: all city GO vote variation - with other
 #----------------------------
-# These yield fields remain the step-05 measures. The October composition
-# refresh above updates debt amounts and shares only; the current NC spread
-# file has no matched spreads for the newly classified COO/COP bonds.
+# Yield spreads and their bond characteristics are rebuilt above from the
+# October all-public-debt source, including COO, COP, and residual Other debt.
 yield_2017_all_uncontrolled <- feols(
   mergent_wavg_yield_spread_all ~ city_go_vote,
   data = full_sample_other_2017,
@@ -648,7 +922,7 @@ outcome_header_idx <- grep(
 )
 if (length(outcome_header_idx) > 0) {
   modified_output[outcome_header_idx[1]] <-
-    " & \\multicolumn{3}{c}{Wtd. Avg. Yield Spread}\\\\"
+    " & \\multicolumn{4}{c}{Wtd. Avg. Yield Spread}\\\\"
 }
 modified_output <- format_table(modified_output, cluster_level = "State")
 adj_r2_idx <- grep(
@@ -658,14 +932,14 @@ adj_r2_idx <- grep(
 if (length(adj_r2_idx) > 0) {
   modified_output <- append(
     modified_output,
-    "   Controls                   & Yes & Yes & Yes\\\\",
+    "   Controls                   & Yes & Yes & Yes & Yes\\\\",
     after = adj_r2_idx[1]
   )
 }
 modified_output <- add_panel(
   modified_output,
   "Panel B: Weighted average yield spread by bond type",
-  ncols = 4,
+  ncols = 5,
   zero_width = TRUE
 )
 writeLines(

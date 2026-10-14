@@ -24,9 +24,10 @@ import polars as pl
 
 ROOT = Path(os.path.expanduser("~/Dropbox/Voting on Bonds"))
 DATA = ROOT / "Data"
-# This expanded file includes all bonds associated with the matched city
-# issuers, including the valid issuer-name matches added in `newmatch`.
-BOND_FILE = DATA / "Mergent/Clean/260917_city_cusiplevel_finsample_allbonds.dta"
+# This expanded file includes all public debt associated with the matched city
+# issuers, including the October 2026 other-debt issuer matches and the
+# separately classified COO/COP bonds used by R step 05c.
+BOND_FILE = DATA / "Mergent/Clean/261013_city_cusiplevel_finsample_allpubdebt.dta"
 TAX_FILE = DATA / "MSRB/taxsim_nber_max_state_income_rates_1977_2021.csv"
 TREASURY_FILE = DATA / "Nominal Yield Curve/nominal_yield_curve.csv"
 OUTPUT_DIR = DATA / "Clean_Intermediate/Mergent/Clean"
@@ -62,6 +63,7 @@ BOND_COLUMNS = [
     "maturity_date",
     "offering_yield",
     "amount",
+    "debt_type",
     "bond_type",
     "go_unlim",
     "go_lim",
@@ -243,6 +245,10 @@ for seed_issuer, group in issuer_bonds.groupby("seed_issuer", sort=False, dropna
     utgo = group["go_unlim"].eq(1)
     ltgo = group["go_lim"].eq(1)
     revenue = group["bond_type"].eq("rev")
+    certificates = group["bond_type"].eq("cop")
+    coo = group["debt_type"].eq("COO")
+    cop = group["debt_type"].eq("COP")
+    other = group["bond_type"].isin(["cop", "other"])
     overall = weighted_average(group, all_rows)
     issuer_rows.append({
         "seed_issuer": seed_issuer,
@@ -253,6 +259,10 @@ for seed_issuer, group in issuer_bonds.groupby("seed_issuer", sort=False, dropna
         "issuer_spread_utgo_nc": weighted_average(group, utgo),
         "issuer_spread_ltgo_nc": weighted_average(group, ltgo),
         "issuer_spread_rev_nc": weighted_average(group, revenue),
+        "issuer_spread_certificates_nc": weighted_average(group, certificates),
+        "issuer_spread_coo_nc": weighted_average(group, coo),
+        "issuer_spread_cop_nc": weighted_average(group, cop),
+        "issuer_spread_other_nc": weighted_average(group, other),
     })
 
 issuer_output = pd.DataFrame(issuer_rows)

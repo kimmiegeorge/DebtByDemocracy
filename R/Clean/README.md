@@ -219,7 +219,12 @@ mechanism outputs. The principal cross sections are in
 `05c_census_mergent_point_in_time_debt_choice_with_other.R` is response-only and
 currently depends on objects created by step 05. Source or run it immediately
 after step 05 in the same R session; it is not a standalone `Rscript` entry
-point. Its canonical outputs should be under `revision_tables/with_other`.
+point. Before running 05c, rebuild
+`Data/Clean_Intermediate/Mergent/Clean/bond_level_off_yield_spread_allbonds.csv`
+with `Python/Clean/Yield_Spreads/Compute Yield Spreads.py`. The spread build and
+05c both use `261013_city_cusiplevel_finsample_allpubdebt.dta`, so the all-bond
+and Other yield outcomes include the expanded COO/COP and residual-other debt
+universe. Its canonical outputs should be under `revision_tables/with_other`.
 
 Do **not** run Census step 2a or R step 05d in the routine production path. They
 are refunding-inclusive sensitivity stages. Step 05d is quarantined by default:
